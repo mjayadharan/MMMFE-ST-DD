@@ -19,8 +19,11 @@ deal.ii installation instruction: Follow readme file to install with -DDEAL_II_W
 Compilation instruction.
 -------------------------------------------
 cmake -DDEAL_II_DIR=/path to dealii installation folder/ .
+
 make release (for faster compilations)
+
 make debug ( for more careful compilations with warnings)
+
 mpirun -n 'j' ./DarcyVT (where j is the number of subdomains(processses))
 
 Please contact the owner for further instructions.
