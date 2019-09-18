@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------
- * Declaration of MixedBiotProblemDD class template: see source files for more details
+ * Declaration of DarcyVT class template: see source files for more details
  * ---------------------------------------------------------------------
  *
  * Author: Manu Jayadharan, Eldar Khattatov, University of Pittsburgh, 2018-2019
@@ -23,7 +23,7 @@
 
 
 
-namespace dd_biot
+namespace vt_darcy
 {
     using namespace dealii;
 
@@ -85,11 +85,11 @@ namespace dd_biot
 
     // Mixed Biot Domain Decomposition class template
     template<int dim>
-    class MixedBiotProblemDD
+    class DarcyVTProblem
     {
     public:
-        MixedBiotProblemDD(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
-                           const unsigned int mortar_degree = 0, unsigned int split_flag=0);
+        DarcyVTProblem(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
+                           const unsigned int mortar_degree = 0);
 
         void run(const unsigned int refine, const std::vector <std::vector<unsigned int>> &reps, double tol,
                  unsigned int maxiter, unsigned int quad_degree = 11);
@@ -172,7 +172,6 @@ namespace dd_biot
         const unsigned int degree;
         const unsigned int mortar_degree;
         const unsigned int mortar_flag;
-        const unsigned int split_flag; //monolithic: 0, drained split:1, fixed stress: 2
         unsigned int cg_iteration;
         unsigned int max_cg_iteration;
         unsigned int max_cg_iteration_darcy; //for Darcy CG in split

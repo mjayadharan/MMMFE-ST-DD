@@ -12,7 +12,7 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/tensor_function.h>
 
-namespace dd_biot
+namespace vt_darcy
 {
     using namespace dealii;
 

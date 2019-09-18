@@ -1,10 +1,10 @@
 /* ---------------------------------------------------------------------*/
 /* ---------------------------------------------------------------------
- This is part of a program that  implements DD for 3 Different Schemes for Biot: Monolithic, Dranined SPlit and Fixed Stress. This file is specific to Example 1 in paper on DD for BIot schemes.
- *update: The code is modified to include nonmatching subdomain grid using mortar spaces and multiscale basis.
+ This is part of a program that  implements DD for time dependent Darcy flow with variable time stepping and MMMFE on non-matching grid.
+ Template: BiotDD which was co-authored by Eldar K.
  * ---------------------------------------------------------------------
  *
- * Authors: Manu Jayadharan, Eldar Khattatov, University of Pittsburgh:2018- 2019
+ * Author: Manu Jayadharan, University of Pittsburgh: Fall 2019
  */
 
 // Internals,.
@@ -48,17 +48,16 @@
 #include "../inc/data.h"
 
 
-namespace dd_biot
+namespace vt_darcy
 {
     using namespace dealii;
 
     // MixedElasticityDD class constructor
     template <int dim>
-    MixedBiotProblemDD<dim>::MixedBiotProblemDD (const unsigned int degree,
+    DarcyVTProblem<dim>::DarcyVTProblem (const unsigned int degree,
                                                  const BiotParameters &bprm,
                                                  const unsigned int mortar_flag,
-                                                 const unsigned int mortar_degree,
-												 unsigned int split_flag)
+                                                 const unsigned int mortar_degree)
             :
             mpi_communicator (MPI_COMM_WORLD),
             P_coarse2fine (false),
@@ -73,7 +72,6 @@ namespace dd_biot
             max_cg_iteration(0),
 			max_cg_iteration_darcy(0),
             qdegree(11),
-			split_flag(split_flag),
             fe (FE_BDM<dim>(degree), dim,
                 FE_DGQ<dim>(degree-1), dim,
                 FE_DGQ<dim>(degree-1), 0.5*dim*(dim-1),
@@ -104,7 +102,7 @@ namespace dd_biot
 
 
     template <int dim>
-    void MixedBiotProblemDD<dim>::set_current_errors_to_zero()
+    void DarcyVTProblem<dim>::set_current_errors_to_zero()
     {
       std::fill(err.l2_l2_errors.begin(), err.l2_l2_errors.end(), 0.0);
       std::fill(err.l2_l2_norms.begin(), err.l2_l2_norms.end(), 0.0);
@@ -127,17 +125,11 @@ namespace dd_biot
 
     // MixedBiotProblemDD::make_grid_and_dofs
     template <int dim>
-    void MixedBiotProblemDD<dim>::make_grid_and_dofs ()
-    {	    	pcout<<"\n split_flag value is "<<split_flag<<"\n";
+    void DarcyVTProblem<dim>::make_grid_and_dofs ()
+    {
 
         TimerOutput::Scope t(computing_timer, "Make grid and DoFs");
-        if(split_flag==0)
         	system_matrix.clear();
-        else if(split_flag!=0)
-        {
-        	system_matrix_elast.clear();
-        	system_matrix_darcy.clear();
-        }
 
         //double lower_left, upper_right;
         //const unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
@@ -160,12 +152,6 @@ namespace dd_biot
         DoFRenumbering::component_wise (dof_handler);
 
 
-        if(split_flag!=0){
-        	dof_handler_elast.distribute_dofs(fe_elast);
-        	DoFRenumbering::component_wise (dof_handler_elast);
-        	dof_handler_darcy.distribute_dofs(fe_darcy);
-        	DoFRenumbering::component_wise (dof_handler_darcy);
-        }
 
 
         if (mortar_flag)
@@ -199,9 +185,6 @@ namespace dd_biot
         n_flux = n_z;
         n_pressure= n_p;
         n_Elast= n_s+n_u+n_g;
-
-        if(split_flag==0) //monolithic coupled scheme
-        {
 
 			BlockDynamicSparsityPattern dsp(5, 5);
 			dsp.block(0, 0).reinit (n_s, n_s);
@@ -323,98 +306,7 @@ namespace dd_biot
 			            solution_star_mortar.block(4).reinit (n_p_mortar);
 			            solution_star_mortar.collect_sizes ();
 			        }
-        }
-        else if(split_flag!=0){
-        	{ //Elasticity part
-				BlockDynamicSparsityPattern dsp(3, 3);
-				dsp.block(0, 0).reinit(n_s, n_s);
-				dsp.block(0, 1).reinit(n_s, n_u);
-				dsp.block(0, 2).reinit(n_s, n_g);
-				dsp.block(1, 0).reinit(n_u, n_s);
-				dsp.block(1, 1).reinit(n_u, n_u);
-				dsp.block(1, 2).reinit(n_u, n_g);
-				dsp.block(2, 0).reinit(n_g, n_s);
-				dsp.block(2, 1).reinit(n_g, n_u);
-				dsp.block(2, 2).reinit(n_g, n_g);
-				dsp.collect_sizes();
-				DoFTools::make_sparsity_pattern(dof_handler_elast, dsp);
 
-				// Initialize system matrix
-				sparsity_pattern_elast.copy_from(dsp);
-				system_matrix_elast.reinit(sparsity_pattern_elast);
-
-				// Reinit solution and RHS vectors
-				solution_bar_elast.reinit(3);
-				solution_bar_elast.block(0).reinit(n_s);
-				solution_bar_elast.block(1).reinit(n_u);
-				solution_bar_elast.block(2).reinit(n_g);
-				solution_bar_elast.collect_sizes();
-				solution_bar_elast = 0;
-
-				// Reinit solution and RHS vectors
-				solution_star_elast.reinit(3);
-				solution_star_elast.block(0).reinit(n_s);
-				solution_star_elast.block(1).reinit(n_u);
-				solution_star_elast.block(2).reinit(n_g);
-				solution_star_elast.collect_sizes();
-				solution_star_elast = 0;
-
-				system_rhs_bar_elast.reinit(3);
-				system_rhs_bar_elast.block(0).reinit(n_s);
-				system_rhs_bar_elast.block(1).reinit(n_u);
-				system_rhs_bar_elast.block(2).reinit(n_g);
-				system_rhs_bar_elast.collect_sizes();
-				system_rhs_bar_elast = 0;
-
-				system_rhs_star_elast.reinit(3);
-				system_rhs_star_elast.block(0).reinit(n_s);
-				system_rhs_star_elast.block(1).reinit(n_u);
-				system_rhs_star_elast.block(2).reinit(n_g);
-				system_rhs_star_elast.collect_sizes();
-				system_rhs_star_elast = 0;
-        	}//end of Elasticity part
-//        	pcout<<"\n reached here"<<"\n";
-        	{//Darcy part
-        	    BlockDynamicSparsityPattern dsp(2, 2);
-        	    dsp.block(0, 0).reinit (n_z, n_z);
-        	    dsp.block(1, 0).reinit (n_p, n_z);
-        	    dsp.block(0, 1).reinit (n_z, n_p);
-        	    dsp.block(1, 1).reinit (n_p, n_p);
-        	    dsp.collect_sizes ();
-        	    DoFTools::make_sparsity_pattern (dof_handler_darcy, dsp);
-
-        	    // Initialize system matrix
-        	    sparsity_pattern_darcy.copy_from(dsp);
-        	    system_matrix_darcy.reinit (sparsity_pattern_darcy);
-
-        	    // Reinit solution and RHS vectors
-        	    solution_bar_darcy.reinit (2);
-        	    solution_bar_darcy.block(0).reinit (n_z);
-        	    solution_bar_darcy.block(1).reinit (n_p);
-        	    solution_bar_darcy.collect_sizes ();
-        	    solution_bar_darcy=0;
-
-        	    solution_star_darcy.reinit (2);
-        	    solution_star_darcy.block(0).reinit (n_z);
-        	    solution_star_darcy.block(1).reinit (n_p);
-        	    solution_star_darcy.collect_sizes ();
-        	    solution_star_darcy=0;
-
-        	    system_rhs_bar_darcy.reinit (2);
-        	    system_rhs_bar_darcy.block(0).reinit (n_z);
-        	    system_rhs_bar_darcy.block(1).reinit (n_p);
-        	    system_rhs_bar_darcy.collect_sizes ();
-        	    system_rhs_bar_darcy=0;
-
-        	    system_rhs_star_darcy.reinit (2);
-        	    system_rhs_star_darcy.block(0).reinit (n_z);
-        	    system_rhs_star_darcy.block(1).reinit (n_p);
-        	    system_rhs_star_darcy.collect_sizes ();
-        		system_rhs_star_darcy=0;
-
-        	}//end of Darcy Part
-
-        }
 
 
         solution.reinit (5);
@@ -426,14 +318,6 @@ namespace dd_biot
         solution.collect_sizes ();
         solution = 0;
         old_solution.reinit(solution);
-        if(split_flag!=0){
-        	intermediate_solution.reinit(solution);
-        	if(split_flag==2){
-        		older_solution.reinit(solution);
-//        		intermediate_solution_old(solution);
-        	}
-
-        }
 
 
 
@@ -444,7 +328,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD - assemble_system
     template <int dim>
-    void MixedBiotProblemDD<dim>::assemble_system ()
+    void DarcyVTProblem<dim>::assemble_system ()
     {
         TimerOutput::Scope t(computing_timer, "Assemble system");
         system_matrix = 0;
@@ -589,7 +473,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD - assemble_system-corresponding to Elasticity part
        template <int dim>
-       void MixedBiotProblemDD<dim>::assemble_system_elast()
+       void DarcyVTProblem<dim>::assemble_system_elast()
        {
            TimerOutput::Scope t(computing_timer, "Assemble Elasticity system");
            system_matrix_elast = 0;
@@ -720,7 +604,7 @@ namespace dd_biot
 
        // MixedBiotProblemDD - assemble_system corresponding to the Darcy part
         template <int dim>
-        void MixedBiotProblemDD<dim>::assemble_system_darcy ()
+        void DarcyVTProblem<dim>::assemble_system_darcy ()
         {
             TimerOutput::Scope t(computing_timer, "Assemble Darcy system");
             system_matrix_darcy = 0;
@@ -821,7 +705,7 @@ namespace dd_biot
         }
     // MixedBiotProblemDD - initialize the interface data structure for coupled monolithic sheme
     template <int dim>
-    void MixedBiotProblemDD<dim>::get_interface_dofs ()
+    void DarcyVTProblem<dim>::get_interface_dofs ()
     {
         TimerOutput::Scope t(computing_timer, "Get interface DoFs");
         interface_dofs.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
@@ -870,7 +754,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD - initialize the interface data structure for elasticity part(split scheme)
     template <int dim>
-    void MixedBiotProblemDD<dim>::get_interface_dofs_elast ()
+    void DarcyVTProblem<dim>::get_interface_dofs_elast ()
     {
         TimerOutput::Scope t(computing_timer, "Get interface DoFs");
         interface_dofs_elast.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
@@ -915,7 +799,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD - initialize the interface data structure for darcy part(split schemes)
     template <int dim>
-    void MixedBiotProblemDD<dim>::get_interface_dofs_darcy ()
+    void DarcyVTProblem<dim>::get_interface_dofs_darcy ()
     {
         TimerOutput::Scope t(computing_timer, "Get interface DoFs");
         interface_dofs_darcy.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
@@ -960,7 +844,7 @@ namespace dd_biot
 
   // MixedBiotProblemDD - assemble RHS of star problems
   template <int dim>
-  void MixedBiotProblemDD<dim>::assemble_rhs_bar ()
+  void DarcyVTProblem<dim>::assemble_rhs_bar ()
   {
       TimerOutput::Scope t(computing_timer, "Assemble RHS bar");
       system_rhs_bar = 0;
@@ -1126,7 +1010,7 @@ namespace dd_biot
 
   // MixedBiotProblemDD - assemble RHS of star problems corresponding to Elasticity part
     template <int dim>
-    void MixedBiotProblemDD<dim>::assemble_rhs_bar_elast ()
+    void DarcyVTProblem<dim>::assemble_rhs_bar_elast ()
     {
         TimerOutput::Scope t(computing_timer, "Assemble RHS bar elast");
         system_rhs_bar_elast = 0;
@@ -1287,7 +1171,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD - assemble RHS of star problems corresponding to flow part
     template <int dim>
-    void MixedBiotProblemDD<dim>::assemble_rhs_bar_darcy ()
+    void DarcyVTProblem<dim>::assemble_rhs_bar_darcy ()
     {
         TimerOutput::Scope t(computing_timer, "Assemble RHS bar darcy");
         system_rhs_bar_darcy = 0;
@@ -1375,15 +1259,6 @@ namespace dd_biot
             std::vector<std::vector<Tensor<1, dim>>> intermediate_stress(dim, std::vector<Tensor<1,dim>> (n_q_points));
 
             fe_values[pressure].get_function_values (old_solution, old_pressure_values);
-            for (unsigned int s_i=0; s_i<dim; ++s_i){
-            	if(split_flag==1)
-            		fe_values[stresses[s_i]].get_function_values(old_solution, old_stress[s_i]);
-            	else if(split_flag==2)
-            		fe_values[stresses[s_i]].get_function_values(older_solution, old_stress[s_i]);
-
-                fe_values[stresses[s_i]].get_function_values(intermediate_solution, intermediate_stress[s_i]);
-
-            }
             // Transpose, can we avoid this?
             std::vector<std::vector<Tensor<1, dim>>> old_stress_values(n_q_points, std::vector<Tensor<1,dim>> (dim));
             std::vector<std::vector<Tensor<1, dim>>> intermediate_stress_values(n_q_points, std::vector<Tensor<1,dim>> (dim));
@@ -1461,7 +1336,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD - assemble RHS of star problems
     template <int dim>
-    void MixedBiotProblemDD<dim>::assemble_rhs_star (FEFaceValues<dim> &fe_face_values)
+    void DarcyVTProblem<dim>::assemble_rhs_star (FEFaceValues<dim> &fe_face_values)
     {
         TimerOutput::Scope t(computing_timer, "Assemble RHS star");
         system_rhs_star = 0;
@@ -1539,7 +1414,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD - assemble RHS of star problem corrsponding to Elast
     template <int dim>
-    void MixedBiotProblemDD<dim>::assemble_rhs_star_elast (FEFaceValues<dim> &fe_face_values)
+    void DarcyVTProblem<dim>::assemble_rhs_star_elast (FEFaceValues<dim> &fe_face_values)
     {
         TimerOutput::Scope t(computing_timer, "Assemble RHS star elast");
         system_rhs_star_elast = 0;
@@ -1605,7 +1480,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD - assemble RHS of star problem cosrresponding to Flow problem
       template <int dim>
-      void MixedBiotProblemDD<dim>::assemble_rhs_star_darcy (FEFaceValues<dim> &fe_face_values)
+      void DarcyVTProblem<dim>::assemble_rhs_star_darcy (FEFaceValues<dim> &fe_face_values)
       {
           TimerOutput::Scope t(computing_timer, "Assemble RHS star Darcy");
           system_rhs_star_darcy = 0;
@@ -1659,7 +1534,7 @@ namespace dd_biot
       }
     // MixedBiotProblemDD::solvers
     template <int dim>
-    void MixedBiotProblemDD<dim>::solve_bar ()
+    void DarcyVTProblem<dim>::solve_bar ()
     {
         TimerOutput::Scope t(computing_timer, "Solve bar");
 
@@ -1677,7 +1552,7 @@ namespace dd_biot
     }
 
     template <int dim>
-    void MixedBiotProblemDD<dim>::solve_bar_elast()
+    void DarcyVTProblem<dim>::solve_bar_elast()
     {
         TimerOutput::Scope t(computing_timer, "Solve bar Elast");
 
@@ -1691,7 +1566,7 @@ namespace dd_biot
     }
 
     template <int dim>
-     void MixedBiotProblemDD<dim>::solve_bar_darcy ()
+     void DarcyVTProblem<dim>::solve_bar_darcy ()
      {
          TimerOutput::Scope t(computing_timer, "Solve bar Darcy");
 
@@ -1705,7 +1580,7 @@ namespace dd_biot
      }
 
     template <int dim>
-    void MixedBiotProblemDD<dim>::solve_star ()
+    void DarcyVTProblem<dim>::solve_star ()
     {
         TimerOutput::Scope t(computing_timer, "Solve star");
 
@@ -1714,7 +1589,7 @@ namespace dd_biot
     }
 
     template <int dim>
-      void MixedBiotProblemDD<dim>::solve_star_elast ()
+      void DarcyVTProblem<dim>::solve_star_elast ()
       {
           TimerOutput::Scope t(computing_timer, "Solve star Elast");
 
@@ -1723,7 +1598,7 @@ namespace dd_biot
       }
 
     template <int dim>
-      void MixedBiotProblemDD<dim>::solve_star_darcy ()
+      void DarcyVTProblem<dim>::solve_star_darcy ()
       {
           TimerOutput::Scope t(computing_timer, "Solve star Darcy");
 
@@ -1732,10 +1607,8 @@ namespace dd_biot
       }
 
     template<int dim>
-    void MixedBiotProblemDD<dim>::solve_timestep(unsigned int maxiter)
+    void DarcyVTProblem<dim>::solve_timestep(unsigned int maxiter)
     {
-    	if(split_flag==0)
-    	{
 		  if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
 		  {
 
@@ -1761,131 +1634,12 @@ namespace dd_biot
 			system_rhs_star = 0;
 			  cg_iteration = 0;
 		  }
-    	}
-    	else if(split_flag==1) //drained split: solving elasticity first with pressure from previous step
-        	{
-    		  if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
-    		  {
-    			  //solving Elasticity part
-    			intermediate_solution.block(4)= old_solution.block(4);
-    			assemble_rhs_bar_elast ();
-    			//old_solution.print(std::cout);
-    			//system_rhs_bar = 0;
-    			solve_bar_elast ();
-    			//updating solution
-    			solution.block(0) = solution_bar_elast.block(0);
-    			solution.block(1) = solution_bar_elast.block(1);
-    			solution.block(2) = solution_bar_elast.block(2);
-    			system_rhs_bar_elast = 0;
-    			//end of solving elasiticity part and updating solution
-
-    			//solving Darcy part
-    			intermediate_solution.block(0)=solution.block(0);
-    			assemble_rhs_bar_darcy ();
-    			solve_bar_darcy();
-    			//updating solution
-    			solution.block(3) = solution_bar_darcy.block(0);
-    			solution.block(4) = solution_bar_darcy.block(1);
-    			system_rhs_bar_darcy=0;
-
-    		  }
-    		  else
-    		  {
-    			pcout << "\nStarting Elast CG iterations, time t=" << prm.time << "s..." << "\n";
-    			//solving Elasticity part
-    			intermediate_solution.block(4)= old_solution.block(4);
-    			assemble_rhs_bar_elast ();
-    	        local_cg(maxiter,0);
-//    			local_cg_elast(maxiter);
-    	        system_rhs_bar_elast=0;
-    	        system_rhs_star_elast=0;
-      			if (cg_iteration > max_cg_iteration)
-      			  max_cg_iteration = cg_iteration;
-      			cg_iteration = 0;
-
-      			//solving Darcy part
-      			 intermediate_solution.block(0)=solution.block(0);
-      			 assemble_rhs_bar_darcy ();
-      			pcout << "\nStarting Darcy CG iterations, time t=" << prm.time << "s..." << "\n";
-      			local_cg(maxiter,1);
-//      			 local_cg_darcy(maxiter);
-      			 system_rhs_bar_darcy=0;
-      			 system_rhs_star_darcy=0;
-     			if (cg_iteration > max_cg_iteration_darcy)
-           			  max_cg_iteration_darcy = cg_iteration;
-      			 cg_iteration=0;
 
 
-
-    		  }
-        	}
-
-    	else if(split_flag==2) //fixed stress: solving flow problem first with trace of stress from previous step.
-        	{
-    		  if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
-    		  {
-
-    			  //solving Darcy part
-    			 intermediate_solution.block(0)=old_solution.block(0);
-    			 assemble_rhs_bar_darcy ();
-    			 solve_bar_darcy();
-    			 //updating solution
-    			 solution.block(3) = solution_bar_darcy.block(0);
-    			 solution.block(4) = solution_bar_darcy.block(1);
-    			 system_rhs_bar_darcy=0;
-
-
-    			  //solving Elasticity part
-    			intermediate_solution.block(4)= solution.block(4);
-    			assemble_rhs_bar_elast ();
-    			//old_solution.print(std::cout);
-    			//system_rhs_bar = 0;
-    			solve_bar_elast ();
-    			//updating solution
-    			solution.block(0) = solution_bar_elast.block(0);
-    			solution.block(1) = solution_bar_elast.block(1);
-    			solution.block(2) = solution_bar_elast.block(2);
-    			system_rhs_bar_elast = 0;
-    			//end of solving elasiticity part and updating solution
-
-
-
-    		  }
-    		  else
-    		  {
-
-    			  //solving Darcy part
-    			 intermediate_solution.block(0)=old_solution.block(0);
-    			 assemble_rhs_bar_darcy ();
-    			 pcout << "\nStarting Darcy CG iterations, time t=" << prm.time << "s..." << "\n";
-    			 local_cg(maxiter,1);
-    			//local_cg_darcy(maxiter);
-    			system_rhs_bar_darcy=0;
-    			system_rhs_star_darcy=0;
-    			pcout << "\nStarting Elast CG iterations, time t=" << prm.time << "s..." << "\n";
-    			if (cg_iteration > max_cg_iteration_darcy)
-    			   max_cg_iteration_darcy = cg_iteration;
-    			cg_iteration=0;
-
-    			//solving Elasticity part
-    			intermediate_solution.block(4)= solution.block(4);
-    			assemble_rhs_bar_elast ();
-    	        local_cg(maxiter,0);
-//    			local_cg_elast(maxiter);
-    	        system_rhs_bar_elast=0;
-    	        system_rhs_star_elast=0;
-      			if (cg_iteration > max_cg_iteration)
-      			  max_cg_iteration = cg_iteration;
-      			 cg_iteration=0;
-
-
-
-    		  }
-        	}
     }
 
     template <int dim>
-    void MixedBiotProblemDD<dim>::compute_multiscale_basis ()
+    void DarcyVTProblem<dim>::compute_multiscale_basis ()
     {
         TimerOutput::Scope t(computing_timer, "Compute multiscale basis");
         ConstraintMatrix constraints;
@@ -1936,7 +1690,7 @@ namespace dd_biot
       //finding the l2 norm of a std::vector<double> vector
       template <int dim>
       double
-	  MixedBiotProblemDD<dim>::vect_norm(std::vector<double> v){
+	  DarcyVTProblem<dim>::vect_norm(std::vector<double> v){
       	double result = 0;
       	for(unsigned int i=0; i<v.size(); ++i){
       		result+= v[i]*v[i];
@@ -1947,7 +1701,7 @@ namespace dd_biot
       //Calculating the given rotation matrix
       template <int dim>
       void
-	  MixedBiotProblemDD<dim>::givens_rotation(double v1, double v2, double &cs, double &sn){
+	  DarcyVTProblem<dim>::givens_rotation(double v1, double v2, double &cs, double &sn){
 
       	if(fabs(v1)<1e-15){
       		cs=0;
@@ -1965,7 +1719,7 @@ namespace dd_biot
       //Applying givens rotation to H column
       template <int dim>
       void
-	  MixedBiotProblemDD<dim>::apply_givens_rotation(std::vector<double> &h, std::vector<double> &cs, std::vector<double> &sn,
+	  DarcyVTProblem<dim>::apply_givens_rotation(std::vector<double> &h, std::vector<double> &cs, std::vector<double> &sn,
       							unsigned int k_iteration){
     	  int k=k_iteration;
       	assert(h.size()>k+1); //size should be k+2
@@ -1994,7 +1748,7 @@ namespace dd_biot
 
       template <int dim>
       void
-	  MixedBiotProblemDD<dim>::back_solve(std::vector<std::vector<double>> H, std::vector<double> beta, std::vector<double> &y, unsigned int k_iteration){
+	  DarcyVTProblem<dim>::back_solve(std::vector<std::vector<double>> H, std::vector<double> beta, std::vector<double> &y, unsigned int k_iteration){
       	 int k = k_iteration;
       	 assert(y.size()==k_iteration+1);
       	 for(int i=0; i<k_iteration;i++)
@@ -2011,7 +1765,7 @@ namespace dd_biot
     //local GMRES function.
       template <int dim>
         void
-		MixedBiotProblemDD<dim>::local_gmres(const unsigned int maxiter)
+		DarcyVTProblem<dim>::local_gmres(const unsigned int maxiter)
         {
           TimerOutput::Scope t(computing_timer, "Local GMRES");
 
@@ -2529,7 +2283,7 @@ namespace dd_biot
     // TODO: allow for nonzero initial lambda, use (k-1)-st lambda for k-th guess
     template <int dim>
     void
-	MixedBiotProblemDD<dim>::local_cg(const unsigned int maxiter, unsigned int split_order_flag)
+	DarcyVTProblem<dim>::local_cg(const unsigned int maxiter, unsigned int split_order_flag)
     {
 //    	if(split_order_flag==0)
 //    		TimerOutput::Scope t(computing_timer, "Local CG Elast");
@@ -2916,7 +2670,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD::compute_interface_error
     template <int dim>
-    std::vector<double> MixedBiotProblemDD<dim>::compute_interface_error()
+    std::vector<double> DarcyVTProblem<dim>::compute_interface_error()
     {
         system_rhs_star = 0;
         std::vector<double> return_vector(2,0);
@@ -3073,7 +2827,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD::compute_errors
     template <int dim>
-    void MixedBiotProblemDD<dim>::compute_errors (const unsigned int cycle)
+    void DarcyVTProblem<dim>::compute_errors (const unsigned int cycle)
     {
       TimerOutput::Scope t(computing_timer, "Compute errors");
 
@@ -3379,13 +3133,7 @@ namespace dd_biot
 //        recv_buf_num[12] = recv_buf_num[12]/recv_buf_den[12];
 
         convergence_table.add_value("cycle", cycle);
-        if(split_flag==0)
         convergence_table.add_value("# GMRES", max_cg_iteration);
-        else if(split_flag!=0){
-        	convergence_table.add_value("# CG_Elast",max_cg_iteration);
-        	convergence_table.add_value("# CG_Darcy",max_cg_iteration_darcy);
-        }
-
         convergence_table.add_value("Velocity,L8-Hdiv", recv_buf_num[0]);
 //        convergence_table.add_value("Velocity,L2-Hdiv", recv_buf_num[1]);
 
@@ -3405,12 +3153,11 @@ namespace dd_biot
         {
           convergence_table.add_value("Lambda,Elast", recv_buf_num[11]/recv_buf_den[11]);
           convergence_table.add_value("Lambda,Darcy", recv_buf_num[12]/recv_buf_den[12]);
-          if(split_flag==0)
-          {
+
         	double combined_l_int_error =(pow(recv_buf_num[11],2) + pow(recv_buf_num[12],2))/(pow(recv_buf_den[11],2) + pow(recv_buf_den[12],2));
         	combined_l_int_error = sqrt(combined_l_int_error);
         	convergence_table.add_value("Lambda,Biot", combined_l_int_error);
-          }
+
         }
       }
     }
@@ -3418,208 +3165,201 @@ namespace dd_biot
 
     // MixedBiotProblemDD::output_results
     template <int dim>
-    void MixedBiotProblemDD<dim>::output_results (const unsigned int cycle, const unsigned int refine)
-    {
-        TimerOutput::Scope t(computing_timer, "Output results");
-        unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
-        unsigned int this_mpi = Utilities::MPI::this_mpi_process(mpi_communicator);
+    void DarcyVTProblem<dim>::output_results (const unsigned int cycle, const unsigned int refine)
+	{
+	        TimerOutput::Scope t(computing_timer, "Output results");
+	        unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
+	        unsigned int this_mpi = Utilities::MPI::this_mpi_process(mpi_communicator);
 
-        /* From here disabling for longer runs:
-         */
+	        /* From here disabling for longer runs:
+	         */
 
-      std::vector<std::string> solution_names;
-      switch(dim)
-      {
-        case 2:
-          solution_names.push_back ("s11");
-          solution_names.push_back ("s12");
-          solution_names.push_back ("s21");
-          solution_names.push_back ("s22");
-          solution_names.push_back ("d1");
-          solution_names.push_back ("d2");
-          solution_names.push_back ("r");
-          solution_names.push_back ("u1");
-          solution_names.push_back ("u2");
-          solution_names.push_back ("p");
-          break;
+	      std::vector<std::string> solution_names;
+	      switch(dim)
+	      {
+	        case 2:
+	          solution_names.push_back ("s11");
+	          solution_names.push_back ("s12");
+	          solution_names.push_back ("s21");
+	          solution_names.push_back ("s22");
+	          solution_names.push_back ("d1");
+	          solution_names.push_back ("d2");
+	          solution_names.push_back ("r");
+	          solution_names.push_back ("u1");
+	          solution_names.push_back ("u2");
+	          solution_names.push_back ("p");
+	          break;
 
-        case 3:
-          solution_names.push_back ("s11");
-          solution_names.push_back ("s12");
-          solution_names.push_back ("s13");
-          solution_names.push_back ("s21");
-          solution_names.push_back ("s22");
-          solution_names.push_back ("s23");
-          solution_names.push_back ("s31");
-          solution_names.push_back ("s32");
-          solution_names.push_back ("s33");
-          solution_names.push_back ("d1");
-          solution_names.push_back ("d2");
-          solution_names.push_back ("d3");
-          solution_names.push_back ("r1");
-          solution_names.push_back ("r2");
-          solution_names.push_back ("r3");
-          solution_names.push_back ("u1");
-          solution_names.push_back ("u2");
-          solution_names.push_back ("u3");
-          solution_names.push_back ("p");
-          break;
+	        case 3:
+	          solution_names.push_back ("s11");
+	          solution_names.push_back ("s12");
+	          solution_names.push_back ("s13");
+	          solution_names.push_back ("s21");
+	          solution_names.push_back ("s22");
+	          solution_names.push_back ("s23");
+	          solution_names.push_back ("s31");
+	          solution_names.push_back ("s32");
+	          solution_names.push_back ("s33");
+	          solution_names.push_back ("d1");
+	          solution_names.push_back ("d2");
+	          solution_names.push_back ("d3");
+	          solution_names.push_back ("r1");
+	          solution_names.push_back ("r2");
+	          solution_names.push_back ("r3");
+	          solution_names.push_back ("u1");
+	          solution_names.push_back ("u2");
+	          solution_names.push_back ("u3");
+	          solution_names.push_back ("p");
+	          break;
 
-        default:
-        Assert(false, ExcNotImplemented());
-      }
+	        default:
+	        Assert(false, ExcNotImplemented());
+	      }
 
-      // Components interpretation of the mechanics solution (vector^dim - vector - rotation)
-      std::vector<DataComponentInterpretation::DataComponentInterpretation> data_component_interpretation(dim*dim+dim, DataComponentInterpretation::component_is_part_of_vector);
-      switch (dim)
-      {
-        case 2:
-          data_component_interpretation.push_back (DataComponentInterpretation::component_is_scalar);
-          break;
+	      // Components interpretation of the mechanics solution (vector^dim - vector - rotation)
+	      std::vector<DataComponentInterpretation::DataComponentInterpretation> data_component_interpretation(dim*dim+dim, DataComponentInterpretation::component_is_part_of_vector);
+	      switch (dim)
+	      {
+	        case 2:
+	          data_component_interpretation.push_back (DataComponentInterpretation::component_is_scalar);
+	          break;
 
-        case 3:
-          data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-          break;
+	        case 3:
+	          data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+	          break;
 
-        default:
-        Assert(false, ExcNotImplemented());
-          break;
-      }
+	        default:
+	        Assert(false, ExcNotImplemented());
+	          break;
+	      }
 
-      // Components interpretation of the flow solution (vector - scalar)
-      data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-      data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-      data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
+	      // Components interpretation of the flow solution (vector - scalar)
+	      data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+	      data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+	      data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
 
-      DataOut<dim> data_out;
-      data_out.attach_dof_handler (dof_handler);
-      data_out.add_data_vector (solution, solution_names,
-                                DataOut<dim>::type_dof_data,
-                                data_component_interpretation);
+	      DataOut<dim> data_out;
+	      data_out.attach_dof_handler (dof_handler);
+	      data_out.add_data_vector (solution, solution_names,
+	                                DataOut<dim>::type_dof_data,
+	                                data_component_interpretation);
 
-      data_out.build_patches ();
-
-
-      int tmp = prm.time/prm.time_step;
-      std::ofstream output ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
-      data_out.write_vtu (output);
-      //following lines create a file which paraview can use to link the subdomain results
-            if (this_mpi == 0)
-              {
-                std::vector<std::string> filenames;
-                for (unsigned int i=0;
-                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
-                     ++i)
-                  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
-
-                std::ofstream master_output (("solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
-                                              ".pvtu").c_str());
-                data_out.write_pvtu_record (master_output, filenames);
-              }
-
-     /* end of commenting out for disabling vtu outputs*/
+	      data_out.build_patches ();
 
 
-      double total_time = prm.time_step * prm.num_time_steps;
-      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && cycle == refine-1 && std::abs(prm.time-total_time)<1.0e-12){
-        convergence_table.set_precision("Velocity,L8-Hdiv", 3);
-//        convergence_table.set_precision("Velocity,L2-Hdiv", 3);
-//        convergence_table.set_precision("Pressure,L2-L2", 3);
-//        convergence_table.set_precision("Pressure,L2-L2mid", 3);
-        convergence_table.set_precision("Pressure,L8-L2", 3);
+	      int tmp = prm.time/prm.time_step;
+	      std::ofstream output ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
+	      data_out.write_vtu (output);
+	      //following lines create a file which paraview can use to link the subdomain results
+	            if (this_mpi == 0)
+	              {
+	                std::vector<std::string> filenames;
+	                for (unsigned int i=0;
+	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+	                     ++i)
+	                  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
 
-        convergence_table.set_scientific("Velocity,L8-Hdiv", true);
-//        convergence_table.set_scientific("Velocity,L2-Hdiv", true);
-//        convergence_table.set_scientific("Pressure,L2-L2", true);
-//        convergence_table.set_scientific("Pressure,L2-L2mid", true);
-        convergence_table.set_scientific("Pressure,L8-L2", true);
+	                std::ofstream master_output (("solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
+	                                              ".pvtu").c_str());
+	                data_out.write_pvtu_record (master_output, filenames);
+	              }
 
-//        convergence_table.set_precision("Stress,L2-L2", 3);
-//        convergence_table.set_precision("Stress,L2-Hdiv", 3);
-        convergence_table.set_precision("Stress,L8-Hdiv", 3);
-        convergence_table.set_precision("Displ,L8-L2", 3);
-//        convergence_table.set_precision("Displ,L2-L2mid", 3);
-//        convergence_table.set_precision("Rotat,L2-L2", 3);
+	     /* end of commenting out for disabling vtu outputs*/
 
-//        convergence_table.set_scientific("Stress,L2-L2", true);
-//        convergence_table.set_scientific("Stress,L2-Hdiv", true);
-        convergence_table.set_scientific("Stress,L8-Hdiv", true);
-        convergence_table.set_scientific("Displ,L8-L2", true);
-//        convergence_table.set_scientific("Displ,L2-L2mid", true);
-//        convergence_table.set_scientific("Rotat,L2-L2", true);
 
-//        convergence_table.set_tex_caption("# CG", "\\# cg");
-        if(split_flag==0)
-        	convergence_table.set_tex_caption("# GMRES", "\\# gmres");
-        else if (split_flag!=0){
-        	convergence_table.set_tex_caption("# CG_Elast", "\\# cg_Elast");
-        	convergence_table.set_tex_caption("# CG_Darcy", "\\# cg_Darcy");
-        }
+	      double total_time = prm.time_step * prm.num_time_steps;
+	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && cycle == refine-1 && std::abs(prm.time-total_time)<1.0e-12){
+	        convergence_table.set_precision("Velocity,L8-Hdiv", 3);
+	//        convergence_table.set_precision("Velocity,L2-Hdiv", 3);
+	//        convergence_table.set_precision("Pressure,L2-L2", 3);
+	//        convergence_table.set_precision("Pressure,L2-L2mid", 3);
+	        convergence_table.set_precision("Pressure,L8-L2", 3);
 
-        convergence_table.set_tex_caption("Velocity,L8-Hdiv", "$ \\|z - z_h\\|_{L^{\\infty}(H_{div})} $");
-//        convergence_table.set_tex_caption("Velocity,L2-Hdiv", "$ \\|\\nabla\\cdot(\\u - \\u_h)\\|_{L^2(L^2)} $");
-//        convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^2(L^2)} $");
-//        convergence_table.set_tex_caption("Pressure,L2-L2mid", "$ \\|Qp - p_h\\|_{L^2(L^2)} $");
-        convergence_table.set_tex_caption("Pressure,L8-L2", "$ \\|p - p_h\\|_{L^{\\infty}(L^2)} $");
+	        convergence_table.set_scientific("Velocity,L8-Hdiv", true);
+	//        convergence_table.set_scientific("Velocity,L2-Hdiv", true);
+	//        convergence_table.set_scientific("Pressure,L2-L2", true);
+	//        convergence_table.set_scientific("Pressure,L2-L2mid", true);
+	        convergence_table.set_scientific("Pressure,L8-L2", true);
 
-//        convergence_table.set_tex_caption("Stress,L2-L2", "$ \\|\\sigma - \\sigma_h\\|_{L^{\\infty}(L^2)} $");
-//        convergence_table.set_tex_caption("Stress,L2-Hdiv", "$ \\|\\nabla\\cdot(\\sigma - \\sigma_h)\\|_{L^{\\infty}(L^2)} $");
-        convergence_table.set_tex_caption("Stress,L8-Hdiv", "$ \\|\\sigma - \\sigma_h\\|_{L^{\\infty}(H_{div})} $");
-        convergence_table.set_tex_caption("Displ,L8-L2", "$ \\|u - u_h\\|_{L^{\\infty}(L^2)} $");
-//        convergence_table.set_tex_caption("Displ,L2-L2mid", "$ \\|Q\\bbeta - \\bbeta_h\\|_{L^{\\infty}(L^2)} $");
-//        convergence_table.set_tex_caption("Rotat,L2-L2", "$ \\|r - r_h\\|_{L^{\\infty}(L^2)} $");
+	//        convergence_table.set_precision("Stress,L2-L2", 3);
+	//        convergence_table.set_precision("Stress,L2-Hdiv", 3);
+	        convergence_table.set_precision("Stress,L8-Hdiv", 3);
+	        convergence_table.set_precision("Displ,L8-L2", 3);
+	//        convergence_table.set_precision("Displ,L2-L2mid", 3);
+	//        convergence_table.set_precision("Rotat,L2-L2", 3);
 
-//        convergence_table.evaluate_convergence_rates("# CG", ConvergenceTable::reduction_rate_log2);
-        if(split_flag==0)
-        	convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
-        else if (split_flag!=0){
-        	convergence_table.evaluate_convergence_rates("# CG_Elast", ConvergenceTable::reduction_rate_log2);
-        	convergence_table.evaluate_convergence_rates("# CG_Darcy", ConvergenceTable::reduction_rate_log2);
-        }
+	//        convergence_table.set_scientific("Stress,L2-L2", true);
+	//        convergence_table.set_scientific("Stress,L2-Hdiv", true);
+	        convergence_table.set_scientific("Stress,L8-Hdiv", true);
+	        convergence_table.set_scientific("Displ,L8-L2", true);
+	//        convergence_table.set_scientific("Displ,L2-L2mid", true);
+	//        convergence_table.set_scientific("Rotat,L2-L2", true);
 
-        convergence_table.evaluate_convergence_rates("Velocity,L8-Hdiv", ConvergenceTable::reduction_rate_log2);
-//        convergence_table.evaluate_convergence_rates("Velocity,L2-Hdiv", ConvergenceTable::reduction_rate_log2);
-//        convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
-//        convergence_table.evaluate_convergence_rates("Pressure,L2-L2mid", ConvergenceTable::reduction_rate_log2);
-        convergence_table.evaluate_convergence_rates("Pressure,L8-L2", ConvergenceTable::reduction_rate_log2);
+	//        convergence_table.set_tex_caption("# CG", "\\# cg");
 
-//        convergence_table.evaluate_convergence_rates("Stress,L2-L2", ConvergenceTable::reduction_rate_log2);
-//        convergence_table.evaluate_convergence_rates("Stress,L2-Hdiv", ConvergenceTable::reduction_rate_log2);
-        convergence_table.evaluate_convergence_rates("Stress,L8-Hdiv", ConvergenceTable::reduction_rate_log2);
-        convergence_table.evaluate_convergence_rates("Displ,L8-L2", ConvergenceTable::reduction_rate_log2);
-//        convergence_table.evaluate_convergence_rates("Displ,L2-L2mid", ConvergenceTable::reduction_rate_log2);
-//        convergence_table.evaluate_convergence_rates("Rotat,L2-L2", ConvergenceTable::reduction_rate_log2);
+	        	convergence_table.set_tex_caption("# GMRES", "\\# gmres");
 
-        if (mortar_flag)
-        {
-          convergence_table.set_precision("Lambda,Elast", 3);
-          convergence_table.set_scientific("Lambda,Elast", true);
-          convergence_table.set_tex_caption("Lambda,Elast", "$ \\|u - \\lambda_u_H\\|_{d_H} $");
-          convergence_table.evaluate_convergence_rates("Lambda,Elast", ConvergenceTable::reduction_rate_log2);
+	        convergence_table.set_tex_caption("Velocity,L8-Hdiv", "$ \\|z - z_h\\|_{L^{\\infty}(H_{div})} $");
+	//        convergence_table.set_tex_caption("Velocity,L2-Hdiv", "$ \\|\\nabla\\cdot(\\u - \\u_h)\\|_{L^2(L^2)} $");
+	//        convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^2(L^2)} $");
+	//        convergence_table.set_tex_caption("Pressure,L2-L2mid", "$ \\|Qp - p_h\\|_{L^2(L^2)} $");
+	        convergence_table.set_tex_caption("Pressure,L8-L2", "$ \\|p - p_h\\|_{L^{\\infty}(L^2)} $");
 
-          convergence_table.set_precision("Lambda,Darcy", 3);
-          convergence_table.set_scientific("Lambda,Darcy", true);
-          convergence_table.set_tex_caption("Lambda,Darcy", "$ \\|p - \\lambda_p_H\\|_{d_H} $");
-          convergence_table.evaluate_convergence_rates("Lambda,Darcy", ConvergenceTable::reduction_rate_log2);
+	//        convergence_table.set_tex_caption("Stress,L2-L2", "$ \\|\\sigma - \\sigma_h\\|_{L^{\\infty}(L^2)} $");
+	//        convergence_table.set_tex_caption("Stress,L2-Hdiv", "$ \\|\\nabla\\cdot(\\sigma - \\sigma_h)\\|_{L^{\\infty}(L^2)} $");
+	        convergence_table.set_tex_caption("Stress,L8-Hdiv", "$ \\|\\sigma - \\sigma_h\\|_{L^{\\infty}(H_{div})} $");
+	        convergence_table.set_tex_caption("Displ,L8-L2", "$ \\|u - u_h\\|_{L^{\\infty}(L^2)} $");
+	//        convergence_table.set_tex_caption("Displ,L2-L2mid", "$ \\|Q\\bbeta - \\bbeta_h\\|_{L^{\\infty}(L^2)} $");
+	//        convergence_table.set_tex_caption("Rotat,L2-L2", "$ \\|r - r_h\\|_{L^{\\infty}(L^2)} $");
 
-          if(split_flag==0){
-        	  convergence_table.set_precision("Lambda,Biot", 3);
-        	  convergence_table.set_scientific("Lambda,Biot", true);
-        	  convergence_table.set_tex_caption("Lambda,Biot", "$ \\|(u,p) - \\lambda_H\\|_{d_H} $");
-        	  convergence_table.evaluate_convergence_rates("Lambda,Biot", ConvergenceTable::reduction_rate_log2);
-          }
-        }
+	//        convergence_table.evaluate_convergence_rates("# CG", ConvergenceTable::reduction_rate_log2);
+	        	convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
 
-        std::ofstream error_table_file("error" + std::to_string(Utilities::MPI::n_mpi_processes(mpi_communicator)) + "domains.tex");
 
-        pcout << std::endl;
-        convergence_table.write_text(std::cout);
-        convergence_table.write_tex(error_table_file);
-      }
-    }
+	        convergence_table.evaluate_convergence_rates("Velocity,L8-Hdiv", ConvergenceTable::reduction_rate_log2);
+	//        convergence_table.evaluate_convergence_rates("Velocity,L2-Hdiv", ConvergenceTable::reduction_rate_log2);
+	//        convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
+	//        convergence_table.evaluate_convergence_rates("Pressure,L2-L2mid", ConvergenceTable::reduction_rate_log2);
+	        convergence_table.evaluate_convergence_rates("Pressure,L8-L2", ConvergenceTable::reduction_rate_log2);
+
+	//        convergence_table.evaluate_convergence_rates("Stress,L2-L2", ConvergenceTable::reduction_rate_log2);
+	//        convergence_table.evaluate_convergence_rates("Stress,L2-Hdiv", ConvergenceTable::reduction_rate_log2);
+	        convergence_table.evaluate_convergence_rates("Stress,L8-Hdiv", ConvergenceTable::reduction_rate_log2);
+	        convergence_table.evaluate_convergence_rates("Displ,L8-L2", ConvergenceTable::reduction_rate_log2);
+	//        convergence_table.evaluate_convergence_rates("Displ,L2-L2mid", ConvergenceTable::reduction_rate_log2);
+	//        convergence_table.evaluate_convergence_rates("Rotat,L2-L2", ConvergenceTable::reduction_rate_log2);
+
+	        if (mortar_flag)
+	        {
+	          convergence_table.set_precision("Lambda,Elast", 3);
+	          convergence_table.set_scientific("Lambda,Elast", true);
+	          convergence_table.set_tex_caption("Lambda,Elast", "$ \\|u - \\lambda_u_H\\|_{d_H} $");
+	          convergence_table.evaluate_convergence_rates("Lambda,Elast", ConvergenceTable::reduction_rate_log2);
+
+	          convergence_table.set_precision("Lambda,Darcy", 3);
+	          convergence_table.set_scientific("Lambda,Darcy", true);
+	          convergence_table.set_tex_caption("Lambda,Darcy", "$ \\|p - \\lambda_p_H\\|_{d_H} $");
+	          convergence_table.evaluate_convergence_rates("Lambda,Darcy", ConvergenceTable::reduction_rate_log2);
+
+	        	  convergence_table.set_precision("Lambda,Biot", 3);
+	        	  convergence_table.set_scientific("Lambda,Biot", true);
+	        	  convergence_table.set_tex_caption("Lambda,Biot", "$ \\|(u,p) - \\lambda_H\\|_{d_H} $");
+	        	  convergence_table.evaluate_convergence_rates("Lambda,Biot", ConvergenceTable::reduction_rate_log2);
+
+	        }
+
+	        std::ofstream error_table_file("error" + std::to_string(Utilities::MPI::n_mpi_processes(mpi_communicator)) + "domains.tex");
+
+	        pcout << std::endl;
+	        convergence_table.write_text(std::cout);
+	        convergence_table.write_tex(error_table_file);
+	      }
+	    }
+
+
 
     template <int dim>
-    void MixedBiotProblemDD<dim>::reset_mortars()
+    void DarcyVTProblem<dim>::reset_mortars()
     {
         triangulation.clear();
         dof_handler.clear();
@@ -3641,7 +3381,7 @@ namespace dd_biot
 
     // MixedBiotProblemDD::run
     template <int dim>
-    void MixedBiotProblemDD<dim>::run (const unsigned int refine,
+    void DarcyVTProblem<dim>::run (const unsigned int refine,
                                              const std::vector<std::vector<unsigned int>> &reps,
                                              double tol,
                                              unsigned int maxiter,
@@ -3666,10 +3406,6 @@ namespace dd_biot
         {
             cg_iteration = 0;
             interface_dofs.clear();
-            if(split_flag!=0){
-				interface_dofs_elast.clear();
-				interface_dofs_darcy.clear();
-            }
 
             if (cycle == 0)
             {
@@ -3719,13 +3455,6 @@ namespace dd_biot
             make_grid_and_dofs();
             lambda_guess.resize(GeometryInfo<dim>::faces_per_cell);
             Alambda_guess.resize(GeometryInfo<dim>::faces_per_cell);
-            if(split_flag!=0){
-            lambda_guess_elast.resize(GeometryInfo<dim>::faces_per_cell);
-            Alambda_guess_elast.resize(GeometryInfo<dim>::faces_per_cell);
-
-            lambda_guess_darcy.resize(GeometryInfo<dim>::faces_per_cell);
-            Alambda_guess_darcy.resize(GeometryInfo<dim>::faces_per_cell);
-            }
 
 
             //Functions::ZeroFunction<dim> ic(static_cast<unsigned int> (dim*dim+dim+0.5*dim*(dim-1)+dim+1));
@@ -3743,29 +3472,18 @@ namespace dd_biot
 
               solution = old_solution;
               output_results(cycle,refine);
-              if(split_flag==2)
-            	  older_solution=old_solution;
             }
 
             pcout << "Assembling system..." << "\n";
 //        	pcout<<"\n split_flag value is "<<split_flag<<"\n";
 
-            if(split_flag==0)
+
             	assemble_system ();
-            else if(split_flag!=0)
-            {
-            	assemble_system_elast();
-            	assemble_system_darcy();
-            }
+
 
 
             if (Utilities::MPI::n_mpi_processes(mpi_communicator) != 1)
-            	if(split_flag==0)
             		get_interface_dofs();
-            	else if(split_flag!=0){
-            		get_interface_dofs_elast();
-            		get_interface_dofs_darcy();
-            	}
 
 
             for(unsigned int i=0; i<prm.num_time_steps; i++)
@@ -3774,13 +3492,9 @@ namespace dd_biot
 
               solve_timestep (maxiter);
               compute_errors(cycle);
-              if(split_flag==2)
-            	  older_solution=old_solution;
               old_solution = solution;
               output_results (cycle, refine);
               max_cg_iteration=0;
-              if(split_flag!=0)
-            	  max_cg_iteration_darcy=0;
 
             }
 
@@ -3794,6 +3508,7 @@ namespace dd_biot
         reset_mortars();
     }
 
-    template class MixedBiotProblemDD<2>;
-    template class MixedBiotProblemDD<3>;
+
+    template class DarcyVTProblem<2>;
+    template class DarcyVTProblem<3>;
 }
