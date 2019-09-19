@@ -217,7 +217,7 @@ namespace vt_darcy
       switch (dim)
       {
         case 2:
-          return c0*exp(t)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)+alpha*exp(t)*(x*2.0+(x*x)*(y*y*y*y)*3.0+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0))-exp(t)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0)+(3.141592653589793*3.141592653589793)*exp(t)*cos(y*3.141592653589793)*sin(x*3.141592653589793)*2.0;
+          return c0*exp(t)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)-exp(t)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0)+(3.141592653589793*3.141592653589793)*exp(t)*cos(y*3.141592653589793)*sin(x*3.141592653589793)*2.0;
 
         default:
         Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
@@ -318,7 +318,7 @@ namespace vt_darcy
     class ExactSolution : public Function<dim>
     {
     public:
-        ExactSolution() : Function<dim>(static_cast<unsigned int>(dim*dim + dim + 0.5*dim*(dim-1) + dim + 1)) {}
+        ExactSolution() : Function<dim>(static_cast<unsigned int>(dim + 1)) {}
 
         virtual void vector_value (const Point<dim> &p,
                                    Vector<double>   &values) const;
@@ -338,46 +338,39 @@ namespace vt_darcy
         if (dim == 3)
             z = p[2];
 
-        const LameParameters<dim> lame_function;
-        Vector<double> vec(2);
-        lame_function.vector_value(p,vec);
+//        const LameParameters<dim> lame_function;
+//        Vector<double> vec(2);
+//        lame_function.vector_value(p,vec);
 
-        const double lmbda = vec[0];
-        const double mu = vec[1];
+//        const double lmbda = vec[0];
+//        const double mu = vec[1];
         double t = FunctionTime<double>::get_time();
 
         switch (dim)
         {
             case 2:
-                values(0) = -exp(t)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)+lmbda*(exp(t)*(x*2.0+(x*x)*(y*y*y*y)*3.0+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0))-exp(t)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0))+mu*exp(t)*(x*2.0+(x*x)*(y*y*y*y)*3.0+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0))*2.0;
-                values(1) = mu*(exp(t)*((x*x*x)*(y*y*y)*4.0-sin(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0))*(1.0/2.0)-exp(t)*(pow(x-1.0,3.0)*pow(y-1.0,3.0)*4.0-cos(x*y)*cos(x)+y*sin(x*y)*sin(x))*(1.0/2.0))*2.0;
-                values(2) = mu*(exp(t)*((x*x*x)*(y*y*y)*4.0-sin(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0))*(1.0/2.0)-exp(t)*(pow(x-1.0,3.0)*pow(y-1.0,3.0)*4.0-cos(x*y)*cos(x)+y*sin(x*y)*sin(x))*(1.0/2.0))*2.0;
-                values(3) = -exp(t)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)+lmbda*(exp(t)*(x*2.0+(x*x)*(y*y*y*y)*3.0+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0))-exp(t)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0))-mu*exp(t)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0)*2.0;
-                values(4) = exp(t)*((x*x*x)*(y*y*y*y)+cos(y-1.0)*sin((x-1.0)*(y-1.0))+x*x);
-                values(5) = exp(t)*(pow(y-1.0,2.0)-pow(x-1.0,4.0)*pow(y-1.0,3.0)+cos(x*y)*sin(x));
-                values(6) = exp(t)*((x*x*x)*(y*y*y)*4.0-sin(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0))*(1.0/2.0)+exp(t)*(pow(x-1.0,3.0)*pow(y-1.0,3.0)*4.0-cos(x*y)*cos(x)+y*sin(x*y)*sin(x))*(1.0/2.0);
-                values(7) = -3.141592653589793*exp(t)*cos(x*3.141592653589793)*cos(y*3.141592653589793);
-                values(8) = 3.141592653589793*exp(t)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
-                values(9) = exp(t)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
+                values(0) = -3.141592653589793*exp(t)*cos(x*3.141592653589793)*cos(y*3.141592653589793);
+                values(1) = 3.141592653589793*exp(t)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
+                values(2) = exp(t)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
                 break;
             case 3:
-                values(0) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))-mu*exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/5.0);
-                values(1) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
-                values(2) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
-                values(3) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
-                values(4) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
-                values(5) = 0;
-                values(6) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
-                values(7) = 0;
-                values(8) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
-
-                values(9) = -sin(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1);
-                values(10) = -(exp(x)-1.0)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0);
-                values(11) = (exp(x)-1.0)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0);
-
-                values(12) = sin(M_PI/12.0)*(exp(x)-1.0);
-                values(13) = exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(-1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
-                values(14) = exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(-1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
+//                values(0) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))-mu*exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/5.0);
+//                values(1) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
+//                values(2) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
+//                values(3) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
+//                values(4) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
+//                values(5) = 0;
+//                values(6) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
+//                values(7) = 0;
+//                values(8) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
+//
+//                values(9) = -sin(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1);
+//                values(10) = -(exp(x)-1.0)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0);
+//                values(11) = (exp(x)-1.0)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0);
+//
+//                values(12) = sin(M_PI/12.0)*(exp(x)-1.0);
+//                values(13) = exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(-1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
+//                values(14) = exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(-1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
                 break;
             default:
                 Assert(false, ExcNotImplemented());
@@ -409,23 +402,23 @@ namespace vt_darcy
         switch (dim)
         {
         case 2:
-            grads[0][0] = lambda*(exp(t)*(x*(y*y*y*y)*6.0-cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(y-1.0,2.0)+2.0)-exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x)))+mu*exp(t)*(x*(y*y*y*y)*6.0-cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(y-1.0,2.0)+2.0)*2.0-3.141592653589793*exp(t)*cos(x*3.141592653589793)*cos(y*3.141592653589793);
-            grads[0][1] = -lambda*(exp(t)*((y*2.0-2.0)*pow(x-1.0,4.0)*3.0+(x*x)*cos(x*y)*sin(x)-2.0)-exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0)))+mu*exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0))*2.0+3.141592653589793*exp(t)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
+//            grads[0][0] = lambda*(exp(t)*(x*(y*y*y*y)*6.0-cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(y-1.0,2.0)+2.0)-exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x)))+mu*exp(t)*(x*(y*y*y*y)*6.0-cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(y-1.0,2.0)+2.0)*2.0-3.141592653589793*exp(t)*cos(x*3.141592653589793)*cos(y*3.141592653589793);
+//            grads[0][1] = -lambda*(exp(t)*((y*2.0-2.0)*pow(x-1.0,4.0)*3.0+(x*x)*cos(x*y)*sin(x)-2.0)-exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0)))+mu*exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0))*2.0+3.141592653589793*exp(t)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
+//
+//            grads[1][0] = mu*(exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0))*(1.0/2.0)-exp(t)*(pow(x-1.0,2.0)*pow(y-1.0,3.0)*1.2E1+cos(x*y)*sin(x)+y*sin(x*y)*cos(x)*2.0+(y*y)*cos(x*y)*sin(x))*(1.0/2.0))*2.0;
+//            grads[1][1] = mu*(exp(t)*((x*x*x)*(y*y)*-1.2E1+cos(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(x-1.0,2.0)+sin(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0)*2.0)*(1.0/2.0)+exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x))*(1.0/2.0))*-2.0;
+//
+//            grads[2][0] = mu*(exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0))*(1.0/2.0)-exp(t)*(pow(x-1.0,2.0)*pow(y-1.0,3.0)*1.2E1+cos(x*y)*sin(x)+y*sin(x*y)*cos(x)*2.0+(y*y)*cos(x*y)*sin(x))*(1.0/2.0))*2.0;
+//            grads[2][1] = mu*(exp(t)*((x*x*x)*(y*y)*-1.2E1+cos(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(x-1.0,2.0)+sin(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0)*2.0)*(1.0/2.0)+exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x))*(1.0/2.0))*-2.0;
+//
+//            grads[3][0] = lambda*(exp(t)*(x*(y*y*y*y)*6.0-cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(y-1.0,2.0)+2.0)-exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x)))-mu*exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x))*2.0-3.141592653589793*exp(t)*cos(x*3.141592653589793)*cos(y*3.141592653589793);
+//            grads[3][1] = -lambda*(exp(t)*((y*2.0-2.0)*pow(x-1.0,4.0)*3.0+(x*x)*cos(x*y)*sin(x)-2.0)-exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0)))-mu*exp(t)*((y*2.0-2.0)*pow(x-1.0,4.0)*3.0+(x*x)*cos(x*y)*sin(x)-2.0)*2.0+3.141592653589793*exp(t)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
 
-            grads[1][0] = mu*(exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0))*(1.0/2.0)-exp(t)*(pow(x-1.0,2.0)*pow(y-1.0,3.0)*1.2E1+cos(x*y)*sin(x)+y*sin(x*y)*cos(x)*2.0+(y*y)*cos(x*y)*sin(x))*(1.0/2.0))*2.0;
-            grads[1][1] = mu*(exp(t)*((x*x*x)*(y*y)*-1.2E1+cos(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(x-1.0,2.0)+sin(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0)*2.0)*(1.0/2.0)+exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x))*(1.0/2.0))*-2.0;
+            grads[0][0] = (3.141592653589793*3.141592653589793)*exp(t)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
+            grads[0][1] = (3.141592653589793*3.141592653589793)*exp(t)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
 
-            grads[2][0] = mu*(exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0))*(1.0/2.0)-exp(t)*(pow(x-1.0,2.0)*pow(y-1.0,3.0)*1.2E1+cos(x*y)*sin(x)+y*sin(x*y)*cos(x)*2.0+(y*y)*cos(x*y)*sin(x))*(1.0/2.0))*2.0;
-            grads[2][1] = mu*(exp(t)*((x*x*x)*(y*y)*-1.2E1+cos(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(x-1.0,2.0)+sin(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0)*2.0)*(1.0/2.0)+exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x))*(1.0/2.0))*-2.0;
-
-            grads[3][0] = lambda*(exp(t)*(x*(y*y*y*y)*6.0-cos(y-1.0)*sin((x-1.0)*(y-1.0))*pow(y-1.0,2.0)+2.0)-exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x)))-mu*exp(t)*(sin(x*y)*sin(x)+pow(x-1.0,3.0)*pow(y-1.0,2.0)*1.2E1+x*sin(x*y)*cos(x)+x*y*cos(x*y)*sin(x))*2.0-3.141592653589793*exp(t)*cos(x*3.141592653589793)*cos(y*3.141592653589793);
-            grads[3][1] = -lambda*(exp(t)*((y*2.0-2.0)*pow(x-1.0,4.0)*3.0+(x*x)*cos(x*y)*sin(x)-2.0)-exp(t)*(cos(y-1.0)*cos((x-1.0)*(y-1.0))+(x*x)*(y*y*y)*1.2E1-sin(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0)-cos(y-1.0)*sin((x-1.0)*(y-1.0))*(x-1.0)*(y-1.0)))-mu*exp(t)*((y*2.0-2.0)*pow(x-1.0,4.0)*3.0+(x*x)*cos(x*y)*sin(x)-2.0)*2.0+3.141592653589793*exp(t)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
-
-            grads[7][0] = (3.141592653589793*3.141592653589793)*exp(t)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
-            grads[7][1] = (3.141592653589793*3.141592653589793)*exp(t)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
-
-            grads[8][0] = (3.141592653589793*3.141592653589793)*exp(t)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
-            grads[8][1] = (3.141592653589793*3.141592653589793)*exp(t)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
+            grads[1][0] = (3.141592653589793*3.141592653589793)*exp(t)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
+            grads[1][1] = (3.141592653589793*3.141592653589793)*exp(t)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
             break;
         case 3:
             for (int k=0;k<total_dim;++k)
@@ -442,7 +435,7 @@ namespace vt_darcy
   class InitialCondition : public Function<dim>
   {
   public:
-    InitialCondition() : Function<dim>(static_cast<unsigned int>(dim*dim + dim + 0.5*dim*(dim-1) + dim + 1)) {}
+    InitialCondition() : Function<dim>(static_cast<unsigned int>(dim + 1)) {}
 
     virtual void vector_value (const Point<dim> &p,
                                Vector<double>   &values) const;
@@ -471,36 +464,29 @@ namespace vt_darcy
       switch (dim)
       {
           case 2:
-              values(0) = -exp(t)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)+lmbda*(exp(t)*(x*2.0+(x*x)*(y*y*y*y)*3.0+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0))-exp(t)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0))+mu*exp(t)*(x*2.0+(x*x)*(y*y*y*y)*3.0+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0))*2.0;
-              values(1) = mu*(exp(t)*((x*x*x)*(y*y*y)*4.0-sin(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0))*(1.0/2.0)-exp(t)*(pow(x-1.0,3.0)*pow(y-1.0,3.0)*4.0-cos(x*y)*cos(x)+y*sin(x*y)*sin(x))*(1.0/2.0))*2.0;
-              values(2) = mu*(exp(t)*((x*x*x)*(y*y*y)*4.0-sin(y-1.0)*sin((x-1.0)*(y-1.0))+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(x-1.0))*(1.0/2.0)-exp(t)*(pow(x-1.0,3.0)*pow(y-1.0,3.0)*4.0-cos(x*y)*cos(x)+y*sin(x*y)*sin(x))*(1.0/2.0))*2.0;
-              values(3) = -exp(t)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)+lmbda*(exp(t)*(x*2.0+(x*x)*(y*y*y*y)*3.0+cos(y-1.0)*cos((x-1.0)*(y-1.0))*(y-1.0))-exp(t)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0))-mu*exp(t)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0)*2.0;
-              values(4) = 0;
-              values(5) = 0;
-              values(6) = 0;
-              values(7) = 0;
-              values(8) = 0;
-              values(9) = (cos(y*M_PI)*sin(x*M_PI)+1.0E1);
+              values(0) = 0;
+              values(1) = 0;
+              values(2) = (cos(y*M_PI)*sin(x*M_PI)+1.0E1);
             //values = 0;
           break;
           case 3:
-              values(0) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))-mu*exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/5.0);
-              values(1) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
-              values(2) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
-              values(3) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
-              values(4) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
-              values(5) = 0;
-              values(6) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
-              values(7) = 0;
-              values(8) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
-
-              values(9) = -sin(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1);
-              values(10) = -(exp(x)-1.0)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0);
-              values(11) = (exp(x)-1.0)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0);
-
-              values(12) = sin(M_PI/12.0)*(exp(x)-1.0);
-              values(13) = exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(-1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
-              values(14) = exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(-1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
+//              values(0) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))-mu*exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/5.0);
+//              values(1) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
+//              values(2) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
+//              values(3) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
+//              values(4) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
+//              values(5) = 0;
+//              values(6) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
+//              values(7) = 0;
+//              values(8) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
+//
+//              values(9) = -sin(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1);
+//              values(10) = -(exp(x)-1.0)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0);
+//              values(11) = (exp(x)-1.0)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0);
+//
+//              values(12) = sin(M_PI/12.0)*(exp(x)-1.0);
+//              values(13) = exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(-1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
+//              values(14) = exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(-1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
               break;
           default:
             Assert(false, ExcNotImplemented());
