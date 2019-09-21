@@ -11,7 +11,7 @@
 
 #include "projector.h"
 
-namespace dd_biot
+namespace vt_darcy
 {
     using namespace dealii;
 

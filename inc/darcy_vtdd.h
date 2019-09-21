@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------
- * Declaration of MixedBiotProblemDD class template: see source files for more details
+ * Declaration of DarcyVT class template: see source files for more details
  * ---------------------------------------------------------------------
  *
  * Author: Manu Jayadharan, Eldar Khattatov, University of Pittsburgh, 2018-2019
@@ -23,7 +23,7 @@
 
 
 
-namespace dd_biot
+namespace vt_darcy
 {
     using namespace dealii;
 
@@ -50,10 +50,10 @@ namespace dd_biot
     {
       BiotErrors()
               :
-        l2_l2_norms(5,0),
-        l2_l2_errors(5,0),
-        linf_l2_norms(5,0),
-        linf_l2_errors(5,0),
+        l2_l2_norms(2,0),
+        l2_l2_errors(2,0),
+        linf_l2_norms(2,0),
+        linf_l2_errors(2,0),
         velocity_stress_l2_div_norms(2,0),
         velocity_stress_l2_div_errors(2,0),
         velocity_stress_linf_div_norms(2,0),
@@ -85,11 +85,11 @@ namespace dd_biot
 
     // Mixed Biot Domain Decomposition class template
     template<int dim>
-    class MixedBiotProblemDD
+    class DarcyVTProblem
     {
     public:
-        MixedBiotProblemDD(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
-                           const unsigned int mortar_degree = 0, unsigned int split_flag=0);
+        DarcyVTProblem(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
+                           const unsigned int mortar_degree = 0);
 
         void run(const unsigned int refine, const std::vector <std::vector<unsigned int>> &reps, double tol,
                  unsigned int maxiter, unsigned int quad_degree = 11);
@@ -103,32 +103,16 @@ namespace dd_biot
 
         void make_grid_and_dofs();
         void assemble_system();
-        void assemble_system_elast();
-        void assemble_system_darcy();
         void get_interface_dofs();
-        void get_interface_dofs_elast();
-        void get_interface_dofs_darcy();
         void assemble_rhs_bar();
-        void assemble_rhs_bar_elast();
-        void assemble_rhs_bar_darcy();
         void assemble_rhs_star(FEFaceValues<dim> &fe_face_values);
-        void assemble_rhs_star_elast(FEFaceValues<dim> &fe_face_values);
-        void assemble_rhs_star_darcy(FEFaceValues<dim> &fe_face_values);
-
         void solve_bar();
-        void solve_bar_elast();
-        void solve_bar_darcy();
+
 
         void solve_star();
-        void solve_star_elast();
-        void solve_star_darcy();
-
         void solve_timestep(unsigned int maxiter);
 
         void compute_multiscale_basis();
-        void local_cg(const unsigned int maxiter,  unsigned int split_order_flag=0); //split_order_flag=0 is Elasticity part, 1 is Darcy part
-        void local_cg_elast(const unsigned int maxiter);
-        void local_cg_darcy(const unsigned int maxiter);
         std::vector<double> compute_interface_error(); //return_vector[0] gives interface_error for elast part and return_vector[1] gives that of flow part.
         void compute_errors(const unsigned int cycle);
         void output_results(const unsigned int cycle, const unsigned int refine);
@@ -172,10 +156,8 @@ namespace dd_biot
         const unsigned int degree;
         const unsigned int mortar_degree;
         const unsigned int mortar_flag;
-        const unsigned int split_flag; //monolithic: 0, drained split:1, fixed stress: 2
         unsigned int cg_iteration;
         unsigned int max_cg_iteration;
-        unsigned int max_cg_iteration_darcy; //for Darcy CG in split
         double tolerance;
         unsigned int qdegree;
 
@@ -185,16 +167,11 @@ namespace dd_biot
         std::vector<unsigned int> faces_on_interface;
         std::vector<unsigned int> faces_on_interface_mortar;
         std::vector <std::vector<unsigned int>> interface_dofs;
-        std::vector <std::vector<unsigned int>> interface_dofs_elast;
-        std::vector <std::vector<unsigned int>> interface_dofs_darcy;
 
 
-        unsigned long n_stress;
-        unsigned long n_disp;
-        unsigned long n_rot;
+
         unsigned long n_flux;
         unsigned long n_pressure;
-        unsigned long n_Elast;
 
         // Subdomain coordinates (assuming logically rectangular blocks)
         Point <dim> p1;
@@ -203,11 +180,7 @@ namespace dd_biot
         // Fine triangulation
         Triangulation <dim> triangulation;
         FESystem <dim> fe;
-        FESystem <dim> fe_elast;
-        FESystem <dim> fe_darcy;
         DoFHandler <dim> dof_handler;
-        DoFHandler <dim> dof_handler_elast;
-        DoFHandler <dim> dof_handler_darcy;
 
         // Mortar triangulation
         Triangulation <dim> triangulation_mortar;
@@ -216,48 +189,23 @@ namespace dd_biot
 
         // Star and bar problem data structures
         BlockSparsityPattern sparsity_pattern;
-        BlockSparsityPattern sparsity_pattern_elast;
-        BlockSparsityPattern sparsity_pattern_darcy;
         BlockSparseMatrix<double> system_matrix;
-        BlockSparseMatrix<double> system_matrix_elast;
-        BlockSparseMatrix<double> system_matrix_darcy;
         SparseDirectUMFPACK A_direct;
-        SparseDirectUMFPACK A_direct_elast;
-        SparseDirectUMFPACK A_direct_darcy;
 
         BlockVector<double> solution_bar;
-        BlockVector<double> solution_bar_elast;
-        BlockVector<double> solution_bar_darcy;
-
         BlockVector<double> solution_star;
-        BlockVector<double> solution_star_elast;
-        BlockVector<double> solution_star_darcy;
-
         BlockVector<double> solution;
-        BlockVector<double> solution_elast;
-        BlockVector<double> solution_darcy;
 
         BlockVector<double> old_solution;
-        BlockVector<double> older_solution; //solution in previous to previous timestep(used in fixed stress split)
-        BlockVector<double> intermediate_solution;
-//        BlockVector<double> intermediate_solution_old; //solution in previous time step of intermediate solution(used only in fixed stress)
 
         BlockVector<double> system_rhs_bar;
-        BlockVector<double> system_rhs_bar_elast;
-        BlockVector<double> system_rhs_bar_darcy;
 
         BlockVector<double> system_rhs_star;
-        BlockVector<double> system_rhs_star_elast;
-        BlockVector<double> system_rhs_star_darcy;
 
         BlockVector<double> interface_fe_function;
 
         std::vector<std::vector<double>> lambda_guess;
-        std::vector<std::vector<double>> lambda_guess_elast;
-        std::vector<std::vector<double>> lambda_guess_darcy;
         std::vector<std::vector<double>> Alambda_guess;
-        std::vector<std::vector<double>> Alambda_guess_elast;
-        std::vector<std::vector<double>> Alambda_guess_darcy;
 
         // Mortar data structures
         BlockVector<double> interface_fe_function_mortar;
