@@ -73,6 +73,8 @@ namespace vt_darcy
             qdegree(11),
             fe (FE_BDM<dim>(degree), 1,
                 FE_DGQ<dim>(degree-1), 1),
+//			 fe (FE_RaviartThomas<dim>(degree), 1,
+//			                FE_DGQ<dim>(degree), 1),
             dof_handler (triangulation),
             fe_mortar (FE_RaviartThomas<dim>(mortar_degree), 1,
                        FE_Nothing<dim>(), 1),
