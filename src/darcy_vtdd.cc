@@ -71,13 +71,15 @@ namespace vt_darcy
 			gmres_iteration(0),
             max_cg_iteration(0),
             qdegree(11),
-            fe (FE_BDM<dim>(degree), 1,
-                FE_DGQ<dim>(degree-1), 1),
-//			 fe (FE_RaviartThomas<dim>(degree), 1,
-//			                FE_DGQ<dim>(degree), 1),
+//            fe (FE_BDM<dim>(degree), 1,
+//                FE_DGQ<dim>(degree-1), 1),
+			 fe (FE_RaviartThomas<dim>(degree), 1,
+			                FE_DGQ<dim>(degree), 1),
             dof_handler (triangulation),
             fe_mortar (FE_RaviartThomas<dim>(mortar_degree), 1,
                        FE_Nothing<dim>(), 1),
+//			fe_mortar (FE_Q<dim>(mortar_degree+2), dim,
+//			                       FE_Nothing<dim>(), 1),
             dof_handler_mortar (triangulation_mortar),
             pcout (std::cout,
                    (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)),
@@ -205,7 +207,11 @@ namespace vt_darcy
 			            DoFTools::count_dofs_per_component (dof_handler_mortar, dofs_per_component_mortar);
 			            unsigned int  n_z_mortar=0, n_p_mortar=0;
 
-			            n_z_mortar = dofs_per_component_mortar[0];
+			            n_z_mortar = dofs_per_component_mortar[0]; //For RT mortar space
+//			            for(int dum=0;dum<dim;dum++)
+//			            {
+//			            	n_z_mortar += dofs_per_component_mortar[dum]; //for FE_Q space
+//			            }
 			            n_p_mortar = dofs_per_component_mortar[dim];
 
 			            n_flux = n_z_mortar;
@@ -644,6 +650,9 @@ namespace vt_darcy
                                               interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
                                               fe_face_values.normal_vector(q) *
                                               fe_face_values.JxW(q));
+//                            if(max_cg_iteration<2)
+//                            	if(Utilities::MPI::this_mpi_process(mpi_communicator)==2)
+//                            		std::cout<<"normal values are: "<<fe_face_values.normal_vector(q)[0]<<"  :  "<<fe_face_values.normal_vector(q)[1]<<std::endl;
 
 //                            for (unsigned int d_i=0; d_i<dim; ++d_i)
 //                                sigma[d_i] = fe_face_values[stresses[d_i]].value (i, q);
@@ -1390,7 +1399,7 @@ namespace vt_darcy
 
 //        std::vector<FEValuesExtractors::Vector> stresses(dim, FEValuesExtractors::Vector());
         const FEValuesExtractors::Vector velocity (0);
-//        const FEValuesExtractors::Scalar pressure(dim*dim + dim + 0.5*dim*(dim-1)+dim);
+        const FEValuesExtractors::Scalar pressure(dim);
 
 //        DisplacementBoundaryValues<dim> displacement_boundary_values;
         PressureBoundaryValues<dim>     pressure_boundary_values;
@@ -1443,11 +1452,21 @@ namespace vt_darcy
                         for (unsigned int i=0; i<dofs_per_cell; ++i)
                         {
 
-                        	 local_rhs(i) += (fe_face_values[velocity].value (i, q) *
+                        	 local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
                         	                 fe_face_values.normal_vector(q) *
                         	                 (interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
                         	                 fe_face_values.normal_vector(q) - pressure_values[q])) *
                         	                 fe_face_values.JxW(q);
+//                            local_rhs(i) += -(fe_face_values[velocity].value (i, q) * fe_face_values.normal_vector(q) *
+//                                                        (pressure_values[q] - interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) * fe_face_values.normal_vector(q)) *
+//                                                        fe_face_values.JxW(q));
+
+//                        	 double error_add = pow((
+//                	                 (interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
+//                	                 fe_face_values.normal_vector(q) - pressure_values[q])),2)*
+//                	                 fe_face_values.JxW(q);
+////                        	 pcout<<"\n value of error_add is: "<<error_add<<std::endl;
+//                        	 return_vector[0]+= error_add;
 
 
 //                            for (unsigned int d_i=0; d_i<dim; ++d_i)
@@ -1507,21 +1526,146 @@ namespace vt_darcy
                     for (unsigned int q=0; q<n_face_q_points; ++q)
                     {
                         for (unsigned int d_i=0; d_i<dim; ++d_i)
+                        {
 //                            return_vector[0] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_mech[d_i][q] *
 //                                        (displacement_values[q][d_i] - fe_face_values_mortar.normal_vector(q) * interface_values_mech[d_i][q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) *
 //                                        fe_face_values_mortar.JxW(q));
                         return_vector[1] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_flow[q] *
                                                                 (pressure_values[q] - fe_face_values_mortar.normal_vector(q) * interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) *
                                                                 fe_face_values_mortar.JxW(q));
+//                        	return_vector[1] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_flow[q] * (pressure_values[q] - fe_face_values_mortar.normal_vector(q) * interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) * fe_face_values_mortar.JxW(q));
+
+                        }
                     }
                 }
         }
 //        std::vector<double> return_vector(1,sqrt(res));
 //        return sqrt(res);
 //        return_vector[1]+= return_vector[0];
-        return_vector[0]=0.0;
+//        return_vector[0]=0.0;
+//        pcout<<"\n value of return_vector[0] is: "<<return_vector[0]<<std::endl;
+        return_vector[0]= sqrt(return_vector[0]);// this is now the L2 norm of |u-lamda_H| on interface.
         return_vector[1]=sqrt(return_vector[1]);
         return return_vector;
+    }
+
+    // MixedBiotProblemDD::compute_interface_error in the l2 norm
+    template <int dim>
+    double DarcyVTProblem<dim>::compute_interface_error_l2()
+    {
+        system_rhs_star = 0;
+//        std::vector<double> return_vector(2,0);
+        double error_calculated =0;
+
+        QGauss<dim-1> quad (qdegree);
+        QGauss<dim-1> project_quad (qdegree);
+        FEFaceValues<dim> fe_face_values (fe_mortar, quad,
+                                          update_values    | update_normal_vectors |
+                                          update_quadrature_points  | update_JxW_values);
+
+        const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
+        const unsigned int dofs_per_cell = fe_mortar.dofs_per_cell;
+        const unsigned int dofs_per_cell_mortar = fe_mortar.dofs_per_cell;
+
+//        Vector<double>       local_rhs (dofs_per_cell);
+//        std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
+
+//        std::vector<FEValuesExtractors::Vector> stresses(dim, FEValuesExtractors::Vector());
+        const FEValuesExtractors::Vector velocity (0);
+//        const FEValuesExtractors::Scalar pressure(dim);
+
+//        DisplacementBoundaryValues<dim> displacement_boundary_values;
+        PressureBoundaryValues<dim>     pressure_boundary_values;
+
+//        displacement_boundary_values.set_time(prm.time);
+        pressure_boundary_values.set_time(prm.time);
+
+//        for (unsigned int d=0; d<dim; ++d)
+//        {
+//            const FEValuesExtractors::Vector tmp_stress(d*dim);
+//            stresses[d].first_vector_component = tmp_stress.first_vector_component;
+//
+//        }
+
+//        std::vector<std::vector<Tensor<1, dim>>> interface_values_mech(dim, std::vector<Tensor<1, dim>> (n_face_q_points));
+        std::vector<Tensor<1, dim>> interface_values_flux(n_face_q_points);
+//        std::vector<std::vector<Tensor<1, dim>>> solution_values_mech(dim, std::vector<Tensor<1, dim>> (n_face_q_points));
+        std::vector<Tensor<1, dim>> solution_values_flow(n_face_q_points);
+//        std::vector<Vector<double>> displacement_values (n_face_q_points, Vector<double> (dim));
+        std::vector<double> pressure_values(n_face_q_points);
+//        Vector<double> pressure_values(n_face_q_points);
+
+        // Assemble rhs for star problem with data = u - lambda_H on interfaces
+        typename DoFHandler<dim>::active_cell_iterator
+                cell = dof_handler_mortar.begin_active(),
+                endc = dof_handler_mortar.end();
+        for (;cell!=endc;++cell)
+        {
+//            local_rhs = 0;
+//            cell->get_dof_indices (local_dof_indices);
+
+            for (unsigned int face_n=0;
+                 face_n<GeometryInfo<dim>::faces_per_cell;
+                 ++face_n)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                {
+                    fe_face_values.reinit (cell, face_n);
+
+//                    for (unsigned int d_i=0; d_i<dim; ++d_i)
+//                        fe_face_values[stresses[d_i]].get_function_values (interface_fe_function, interface_values_mech[d_i]);
+
+                    fe_face_values[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);
+
+//                    displacement_boundary_values.vector_value_list(fe_face_values.get_quadrature_points(),
+//                                                     displacement_values);
+                    pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), pressure_values);
+//                    Vector<double >pressure_values(boundary_values_flow.begin(),boundary_values_flow.end());
+
+                    for (unsigned int q=0; q<n_face_q_points; ++q)
+                        for (unsigned int i=0; i<dofs_per_cell; ++i)
+                        {
+
+//                        	 local_rhs(i) += (fe_face_values[velocity].value (i, q) *
+//                        	                 fe_face_values.normal_vector(q) *
+//                        	                 (interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
+//                        	                 fe_face_values.normal_vector(q) - pressure_values[q])) *
+//                        	                 fe_face_values.JxW(q);
+//                            local_rhs(i) += -(fe_face_values[velocity].value (i, q) * fe_face_values.normal_vector(q) *
+//                                                        (pressure_values[q] - interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) * fe_face_values.normal_vector(q)) *
+//                                                        fe_face_values.JxW(q));
+
+                        	 double error_add = pow((
+                	                 (interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
+                	                 fe_face_values.normal_vector(q) - pressure_values[q])),2)*
+                	                 fe_face_values.JxW(q);
+//                        	 pcout<<"\n value of error_add is: "<<error_add<<std::endl;
+                        	 error_calculated+= error_add;
+
+
+//                            for (unsigned int d_i=0; d_i<dim; ++d_i)
+//                                local_rhs(i) += fe_face_values[stresses[d_i]].value (i, q) *
+//                                                fe_face_values.normal_vector(q) *
+//                                                (displacement_values[q][d_i] - interface_values_mech[d_i][q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
+//                                                                               fe_face_values.normal_vector(q)) *
+//                                                fe_face_values.JxW(q);
+                        }
+                }
+
+//            for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                system_rhs_star(local_dof_indices[i]) += local_rhs(i);
+
+        }
+
+
+
+//        std::vector<double> return_vector(1,sqrt(res));
+//        return sqrt(res);
+//        return_vector[1]+= return_vector[0];
+//        return_vector[0]=0.0;
+//        pcout<<"\n value of return_vector[0] is: "<<return_vector[0]<<std::endl;
+//        return_vector[0]= sqrt(return_vector[0]);// this is now the L2 norm of |u-lamda_H| on interface.
+//        return_vector[1]=sqrt(return_vector[1]);
+        return error_calculated;
     }
 
 
@@ -1763,6 +1907,8 @@ namespace vt_darcy
             tmp_err_vect = compute_interface_error(); //note that the second component of this vector gives the inreface error for darcy part. first component is 0.
 //            l_int_error_elast = compute_interface_error();
 //            l_int_error_elast =tmp_err_vect[0];
+//            err.l2_l2_errors[2]+= tmp_err_vect[0];
+            err.l2_l2_errors[2]+= compute_interface_error_l2();
             l_int_error_darcy =tmp_err_vect[1];
 //            if(split_flag==0){
 //            	l_int_error=pow(l_int_error_elast,2)+pow(l_int_error_darcy,2);
@@ -1774,6 +1920,8 @@ namespace vt_darcy
             tmp_err_vect = compute_interface_error();
 //            l_int_norm_elast = compute_interface_error();
 //            l_int_norm_elast = tmp_err_vect[0];
+//            err.l2_l2_norms[2] += tmp_err_vect[0];
+            err.l2_l2_norms[2] += compute_interface_error_l2();
             l_int_norm_darcy = tmp_err_vect[1];
 //            if(split_flag==0){
 //                l_int_norm=pow(l_int_norm_elast,2)+pow(l_int_norm_darcy,2);
@@ -1789,28 +1937,30 @@ namespace vt_darcy
         const unsigned int n_active_cells=triangulation.n_active_cells();
         const unsigned int n_dofs=dof_handler.n_dofs();
 
-        double send_buf_num[6] = {err.l2_l2_errors[0],
+        double send_buf_num[7] = {err.l2_l2_errors[0],
                                    err.velocity_stress_l2_div_errors[0],
                                    err.l2_l2_errors[1],
                                    err.pressure_disp_l2_midcell_errors[0],
                                    err.linf_l2_errors[1],
-								   l_int_error_darcy};
+								   l_int_error_darcy,
+								   err.l2_l2_errors[2]};
 
-        double send_buf_den[6] = {err.l2_l2_norms[0],
+        double send_buf_den[7] = {err.l2_l2_norms[0],
                                    err.velocity_stress_l2_div_norms[0],
                                    err.l2_l2_norms[1],
                                    err.pressure_disp_l2_midcell_norms[0],
                                    0,
-								   l_int_norm_darcy};
+								   l_int_norm_darcy,
+								   err.l2_l2_norms[2]};
 
-        double recv_buf_num[13] = {0,0,0,0,0,0};
-        double recv_buf_den[13] = {0,0,0,0,0,0};
+        double recv_buf_num[7] = {0,0,0,0,0,0};
+        double recv_buf_den[7] = {0,0,0,0,0,0};
 
-        MPI_Reduce(&send_buf_num[0], &recv_buf_num[0], 6, MPI_DOUBLE, MPI_SUM, 0, mpi_communicator);
-        MPI_Reduce(&send_buf_den[0], &recv_buf_den[0], 6, MPI_DOUBLE, MPI_SUM, 0, mpi_communicator);
+        MPI_Reduce(&send_buf_num[0], &recv_buf_num[0], 7, MPI_DOUBLE, MPI_SUM, 0, mpi_communicator);
+        MPI_Reduce(&send_buf_den[0], &recv_buf_den[0], 7, MPI_DOUBLE, MPI_SUM, 0, mpi_communicator);
 
-        for (unsigned int i=0; i<11; ++i)
-          if (i != 4  && i != 0 )
+        for (unsigned int i=0; i<7; ++i)
+          if (i != 4  && i != 0 && i!=5 )
             recv_buf_num[i] = sqrt(recv_buf_num[i])/sqrt(recv_buf_den[i]);
 //          else
 //            recv_buf_num[i] = recv_buf_num[i];
@@ -1838,6 +1988,7 @@ namespace vt_darcy
         if (mortar_flag)
         {
 //          convergence_table.add_value("Lambda,Elast", recv_buf_num[11]/recv_buf_den[11]);
+        	convergence_table.add_value("Lambda,Darcy_L2", recv_buf_num[6]);
           convergence_table.add_value("Lambda,Darcy", recv_buf_num[5]/recv_buf_den[5]);
 
 //        	double combined_l_int_error =(pow(recv_buf_num[11],2) + pow(recv_buf_num[12],2))/(pow(recv_buf_den[11],2) + pow(recv_buf_den[12],2));
@@ -2025,10 +2176,15 @@ namespace vt_darcy
 //	          convergence_table.set_tex_caption("Lambda,Elast", "$ \\|u - \\lambda_u_H\\|_{d_H} $");
 //	          convergence_table.evaluate_convergence_rates("Lambda,Elast", ConvergenceTable::reduction_rate_log2);
 
+	          convergence_table.set_precision("Lambda,Darcy_L2", 3);
+	          convergence_table.set_scientific("Lambda,Darcy_L2", true);
+	          convergence_table.set_tex_caption("Lambda,Darcy_L2", "$ \\|p - \\lambda_p_H\\|_{L^{2}(L^2)} $");
+	          convergence_table.evaluate_convergence_rates("Lambda,Darcy_L2", ConvergenceTable::reduction_rate_log2);
+
 	          convergence_table.set_precision("Lambda,Darcy", 3);
-	          convergence_table.set_scientific("Lambda,Darcy", true);
-	          convergence_table.set_tex_caption("Lambda,Darcy", "$ \\|p - \\lambda_p_H\\|_{d_H} $");
-	          convergence_table.evaluate_convergence_rates("Lambda,Darcy", ConvergenceTable::reduction_rate_log2);
+	       	  convergence_table.set_scientific("Lambda,Darcy", true);
+	       	  convergence_table.set_tex_caption("Lambda,Darcy", "$ \\|p - \\lambda_p_H\\|_{d_H} $");
+	       	  convergence_table.evaluate_convergence_rates("Lambda,Darcy", ConvergenceTable::reduction_rate_log2);
 
 //	        	  convergence_table.set_precision("Lambda,Biot", 3);
 //	        	  convergence_table.set_scientific("Lambda,Biot", true);
