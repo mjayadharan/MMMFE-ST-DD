@@ -30,24 +30,24 @@ int main (int argc, char *argv[])
         mesh_m2d[4] = {1,1};
         double c0=1;
         double alpha=1;
-        int num_cycle=4;
+        int num_cycle=3;
         int max_itr=500;
         double tolerence = 1.e-11;
-        BiotParameters bparam (0.001,30,c0,alpha);
+        BiotParameters bparam (0.001,1,c0,alpha);
 
 //        //DarcyDD without mortar
-        DarcyVTProblem<2> no_mortar(1,bparam,0,0);
+//        DarcyVTProblem<2> no_mortar(1,bparam,0,0);
 
 
 //        no_mortar.run (num_cycle, mesh_m2d, tolerence, max_itr);
 
      //DarcyDD with mortar
-        DarcyVTProblem<2> lin_mortar(1,bparam,1,1);
-        DarcyVTProblem<2> quad_mortar(1,bparam,1,2);
+        DarcyVTProblem<2> lin_mortar(0,bparam,1,1);
+//        DarcyVTProblem<2> quad_mortar(1,bparam,1,2);
 //        DarcyVTProblem<2> cubic_mortar(1,bparam,1,3);
 
-//        lin_mortar.run(num_cycle,mesh_m2d,tolerence,max_itr);
-        quad_mortar.run(num_cycle,mesh_m2d,tolerence,max_itr);
+        lin_mortar.run(num_cycle,mesh_m2d,tolerence,max_itr);
+//        quad_mortar.run(num_cycle,mesh_m2d,tolerence,max_itr);
 //        cubic_mortar.run(num_cycle,mesh_m2d,tolerence,max_itr);
 
     }

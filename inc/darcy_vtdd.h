@@ -50,8 +50,8 @@ namespace vt_darcy
     {
       BiotErrors()
               :
-        l2_l2_norms(2,0),
-        l2_l2_errors(2,0),
+        l2_l2_norms(3,0),
+        l2_l2_errors(3,0),
         linf_l2_norms(2,0),
         linf_l2_errors(2,0),
         velocity_stress_l2_div_norms(2,0),
@@ -114,6 +114,7 @@ namespace vt_darcy
 
         void compute_multiscale_basis();
         std::vector<double> compute_interface_error(); //return_vector[0] gives interface_error for elast part and return_vector[1] gives that of flow part.
+        double compute_interface_error_l2();
         void compute_errors(const unsigned int cycle);
         void output_results(const unsigned int cycle, const unsigned int refine);
 
