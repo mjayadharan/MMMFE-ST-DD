@@ -1403,6 +1403,7 @@ namespace vt_darcy
 
 //        DisplacementBoundaryValues<dim> displacement_boundary_values;
         PressureBoundaryValues<dim>     pressure_boundary_values;
+        KInverse<dim>	k_inverse_function;
 
 //        displacement_boundary_values.set_time(prm.time);
         pressure_boundary_values.set_time(prm.time);
@@ -1420,6 +1421,7 @@ namespace vt_darcy
         std::vector<Tensor<1, dim>> solution_values_flow(n_face_q_points);
 //        std::vector<Vector<double>> displacement_values (n_face_q_points, Vector<double> (dim));
         std::vector<double> pressure_values(n_face_q_points);
+        std::vector<Tensor<2,dim>> k_inverse_values(n_face_q_points);
 //        Vector<double> pressure_values(n_face_q_points);
 
         // Assemble rhs for star problem with data = u - lambda_H on interfaces
@@ -1487,20 +1489,20 @@ namespace vt_darcy
         solve_star();
 
         // Project the solution to the mortar space
-        ConstraintMatrix constraints;
-        constraints.clear();
-        constraints.close();
-        project_mortar(P_fine2coarse, dof_handler, solution_star, project_quad, constraints, neighbors, dof_handler_mortar, solution_star_mortar);
+//        ConstraintMatrix constraints;
+//        constraints.clear();
+//        constraints.close();
+//        project_mortar(P_fine2coarse, dof_handler, solution_star, project_quad, constraints, neighbors, dof_handler_mortar, solution_star_mortar);
 
 //        double res = 0;
 
-        FEFaceValues<dim> fe_face_values_mortar (fe_mortar, quad,
-                                                 update_values    | update_normal_vectors |
-                                                 update_quadrature_points  | update_JxW_values);
+//        FEFaceValues<dim> fe_face_values (fe, quad,
+//                                                 update_values    | update_normal_vectors |
+//                                                 update_quadrature_points  | update_JxW_values);
 
         // Compute the discrete interface norm
-        cell = dof_handler_mortar.begin_active(),
-                endc = dof_handler_mortar.end();
+        cell = dof_handler.begin_active(),
+                endc = dof_handler.end();
         for (;cell!=endc;++cell)
         {
             for (unsigned int face_n=0;
@@ -1508,7 +1510,7 @@ namespace vt_darcy
                  ++face_n)
                 if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
                 {
-                    fe_face_values_mortar.reinit (cell, face_n);
+                    fe_face_values.reinit (cell, face_n);
 
 //                    for (unsigned int d_i=0; d_i<dim; ++d_i)
 //                    {
@@ -1516,23 +1518,25 @@ namespace vt_darcy
 //                        fe_face_values_mortar[stresses[d_i]].get_function_values (interface_fe_function_mortar, interface_values_mech[d_i]);
 //                    }
 
-                    fe_face_values_mortar[velocity].get_function_values(solution_star_mortar,solution_values_flow);
-                    fe_face_values_mortar[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);
+                    fe_face_values[velocity].get_function_values(solution_star,solution_values_flow);
+//                    fe_face_values_mortar[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);
 
 //                    displacement_boundary_values.vector_value_list(fe_face_values_mortar.get_quadrature_points(),
 //                                                     displacement_values);
-                    pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), pressure_values);
+//                    pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), pressure_values);
+                    k_inverse_function.value_list(fe_face_values.get_quadrature_points(),k_inverse_values);
 
                     for (unsigned int q=0; q<n_face_q_points; ++q)
                     {
                         for (unsigned int d_i=0; d_i<dim; ++d_i)
                         {
-//                            return_vector[0] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_mech[d_i][q] *
-//                                        (displacement_values[q][d_i] - fe_face_values_mortar.normal_vector(q) * interface_values_mech[d_i][q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) *
-//                                        fe_face_values_mortar.JxW(q));
-                        return_vector[1] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_flow[q] *
-                                                                (pressure_values[q] - fe_face_values_mortar.normal_vector(q) * interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) *
-                                                                fe_face_values_mortar.JxW(q));
+//
+//                        return_vector[1] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_flow[q] *
+//                                                                (pressure_values[q] - fe_face_values_mortar.normal_vector(q) * interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) *
+//                                                                fe_face_values_mortar.JxW(q));
+                        	return_vector[1] += (k_inverse_values[q]*fe_face_values.normal_vector(q) * solution_values_flow[q] *fe_face_values.JxW(q))
+                        	                    *(fe_face_values.normal_vector(q) * solution_values_flow[q] *fe_face_values.JxW(q))                                            ;
+
 //                        	return_vector[1] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_flow[q] * (pressure_values[q] - fe_face_values_mortar.normal_vector(q) * interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) * fe_face_values_mortar.JxW(q));
 
                         }
@@ -1544,8 +1548,8 @@ namespace vt_darcy
 //        return_vector[1]+= return_vector[0];
 //        return_vector[0]=0.0;
 //        pcout<<"\n value of return_vector[0] is: "<<return_vector[0]<<std::endl;
-        return_vector[0]= sqrt(return_vector[0]);// this is now the L2 norm of |u-lamda_H| on interface.
-        return_vector[1]=sqrt(return_vector[1]);
+//        return_vector[0]= sqrt(return_vector[0]);// this is now the L2 norm of |u-lamda_H| on interface.
+//        return_vector[1]=sqrt(return_vector[1]);
         return return_vector;
     }
 
@@ -1960,7 +1964,7 @@ namespace vt_darcy
         MPI_Reduce(&send_buf_den[0], &recv_buf_den[0], 7, MPI_DOUBLE, MPI_SUM, 0, mpi_communicator);
 
         for (unsigned int i=0; i<7; ++i)
-          if (i != 4  && i != 0 && i!=5 )
+          if (i != 4  && i != 0  )
             recv_buf_num[i] = sqrt(recv_buf_num[i])/sqrt(recv_buf_den[i]);
 //          else
 //            recv_buf_num[i] = recv_buf_num[i];
@@ -1989,7 +1993,7 @@ namespace vt_darcy
         {
 //          convergence_table.add_value("Lambda,Elast", recv_buf_num[11]/recv_buf_den[11]);
         	convergence_table.add_value("Lambda,Darcy_L2", recv_buf_num[6]);
-          convergence_table.add_value("Lambda,Darcy", recv_buf_num[5]/recv_buf_den[5]);
+          convergence_table.add_value("Lambda,Darcy", recv_buf_num[5]);
 
 //        	double combined_l_int_error =(pow(recv_buf_num[11],2) + pow(recv_buf_num[12],2))/(pow(recv_buf_den[11],2) + pow(recv_buf_den[12],2));
 //        	combined_l_int_error = sqrt(combined_l_int_error);
