@@ -252,42 +252,21 @@ namespace vt_darcy
 
         const unsigned int   dofs_per_cell   = fe.dofs_per_cell;
         const unsigned int   n_q_points      = quadrature_formula.size();
-        //const unsigned int   n_face_q_points = face_quadrature_formula.size();
 
         FullMatrix<double>   local_matrix (dofs_per_cell, dofs_per_cell);
 
         std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-//        const LameParameters<dim> lame_function;
         const KInverse<dim> k_inverse;
 
-//        std::vector<Vector<double>> lame_parameters_values(n_q_points, Vector<double>(2));
         std::vector<Tensor<2,dim>>  k_inverse_values(n_q_points);
 
-        // Rotation variable is either a scalar(2d) or a vector(3d)
-//        const unsigned int rotation_dim = 0.5*dim*(dim-1);
-        // Stress DoFs vectors
-//        std::vector<FEValuesExtractors::Vector> stresses(dim, FEValuesExtractors::Vector());
-//        std::vector<FEValuesExtractors::Scalar> rotations(rotation_dim, FEValuesExtractors::Scalar());
-        // Displacement DoFs
-//        const FEValuesExtractors::Vector displacement (dim*dim);
+
         // Velocity and Pressure DoFs
         const FEValuesExtractors::Vector velocity (0);
         const FEValuesExtractors::Scalar pressure (dim);
 
-//        for (unsigned int i=0; i<dim; ++i)
-//        {
-//            const FEValuesExtractors::Vector tmp_stress(i*dim);
-//            stresses[i].first_vector_component = tmp_stress.first_vector_component;
-//            if (dim == 2 && i == 0)
-//            {
-//                const FEValuesExtractors::Scalar tmp_rotation(dim*dim + dim);
-//                rotations[i].component = tmp_rotation.component;
-//            } else if (dim == 3) {
-//                const FEValuesExtractors::Scalar tmp_rotation(dim*dim + dim + i);
-//                rotations[i].component = tmp_rotation.component;
-//            }
-//        }
+
 
         typename DoFHandler<dim>::active_cell_iterator
                 cell = dof_handler.begin_active(),
@@ -297,7 +276,6 @@ namespace vt_darcy
             fe_values.reinit (cell);
             local_matrix = 0;
 
-//            lame_function.vector_value_list (fe_values.get_quadrature_points(), lame_parameters_values);
             k_inverse.value_list (fe_values.get_quadrature_points(), k_inverse_values);
 
             // Velocity and pressure
@@ -305,14 +283,6 @@ namespace vt_darcy
             std::vector <double>                      div_phi_u(dofs_per_cell);
             std::vector <double>                      phi_p(dofs_per_cell);
 
-//            // Stress, displacement and rotation
-//            std::vector<std::vector<Tensor<1,dim>>> phi_s(dofs_per_cell, std::vector<Tensor<1,dim> > (dim));
-//            std::vector<Tensor<1,dim>> div_phi_s(dofs_per_cell);
-//            std::vector<Tensor<1,dim>> phi_d(dofs_per_cell);
-//            std::vector<Tensor<1,rotation_dim>> phi_r(dofs_per_cell);
-
-//            Tensor<2,dim> sigma, asigma, apId;
-//            Tensor<1,rotation_dim> asym_i, asym_j;
 
             for (unsigned int q=0; q<n_q_points; ++q)
             {
@@ -322,38 +292,20 @@ namespace vt_darcy
                   phi_u[k] = fe_values[velocity].value (k, q);
                   phi_p[k] = fe_values[pressure].value (k, q);
 
-//                  for (auto el : phi_p)
-//                    std::cout << "Pressure: " << el << " ";
-//                  std::cout << std::endl;
 
                   div_phi_u[k] = fe_values[velocity].divergence (k, q);
 
-//                  for (unsigned int s_i=0; s_i<dim; ++s_i)
-//                  {
-//                    phi_s[k][s_i] = fe_values[stresses[s_i]].value (k, q);
-//                    div_phi_s[k][s_i] = fe_values[stresses[s_i]].divergence (k, q);
-//                  }
-//                  phi_d[k] = fe_values[displacement].value (k, q);
 
-//                  for (unsigned int r_i=0; r_i<rotation_dim; ++r_i)
-//                    phi_r[k][r_i] = fe_values[rotations[r_i]].value (k, q);
                 }
 
                 for (unsigned int i=0; i<dofs_per_cell; ++i)
                 {
-//                    const double mu = lame_parameters_values[q][1];
-//                    const double lambda = lame_parameters_values[q][0];
 
-//                    compliance_tensor(phi_s[i], mu, lambda, asigma);
-//                    compliance_tensor_pressure(phi_p[i], mu, lambda, apId);
-//                    make_asymmetry_tensor(phi_s[i], asym_i);
 
 
 
                     for (unsigned int j=0; j<dofs_per_cell; ++j)
                     {
-//                        make_tensor(phi_s[j], sigma);
-//                        make_asymmetry_tensor(phi_s[j], asym_j);
 
                         local_matrix(i, j) += ( phi_u[i] * k_inverse_values[q] * phi_u[j] - phi_p[j] * div_phi_u[i]                                     // Darcy law
                                                + prm.time_step*div_phi_u[j] * phi_p[i] + prm.c_0*phi_p[i]*phi_p[j] )
@@ -370,9 +322,6 @@ namespace vt_darcy
                                        local_matrix(i,j));
         }
 
-//      std::ofstream mat("mat.txt");
-//      system_matrix.print_formatted(mat,3,1,0,"0");
-//      mat.close();
     }
 
 
@@ -398,7 +347,6 @@ namespace vt_darcy
                     endc = dof_handler_mortar.end();
             local_face_dof_indices.resize(fe_mortar.dofs_per_face);
         }
-//        double local_counter=0;
 
         for (;cell!=endc;++cell)
         {
@@ -416,7 +364,6 @@ namespace vt_darcy
                     }
                 }
         }
-//        pcout<<"\n size of interface dofs: "<<local_counter<<"\n";
     }
 
 
@@ -447,22 +394,14 @@ namespace vt_darcy
       Vector<double>       local_rhs (dofs_per_cell);
       std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-//      DisplacementBoundaryValues<dim> displacement_boundary_values;
       PressureBoundaryValues<dim>     pressure_boundary_values;
-//      displacement_boundary_values.set_time(prm.time);
       pressure_boundary_values.set_time(prm.time);
-//      std::vector<Vector<double>> boundary_values_elast (n_face_q_points, Vector<double>(dim));
       std::vector<double>         boundary_values_flow (n_face_q_points);
 
-//      RightHandSideElasticity<dim>    right_hand_side_elasticity;
       RightHandSidePressure<dim>      right_hand_side_pressure(prm.c_0,prm.alpha);
-//      right_hand_side_elasticity.set_time(prm.time);
       right_hand_side_pressure.set_time(prm.time);
-//      std::vector<Vector<double>> rhs_values_elast (n_q_points, Vector<double>(dim));
       std::vector<double>         rhs_values_flow (n_q_points);
 
-//      const LameParameters<dim> lame_function;
-//      std::vector<Vector<double>> lame_parameters_values(n_q_points, Vector<double>(2));
 
       typename DoFHandler<dim>::active_cell_iterator
               cell = dof_handler.begin_active(),
@@ -472,67 +411,25 @@ namespace vt_darcy
           local_rhs = 0;
           fe_values.reinit (cell);
 
-//          const unsigned int rotation_dim = static_cast<int>(0.5*dim*(dim-1));
-//          right_hand_side_elasticity.vector_value_list (fe_values.get_quadrature_points(),
-//                                                        rhs_values_elast);
           right_hand_side_pressure.value_list(fe_values.get_quadrature_points(), rhs_values_flow);
-//          lame_function.vector_value_list (fe_values.get_quadrature_points(), lame_parameters_values);
 
-//          // Stress DoFs vectors
-//          std::vector<FEValuesExtractors::Vector> stresses(dim, FEValuesExtractors::Vector());
-//          std::vector<FEValuesExtractors::Scalar> rotations(rotation_dim, FEValuesExtractors::Scalar());
-
-//          // Displacement DoFs
-//          const FEValuesExtractors::Vector displacement (dim*dim);
           // Velocity and Pressure DoFs
           const FEValuesExtractors::Vector velocity (0);
           const FEValuesExtractors::Scalar pressure (dim);
 
-//          for (unsigned int i=0; i<dim; ++i)
-//          {
-//              const FEValuesExtractors::Vector tmp_stress(i*dim);
-//              stresses[i].first_vector_component = tmp_stress.first_vector_component;
-//              if (dim == 2 && i == 0)
-//              {
-//                  const FEValuesExtractors::Scalar tmp_rotation(dim*dim + dim);
-//                  rotations[i].component = tmp_rotation.component;
-//              } else if (dim == 3) {
-//                  const FEValuesExtractors::Scalar tmp_rotation(dim*dim + dim + i);
-//                  rotations[i].component = tmp_rotation.component;
-//              }
-//          }
 
           std::vector <double>                      phi_p(dofs_per_cell);
-//          std::vector<Tensor<1,dim> >               phi_d(dofs_per_cell);
 
           std::vector<double> old_pressure_values(n_q_points);
-//          std::vector<std::vector<Tensor<1, dim>>> old_stress(dim, std::vector<Tensor<1,dim>> (n_q_points));
 
           fe_values[pressure].get_function_values (old_solution, old_pressure_values);
-//          for (unsigned int s_i=0; s_i<dim; ++s_i)
-//              fe_values[stresses[s_i]].get_function_values(old_solution, old_stress[s_i]);
 
-          // Transpose, can we avoid this?
-//          std::vector<std::vector<Tensor<1, dim>>> old_stress_values(n_q_points, std::vector<Tensor<1,dim>> (dim));
-//          for (unsigned int s_i=0; s_i<dim; ++s_i)
-//              for (unsigned int q=0; q<n_q_points; ++q)
-//                  old_stress_values[q][s_i] = old_stress[s_i][q];
-          /////////////////////////////////////////////////////////
 
           for (unsigned int q=0; q<n_q_points; ++q)
           {
-//              const double mu = lame_parameters_values[q][1];
-//              const double lambda = lame_parameters_values[q][0];
-//
-//              Tensor<2,dim> asigma, apId;
-//              compliance_tensor<dim>(old_stress_values[q], mu, lambda, asigma);
-//              compliance_tensor_pressure<dim>(old_pressure_values[q], mu, lambda, apId);
-
               for (unsigned int k=0; k<dofs_per_cell; ++k)
               {
-                  // Evaluate test functions
                   phi_p[k] = fe_values[pressure].value (k, q);
-//                  phi_d[k] = fe_values[displacement].value (k, q);
 
               }
 
@@ -542,8 +439,6 @@ namespace vt_darcy
                                             + prm.c_0*old_pressure_values[q] * phi_p[i] )
                                            * fe_values.JxW(q);
 
-//                for (unsigned d_i=0; d_i<dim; ++d_i)
-//                      local_rhs(i) += -(phi_d[i][d_i] * rhs_values_elast[q][d_i] * fe_values.JxW(q));
               }
           }
 
@@ -557,8 +452,6 @@ namespace vt_darcy
               {
                   fe_face_values.reinit (cell, face_no);
 
-//                  displacement_boundary_values.vector_value_list (fe_face_values.get_quadrature_points(),
-//                                                                  boundary_values_elast);
                   pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
 
                   for (unsigned int q=0; q<n_face_q_points; ++q)
@@ -568,18 +461,9 @@ namespace vt_darcy
                                                      fe_face_values.normal_vector(q) *
                                                      boundary_values_flow[q] *
                                                      fe_face_values.JxW(q));
-
-//                          for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                              sigma[d_i] = fe_face_values[stresses[d_i]].value (i, q);
-//
-//                          sigma_n = sigma * fe_face_values.normal_vector(q);
-//                          for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                              local_rhs(i) += ((sigma_n[d_i] * boundary_values_elast[q][d_i])
-//                                                        * fe_face_values.JxW(q));
                       }
               }
 
-//          local_rhs.print(std::cout);
 
           cell->get_dof_indices (local_dof_indices);
           for (unsigned int i=0; i<dofs_per_cell; ++i)
@@ -600,18 +484,8 @@ namespace vt_darcy
         Vector<double>       local_rhs (dofs_per_cell);
         std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-//        std::vector<FEValuesExtractors::Vector> stresses(dim, FEValuesExtractors::Vector());
-
-//        for (unsigned int d=0; d<dim; ++d)
-//        {
-//            const FEValuesExtractors::Vector tmp_stress(d*dim);
-//            stresses[d].first_vector_component = tmp_stress.first_vector_component;
-//
-//        }
-
         const FEValuesExtractors::Vector velocity (0);
 
-//        std::vector<std::vector<Tensor<1, dim>>> interface_values(dim, std::vector<Tensor<1, dim>> (n_face_q_points));
         std::vector<Tensor<1, dim>> interface_values_flux(n_face_q_points);
 
         typename DoFHandler<dim>::active_cell_iterator
@@ -621,9 +495,7 @@ namespace vt_darcy
         {
             local_rhs = 0;
 
-//            Tensor<2,dim> sigma;
             Tensor<2,dim> interface_lambda;
-//            Tensor<1,dim> sigma_n;
             for (unsigned int face_n=0;
                  face_n<GeometryInfo<dim>::faces_per_cell;
                  ++face_n)
@@ -631,8 +503,6 @@ namespace vt_darcy
                 {
                     fe_face_values.reinit (cell, face_n);
 
-//                    for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                        fe_face_values[stresses[d_i]].get_function_values (interface_fe_function, interface_values[d_i]);
 
                     fe_face_values[velocity].get_function_values (interface_fe_function, interface_values_flux);
 
@@ -644,16 +514,6 @@ namespace vt_darcy
                                               interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
                                               fe_face_values.normal_vector(q) *
                                               fe_face_values.JxW(q));
-
-//                            for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                                sigma[d_i] = fe_face_values[stresses[d_i]].value (i, q);
-//
-//                            for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                                local_rhs(i) += fe_face_values[stresses[d_i]].value (i, q) *
-//                                                fe_face_values.normal_vector(q) *
-//                                                interface_values[d_i][q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
-//                                                fe_face_values.normal_vector(q) *
-//                                                fe_face_values.JxW(q);
                         }
                 }
 
@@ -900,10 +760,8 @@ namespace vt_darcy
           //GMRES structures and parameters
           std::vector<double>	sn(temp_array_size);
           std::vector<double>	cs(temp_array_size);
-    //      std::vector<double>	e1;
           std::vector<double>	Beta(temp_array_size); //beta for each side
           std::vector<std::vector<double>>	H(temp_array_size,Beta);
-    //      std::vector<double> error_iter_side(n_faces_per_cell); //saves error in each iteration
           std::vector<double> e_all_iter(temp_array_size+1); //error will be saved here after each iteration
           double combined_error_iter =0; //sum of error_iter_side
 
@@ -928,9 +786,6 @@ namespace vt_darcy
           std::vector<std::vector<double>> q(n_faces_per_cell);
 
           solve_bar();
-//          std::ofstream rhs_output_file("solution_bar.txt");
-//          for(int i =0; i<solution_bar.size();i++)
-//        	  rhs_output_file<<i<<" : "<<solution_bar[i]<<"\n";
 
           interface_fe_function.reinit(solution_bar);
 
@@ -1388,30 +1243,13 @@ namespace vt_darcy
         Vector<double>       local_rhs (dofs_per_cell);
         std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-//        std::vector<FEValuesExtractors::Vector> stresses(dim, FEValuesExtractors::Vector());
         const FEValuesExtractors::Vector velocity (0);
-//        const FEValuesExtractors::Scalar pressure(dim*dim + dim + 0.5*dim*(dim-1)+dim);
-
-//        DisplacementBoundaryValues<dim> displacement_boundary_values;
         PressureBoundaryValues<dim>     pressure_boundary_values;
-
-//        displacement_boundary_values.set_time(prm.time);
         pressure_boundary_values.set_time(prm.time);
 
-//        for (unsigned int d=0; d<dim; ++d)
-//        {
-//            const FEValuesExtractors::Vector tmp_stress(d*dim);
-//            stresses[d].first_vector_component = tmp_stress.first_vector_component;
-//
-//        }
-
-//        std::vector<std::vector<Tensor<1, dim>>> interface_values_mech(dim, std::vector<Tensor<1, dim>> (n_face_q_points));
         std::vector<Tensor<1, dim>> interface_values_flux(n_face_q_points);
-//        std::vector<std::vector<Tensor<1, dim>>> solution_values_mech(dim, std::vector<Tensor<1, dim>> (n_face_q_points));
         std::vector<Tensor<1, dim>> solution_values_flow(n_face_q_points);
-//        std::vector<Vector<double>> displacement_values (n_face_q_points, Vector<double> (dim));
         std::vector<double> pressure_values(n_face_q_points);
-//        Vector<double> pressure_values(n_face_q_points);
 
         // Assemble rhs for star problem with data = u - lambda_H on interfaces
         typename DoFHandler<dim>::active_cell_iterator
@@ -1429,15 +1267,10 @@ namespace vt_darcy
                 {
                     fe_face_values.reinit (cell, face_n);
 
-//                    for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                        fe_face_values[stresses[d_i]].get_function_values (interface_fe_function, interface_values_mech[d_i]);
 
                     fe_face_values[velocity].get_function_values (interface_fe_function, interface_values_flux);
 
-//                    displacement_boundary_values.vector_value_list(fe_face_values.get_quadrature_points(),
-//                                                     displacement_values);
                     pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), pressure_values);
-//                    Vector<double >pressure_values(boundary_values_flow.begin(),boundary_values_flow.end());
 
                     for (unsigned int q=0; q<n_face_q_points; ++q)
                         for (unsigned int i=0; i<dofs_per_cell; ++i)
@@ -1449,13 +1282,6 @@ namespace vt_darcy
                         	                 fe_face_values.normal_vector(q) - pressure_values[q])) *
                         	                 fe_face_values.JxW(q);
 
-
-//                            for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                                local_rhs(i) += fe_face_values[stresses[d_i]].value (i, q) *
-//                                                fe_face_values.normal_vector(q) *
-//                                                (displacement_values[q][d_i] - interface_values_mech[d_i][q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
-//                                                                               fe_face_values.normal_vector(q)) *
-//                                                fe_face_values.JxW(q);
                         }
                 }
 
@@ -1491,34 +1317,22 @@ namespace vt_darcy
                 {
                     fe_face_values_mortar.reinit (cell, face_n);
 
-//                    for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                    {
-//                        fe_face_values_mortar[stresses[d_i]].get_function_values (solution_star_mortar, solution_values_mech[d_i]);
-//                        fe_face_values_mortar[stresses[d_i]].get_function_values (interface_fe_function_mortar, interface_values_mech[d_i]);
-//                    }
 
                     fe_face_values_mortar[velocity].get_function_values(solution_star_mortar,solution_values_flow);
                     fe_face_values_mortar[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);
 
-//                    displacement_boundary_values.vector_value_list(fe_face_values_mortar.get_quadrature_points(),
-//                                                     displacement_values);
                     pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), pressure_values);
 
                     for (unsigned int q=0; q<n_face_q_points; ++q)
                     {
                         for (unsigned int d_i=0; d_i<dim; ++d_i)
-//                            return_vector[0] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_mech[d_i][q] *
-//                                        (displacement_values[q][d_i] - fe_face_values_mortar.normal_vector(q) * interface_values_mech[d_i][q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) *
-//                                        fe_face_values_mortar.JxW(q));
-                        return_vector[1] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_flow[q] *
+                        	return_vector[1] += fabs(fe_face_values_mortar.normal_vector(q) * solution_values_flow[q] *
                                                                 (pressure_values[q] - fe_face_values_mortar.normal_vector(q) * interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1)) *
                                                                 fe_face_values_mortar.JxW(q));
                     }
                 }
         }
-//        std::vector<double> return_vector(1,sqrt(res));
-//        return sqrt(res);
-//        return_vector[1]+= return_vector[0];
+
         return_vector[0]=0.0;
         return_vector[1]=sqrt(return_vector[1]);
         return return_vector;
@@ -1533,9 +1347,6 @@ namespace vt_darcy
 
       const unsigned int total_dim = static_cast<unsigned int>(dim + 1);
 
-//      const ComponentSelectFunction<dim> stress_mask(std::make_pair(0,dim*dim), total_dim);
-//      const ComponentSelectFunction<dim> displacement_mask(std::make_pair(dim*dim,dim*dim+dim), total_dim);
-//      const ComponentSelectFunction<dim> rotation_mask(std::make_pair(dim*dim+dim,dim*dim+dim+0.5*dim*(dim-1)), total_dim);
 
       const ComponentSelectFunction<dim> velocity_mask(std::make_pair(0, dim), total_dim);
       const ComponentSelectFunction<dim> pressure_mask(static_cast<unsigned int>(dim), total_dim);
@@ -1581,7 +1392,6 @@ namespace vt_darcy
 
       // Linf in time error
       err.linf_l2_errors[1] = std::max(err.linf_l2_errors[1], sqrt(p_l2_error)/sqrt(p_l2_norm));
-      //linf_l2_norms[1] = std::max(linf_l2_norms[1], p_l2_norm*p_l2_norm);
 
       // Pressure error and norm at midcells
       VectorTools::integrate_difference (dof_handler, solution, exact_solution,
@@ -1643,142 +1453,21 @@ namespace vt_darcy
 		u_l2_norm+=u_hd_norm;
       }
       err.l2_l2_errors[0] = std::max(err.l2_l2_errors[0],sqrt(u_l2_error)/sqrt(u_l2_norm));
-//      err.linf_l2_errors[1] = std::max(err.linf_l2_errors[1], sqrt(p_l2_error)/sqrt(p_l2_norm));
-      // Rotation error and norm
-//      VectorTools::integrate_difference (dof_handler, solution, exact_solution,
-//                                         cellwise_errors, quadrature,
-//                                         VectorTools::L2_norm,
-//                                         &rotation_mask);
-//      const double r_l2_error = cellwise_errors.norm_sqr();
-//
-//      VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
-//                                         cellwise_norms, quadrature,
-//                                         VectorTools::L2_norm,
-//                                         &rotation_mask);
-//      const double r_l2_norm = cellwise_norms.norm_sqr();
-//
-//      err.l2_l2_errors[4] += r_l2_error;
-//      err.l2_l2_norms[4] += r_l2_norm;
-//
-//      // Displacement error and norm
-//      VectorTools::integrate_difference (dof_handler, solution, exact_solution,
-//                                         cellwise_errors, quadrature,
-//                                         VectorTools::L2_norm,
-//                                         &displacement_mask);
-//      const double d_l2_error = cellwise_errors.norm_sqr();
-//
-//      VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
-//                                         cellwise_norms, quadrature,
-//                                         VectorTools::L2_norm,
-//                                         &displacement_mask);
-//      const double d_l2_norm = cellwise_norms.norm_sqr();
-//
-////      err.l2_l2_errors[3] += d_l2_error;
-//      err.l2_l2_errors[3] = std::max(err.l2_l2_errors[3], sqrt(d_l2_error)/sqrt(d_l2_norm));
-//      err.l2_l2_norms[3] += d_l2_norm;
-//
-//      // Displacement error and norm at midcells
-//      VectorTools::integrate_difference (dof_handler, solution, exact_solution,
-//                                         cellwise_errors, quadrature_super,
-//                                         VectorTools::L2_norm,
-//                                         &displacement_mask);
-//      const double d_l2_mid_error = cellwise_errors.norm_sqr();
-//
-//      VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
-//                                         cellwise_norms, quadrature_super,
-//                                         VectorTools::L2_norm,
-//                                         &displacement_mask);
-//      const double d_l2_mid_norm = cellwise_norms.norm_sqr();
-//
-//      // L2 in time error
-//      err.pressure_disp_l2_midcell_errors[1] += d_l2_mid_error;
-//      err.pressure_disp_l2_midcell_norms[1] += d_l2_mid_norm;
-//
-//      // Stress L2 error and norm
-//      VectorTools::integrate_difference (dof_handler, solution, exact_solution,
-//                                         cellwise_errors, quadrature,
-//                                         VectorTools::L2_norm,
-//                                         &stress_mask);
-//      double s_l2_error = cellwise_errors.norm_sqr();
-//
-//      VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
-//                                         cellwise_norms, quadrature,
-//                                         VectorTools::L2_norm,
-//                                         &stress_mask);
-//
-//      double s_l2_norm = cellwise_norms.norm_sqr();
-//
-//      // Linf in time error
-////      err.linf_l2_errors[2] = std::max(err.linf_l2_errors[2],sqrt(s_l2_error)/sqrt(s_l2_norm));
-//      //linf_l2_norms[2] = std::max(linf_l2_norms[2],s_l2_norm*s_l2_norm);
-//
-//      err.l2_l2_errors[2] += s_l2_error;
-//      err.l2_l2_norms[2] += s_l2_norm;
-//
-//      // Stress Hdiv seminorm
-//      cellwise_errors = 0;
-//      cellwise_norms = 0;
-//
-//      double s_hd_error = 0;
-//      double s_hd_norm = 0;
-//
-//      for (int i=0; i<dim; ++i){
-//        const ComponentSelectFunction<dim> stress_component_mask (std::make_pair(i*dim,(i+1)*dim), total_dim);
-//
-//        VectorTools::integrate_difference (dof_handler, solution, exact_solution,
-//                                           cellwise_div_errors, quadrature,
-//                                           VectorTools::Hdiv_seminorm,
-//                                           &stress_component_mask);
-//        s_hd_error += cellwise_div_errors.norm_sqr();
-//
-//        VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
-//                                           cellwise_div_norms, quadrature,
-//                                           VectorTools::Hdiv_seminorm,
-//                                           &stress_component_mask);
-//        s_hd_norm += cellwise_div_norms.norm_sqr();
-//      }
-//      s_l2_error+= s_hd_error;
-//      s_l2_norm+= s_hd_norm;
-//      err.linf_l2_errors[2] = std::max(err.linf_l2_errors[2],sqrt(s_l2_error)/sqrt(s_l2_norm));
-
-//    s_hd_error = sqrt(s_hd_error);
-//    s_hd_norm = sqrt(s_hd_norm);
-
-//      std::cout << "Component function test: " << std::endl;
-//      Vector<double> tmp(MixedBiotProblem::total_dim);
-//      displacement_mask.vector_value(Point<dim>(), tmp);
-//      std::cout << tmp << std::endl;
-
-//      err.velocity_stress_l2_div_errors[1] += s_hd_error;
-//      err.velocity_stress_l2_div_norms[1] += s_hd_norm;     // put += back!
-
-//      double l_int_error_elast=1, l_int_norm_elast=1;
+;
       double l_int_error_darcy=1, l_int_norm_darcy=1;
 //      double l_int_error=1, l_int_norm=1;
         if (mortar_flag)
         {
-//            DisplacementBoundaryValues<dim> displ_solution;
-//            displ_solution.set_time(prm.time);
+
             std::vector<double> tmp_err_vect(2,0);
             tmp_err_vect = compute_interface_error(); //note that the second component of this vector gives the inreface error for darcy part. first component is 0.
-//            l_int_error_elast = compute_interface_error();
-//            l_int_error_elast =tmp_err_vect[0];
             l_int_error_darcy =tmp_err_vect[1];
-//            if(split_flag==0){
-//            	l_int_error=pow(l_int_error_elast,2)+pow(l_int_error_darcy,2);
-//            	l_int_error= sqrt(l_int_error);
-//            }
+
 
             interface_fe_function = 0;
             interface_fe_function_mortar = 0;
             tmp_err_vect = compute_interface_error();
-//            l_int_norm_elast = compute_interface_error();
-//            l_int_norm_elast = tmp_err_vect[0];
             l_int_norm_darcy = tmp_err_vect[1];
-//            if(split_flag==0){
-//                l_int_norm=pow(l_int_norm_elast,2)+pow(l_int_norm_darcy,2);
-//                l_int_norm= sqrt(l_int_norm);
-//            }
         }
 
 
@@ -1812,37 +1501,15 @@ namespace vt_darcy
         for (unsigned int i=0; i<11; ++i)
           if (i != 4  && i != 0 )
             recv_buf_num[i] = sqrt(recv_buf_num[i])/sqrt(recv_buf_den[i]);
-//          else
-//            recv_buf_num[i] = recv_buf_num[i];
- //    Calculating the relative error in mortar displacement.
-//        recv_buf_num[11] = recv_buf_num[11]/recv_buf_den[11];
-//        recv_buf_num[12] = recv_buf_num[12]/recv_buf_den[12];
 
         convergence_table.add_value("cycle", cycle);
         convergence_table.add_value("# GMRES", max_cg_iteration);
-        convergence_table.add_value("Velocity,L8-Hdiv", recv_buf_num[0]);
-//        convergence_table.add_value("Velocity,L2-Hdiv", recv_buf_num[1]);
-
-//        convergence_table.add_value("Pressure,L2-L2", recv_buf_num[2]);
-//        convergence_table.add_value("Pressure,L2-L2mid", recv_buf_num[3]);
+        convergence_table.add_value("Velocity,L8-Hdiv", recv_buf_num[0]);;
         convergence_table.add_value("Pressure,L8-L2", recv_buf_num[4]);
 
-//        convergence_table.add_value("Stress,L2-L2", recv_buf_num[5]);
-//        convergence_table.add_value("Stress,L2-Hdiv", recv_buf_num[6]);
-//        convergence_table.add_value("Stress,L8-Hdiv", recv_buf_num[7]);
-
-//        convergence_table.add_value("Displ,L8-L2", recv_buf_num[8]);
-//        convergence_table.add_value("Displ,L2-L2mid", recv_buf_num[9]);
-
-//        convergence_table.add_value("Rotat,L2-L2", recv_buf_num[10]);
         if (mortar_flag)
         {
-//          convergence_table.add_value("Lambda,Elast", recv_buf_num[11]/recv_buf_den[11]);
           convergence_table.add_value("Lambda,Darcy", recv_buf_num[5]/recv_buf_den[5]);
-
-//        	double combined_l_int_error =(pow(recv_buf_num[11],2) + pow(recv_buf_num[12],2))/(pow(recv_buf_den[11],2) + pow(recv_buf_den[12],2));
-//        	combined_l_int_error = sqrt(combined_l_int_error);
-//        	convergence_table.add_value("Lambda,Biot", combined_l_int_error);
 
         }
       }
@@ -1864,34 +1531,12 @@ namespace vt_darcy
 	      switch(dim)
 	      {
 	        case 2:
-//	          solution_names.push_back ("s11");
-//	          solution_names.push_back ("s12");
-//	          solution_names.push_back ("s21");
-//	          solution_names.push_back ("s22");
-//	          solution_names.push_back ("d1");
-//	          solution_names.push_back ("d2");
-//	          solution_names.push_back ("r");
 	          solution_names.push_back ("u1");
 	          solution_names.push_back ("u2");
 	          solution_names.push_back ("p");
 	          break;
 
 	        case 3:
-//	          solution_names.push_back ("s11");
-//	          solution_names.push_back ("s12");
-//	          solution_names.push_back ("s13");
-//	          solution_names.push_back ("s21");
-//	          solution_names.push_back ("s22");
-//	          solution_names.push_back ("s23");
-//	          solution_names.push_back ("s31");
-//	          solution_names.push_back ("s32");
-//	          solution_names.push_back ("s33");
-//	          solution_names.push_back ("d1");
-//	          solution_names.push_back ("d2");
-//	          solution_names.push_back ("d3");
-//	          solution_names.push_back ("r1");
-//	          solution_names.push_back ("r2");
-//	          solution_names.push_back ("r3");
 	          solution_names.push_back ("u1");
 	          solution_names.push_back ("u2");
 	          solution_names.push_back ("u3");
@@ -1902,29 +1547,11 @@ namespace vt_darcy
 	        Assert(false, ExcNotImplemented());
 	      }
 
-//	      // Components interpretation of the mechanics solution (vector^dim - vector - rotation)
-//	      std::vector<DataComponentInterpretation::DataComponentInterpretation> data_component_interpretation(dim*dim+dim, DataComponentInterpretation::component_is_part_of_vector);
-//	      switch (dim)
-//	      {
-//	        case 2:
-//	          data_component_interpretation.push_back (DataComponentInterpretation::component_is_scalar);
-//	          break;
-//
-//	        case 3:
-//	          data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-//	          break;
-//
-//	        default:
-//	        Assert(false, ExcNotImplemented());
-//	          break;
-//	      }
-
 	      // Components interpretation of the flow solution (vector - scalar)
 	      std::vector<DataComponentInterpretation::DataComponentInterpretation>
 	      data_component_interpretation (dim,
 	                      DataComponentInterpretation::component_is_part_of_vector);
-//	      data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
-//	      data_component_interpretation.push_back (DataComponentInterpretation::component_is_part_of_vector);
+
 	      data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
 
 	      DataOut<dim> data_out;
@@ -1959,81 +1586,30 @@ namespace vt_darcy
 	      double total_time = prm.time_step * prm.num_time_steps;
 	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && cycle == refine-1 && std::abs(prm.time-total_time)<1.0e-12){
 	        convergence_table.set_precision("Velocity,L8-Hdiv", 3);
-	//        convergence_table.set_precision("Velocity,L2-Hdiv", 3);
-	//        convergence_table.set_precision("Pressure,L2-L2", 3);
-	//        convergence_table.set_precision("Pressure,L2-L2mid", 3);
 	        convergence_table.set_precision("Pressure,L8-L2", 3);
 
 	        convergence_table.set_scientific("Velocity,L8-Hdiv", true);
-	//        convergence_table.set_scientific("Velocity,L2-Hdiv", true);
-	//        convergence_table.set_scientific("Pressure,L2-L2", true);
-	//        convergence_table.set_scientific("Pressure,L2-L2mid", true);
 	        convergence_table.set_scientific("Pressure,L8-L2", true);
-
-	//        convergence_table.set_precision("Stress,L2-L2", 3);
-	//        convergence_table.set_precision("Stress,L2-Hdiv", 3);
-//	        convergence_table.set_precision("Stress,L8-Hdiv", 3);
-//	        convergence_table.set_precision("Displ,L8-L2", 3);
-	//        convergence_table.set_precision("Displ,L2-L2mid", 3);
-	//        convergence_table.set_precision("Rotat,L2-L2", 3);
-
-	//        convergence_table.set_scientific("Stress,L2-L2", true);
-	//        convergence_table.set_scientific("Stress,L2-Hdiv", true);
-//	        convergence_table.set_scientific("Stress,L8-Hdiv", true);
-//	        convergence_table.set_scientific("Displ,L8-L2", true);
-	//        convergence_table.set_scientific("Displ,L2-L2mid", true);
-	//        convergence_table.set_scientific("Rotat,L2-L2", true);
-
-	//        convergence_table.set_tex_caption("# CG", "\\# cg");
 
 	        	convergence_table.set_tex_caption("# GMRES", "\\# gmres");
 
 	        convergence_table.set_tex_caption("Velocity,L8-Hdiv", "$ \\|z - z_h\\|_{L^{\\infty}(H_{div})} $");
-	//        convergence_table.set_tex_caption("Velocity,L2-Hdiv", "$ \\|\\nabla\\cdot(\\u - \\u_h)\\|_{L^2(L^2)} $");
-	//        convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^2(L^2)} $");
-	//        convergence_table.set_tex_caption("Pressure,L2-L2mid", "$ \\|Qp - p_h\\|_{L^2(L^2)} $");
 	        convergence_table.set_tex_caption("Pressure,L8-L2", "$ \\|p - p_h\\|_{L^{\\infty}(L^2)} $");
 
-	//        convergence_table.set_tex_caption("Stress,L2-L2", "$ \\|\\sigma - \\sigma_h\\|_{L^{\\infty}(L^2)} $");
-	//        convergence_table.set_tex_caption("Stress,L2-Hdiv", "$ \\|\\nabla\\cdot(\\sigma - \\sigma_h)\\|_{L^{\\infty}(L^2)} $");
-//	        convergence_table.set_tex_caption("Stress,L8-Hdiv", "$ \\|\\sigma - \\sigma_h\\|_{L^{\\infty}(H_{div})} $");
-//	        convergence_table.set_tex_caption("Displ,L8-L2", "$ \\|u - u_h\\|_{L^{\\infty}(L^2)} $");
-	//        convergence_table.set_tex_caption("Displ,L2-L2mid", "$ \\|Q\\bbeta - \\bbeta_h\\|_{L^{\\infty}(L^2)} $");
-	//        convergence_table.set_tex_caption("Rotat,L2-L2", "$ \\|r - r_h\\|_{L^{\\infty}(L^2)} $");
-
-	//        convergence_table.evaluate_convergence_rates("# CG", ConvergenceTable::reduction_rate_log2);
 	        	convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
 
 
 	        convergence_table.evaluate_convergence_rates("Velocity,L8-Hdiv", ConvergenceTable::reduction_rate_log2);
-	//        convergence_table.evaluate_convergence_rates("Velocity,L2-Hdiv", ConvergenceTable::reduction_rate_log2);
-	//        convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
-	//        convergence_table.evaluate_convergence_rates("Pressure,L2-L2mid", ConvergenceTable::reduction_rate_log2);
 	        convergence_table.evaluate_convergence_rates("Pressure,L8-L2", ConvergenceTable::reduction_rate_log2);
 
-	//        convergence_table.evaluate_convergence_rates("Stress,L2-L2", ConvergenceTable::reduction_rate_log2);
-	//        convergence_table.evaluate_convergence_rates("Stress,L2-Hdiv", ConvergenceTable::reduction_rate_log2);
-//	        convergence_table.evaluate_convergence_rates("Stress,L8-Hdiv", ConvergenceTable::reduction_rate_log2);
-//	        convergence_table.evaluate_convergence_rates("Displ,L8-L2", ConvergenceTable::reduction_rate_log2);
-	//        convergence_table.evaluate_convergence_rates("Displ,L2-L2mid", ConvergenceTable::reduction_rate_log2);
-	//        convergence_table.evaluate_convergence_rates("Rotat,L2-L2", ConvergenceTable::reduction_rate_log2);
 
 	        if (mortar_flag)
 	        {
-//	          convergence_table.set_precision("Lambda,Elast", 3);
-//	          convergence_table.set_scientific("Lambda,Elast", true);
-//	          convergence_table.set_tex_caption("Lambda,Elast", "$ \\|u - \\lambda_u_H\\|_{d_H} $");
-//	          convergence_table.evaluate_convergence_rates("Lambda,Elast", ConvergenceTable::reduction_rate_log2);
 
 	          convergence_table.set_precision("Lambda,Darcy", 3);
 	          convergence_table.set_scientific("Lambda,Darcy", true);
 	          convergence_table.set_tex_caption("Lambda,Darcy", "$ \\|p - \\lambda_p_H\\|_{d_H} $");
 	          convergence_table.evaluate_convergence_rates("Lambda,Darcy", ConvergenceTable::reduction_rate_log2);
-
-//	        	  convergence_table.set_precision("Lambda,Biot", 3);
-//	        	  convergence_table.set_scientific("Lambda,Biot", true);
-//	        	  convergence_table.set_tex_caption("Lambda,Biot", "$ \\|(u,p) - \\lambda_H\\|_{d_H} $");
-//	        	  convergence_table.evaluate_convergence_rates("Lambda,Biot", ConvergenceTable::reduction_rate_log2);
 
 	        }
 
