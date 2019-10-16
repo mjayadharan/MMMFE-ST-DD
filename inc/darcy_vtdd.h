@@ -113,7 +113,7 @@ namespace vt_darcy
         void solve_timestep(unsigned int maxiter);
 
         void compute_multiscale_basis();
-        std::vector<double> compute_interface_error(); //return_vector[0] gives interface_error for elast part and return_vector[1] gives that of flow part.
+        std::vector<double> compute_interface_error_dh(); //return_vector[0] gives interface_error for elast part and return_vector[1] gives that of flow part.
         double compute_interface_error_l2();
         void compute_errors(const unsigned int cycle);
         void output_results(const unsigned int cycle, const unsigned int refine);
