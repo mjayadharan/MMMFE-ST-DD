@@ -29,6 +29,7 @@
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/fe_dgp.h>
+#include <deal.II/fe/fe_face.h>
 #include <deal.II/fe/fe_raviart_thomas.h>
 #include <deal.II/fe/fe_bdm.h>
 #include <deal.II/fe/fe_nothing.h>
@@ -76,6 +77,8 @@ namespace vt_darcy
 			 fe (FE_RaviartThomas<dim>(degree), 1,
 			                FE_DGQ<dim>(degree), 1),
             dof_handler (triangulation),
+			fe_face_q(0),
+			dof_handler_st(triangulation_st),
             fe_mortar (FE_RaviartThomas<dim>(mortar_degree), 1,
                        FE_Nothing<dim>(), 1),
 //			fe_mortar (FE_Q<dim>(mortar_degree+2), dim,
@@ -132,11 +135,15 @@ namespace vt_darcy
         // Make interface data structures
         faces_on_interface.resize(GeometryInfo<dim>::faces_per_cell,0);
         faces_on_interface_mortar.resize(GeometryInfo<dim>::faces_per_cell,0);
+        faces_on_interface_st.resize(GeometryInfo<dim>::faces_per_cell,0);
 
         // Label interface faces and count how many of them there are per interface
         mark_interface_faces(triangulation, neighbors, p1, p2, faces_on_interface);
-        if (mortar_flag)
+        if (mortar_flag){
             mark_interface_faces(triangulation_mortar, neighbors, p1, p2, faces_on_interface_mortar);
+            mark_interface_faces_space_time(triangulation_st,neighbors,p1,p2,faces_on_interface_st);
+
+        }
 
         dof_handler.distribute_dofs(fe);
         DoFRenumbering::component_wise (dof_handler);
@@ -148,6 +155,10 @@ namespace vt_darcy
         {
             dof_handler_mortar.distribute_dofs(fe_mortar);
             DoFRenumbering::component_wise (dof_handler_mortar);
+
+            dof_handler_st.distribute_dofs(fe_face_q);
+            DoFRenumbering::component_wise(dof_handler_st);
+
         }
 
         std::vector<types::global_dof_index> dofs_per_component ( dim + 1);
@@ -355,6 +366,38 @@ namespace vt_darcy
 
                     for (auto el : local_face_dof_indices){
                             interface_dofs[cell->face(face_n)->boundary_id()-1].push_back(el);
+
+
+                    }
+                }
+        }
+    }
+
+    template <int dim>
+    void DarcyVTProblem<dim>::get_interface_dofs_st()
+    {
+        TimerOutput::Scope t(computing_timer, "Get interface DoFs S-T");
+        interface_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+
+        std::vector<types::global_dof_index> local_face_dof_indices;
+
+        typename DoFHandler<3>::active_cell_iterator cell, endc;
+
+        cell = dof_handler_st.begin_active(),
+               endc = dof_handler_st.end();
+        local_face_dof_indices.resize(fe_face_q.dofs_per_face);
+
+        for (;cell!=endc;++cell)
+        {
+            for (unsigned int face_n=0;
+                 face_n<GeometryInfo<dim>::faces_per_cell;
+                 ++face_n)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                {
+                    cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
+
+                    for (auto el : local_face_dof_indices){
+                            interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
 
 
                     }
@@ -1661,22 +1704,26 @@ namespace vt_darcy
         faces_on_interface.clear();
         faces_on_interface_mortar.clear();
         interface_dofs.clear();
+        interface_dofs_st.clear();
         interface_fe_function = 0;
 
         if (mortar_flag)
         {
             triangulation_mortar.clear();
+            triangulation_st.clear();
 //            P_fine2coarse.reset();
 //            P_coarse2fine.reset();
         }
 
         dof_handler_mortar.clear();
+        dof_handler_st.clear();
     }
 
     // MixedBiotProblemDD::run
     template <int dim>
     void DarcyVTProblem<dim>::run (const unsigned int refine,
                                              const std::vector<std::vector<unsigned int>> &reps,
+											 const std::vector<std::vector<unsigned int>> &reps_st,
                                              double tol,
                                              unsigned int maxiter,
                                              unsigned int quad_degree)
@@ -1701,6 +1748,7 @@ namespace vt_darcy
         {
             cg_iteration = 0;
             interface_dofs.clear();
+            interface_dofs_st.clear();
 
             if (cycle == 0)
             {
@@ -1714,8 +1762,22 @@ namespace vt_darcy
 
                 get_subdomain_coordinates(this_mpi, n_domains, subdomain_dimensions, p1, p2);
 
-                if (mortar_flag)
+                //corners of the space time sub-domain.
+                Point<3> p_st1, p_st2;
+                p_st1 = {p1[0],p1[1],0}, p_st2={p2[0],p2[1],prm.num_time_steps*prm.time_step};
+
+                if (mortar_flag){
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps[this_mpi], p1, p2);
+                    std::vector<std::vector<unsigned int>> mesh_reps(reps_st);
+                    for(int dum_i=0; dum_i<reps_st.size();dum_i++){
+                    	mesh_reps[dum_i][0]=2*mesh_reps[dum_i][0];
+                    	mesh_reps[dum_i][1]=2*mesh_reps[dum_i][1];
+
+                    }
+                    GridGenerator::subdivided_hyper_rectangle(triangulation_st, mesh_reps[this_mpi], p_st1, p_st2);
+//                    triangulation_st.refine_global(1);
+
+                }
                 else
                 {
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps[0], p1, p2);
@@ -1748,6 +1810,21 @@ namespace vt_darcy
 //            pcout<<"\n \n grid diameter is : "<<GridTools::minimal_cell_diameter(triangulation)<<"\n \n ";
             pcout << "Making grid and DOFs...\n";
             make_grid_and_dofs();
+//            get_interface_dofs_st();
+//            	if(cycle==0 && this_mpi==0){
+//            		pcout<<"rached here 1 \n";
+////            		get_interface_dofs_st();
+//            		 std::vector<Point<3>> support_points(dof_handler_st.n_dofs());
+//            		 MappingQGeneric<3> mapping_generic(1);
+//            		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_st,support_points);
+//
+//            		 std::ofstream output_into_file("output_data.txt",std::ofstream::app);
+//            		 for(int i=0; i<interface_dofs_st[2].size(); i++){
+//            			 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[2][i]][0]<<" , "<<support_points[interface_dofs_st[2][i]][1]<<" , "<<support_points[interface_dofs_st[2][i]][2]<<") \n";
+//            		 }
+//            		 output_into_file.close();
+//            	}
+
             lambda_guess.resize(GeometryInfo<dim>::faces_per_cell);
             Alambda_guess.resize(GeometryInfo<dim>::faces_per_cell);
 
@@ -1780,6 +1857,9 @@ namespace vt_darcy
             if (Utilities::MPI::n_mpi_processes(mpi_communicator) != 1)
             		get_interface_dofs();
 
+//            if(this_mpi==0 &&cycle==2){
+//            	pcout<<"number of interface dofs is: "<<interface_dofs[1].size()<<"\n";
+//            }
 
             for(unsigned int i=0; i<prm.num_time_steps; i++)
             {

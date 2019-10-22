@@ -13,6 +13,7 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/fe_face.h>
 #include <deal.II/fe/fe_values.h>
 
 #include <fstream>
@@ -91,7 +92,8 @@ namespace vt_darcy
         DarcyVTProblem(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
                            const unsigned int mortar_degree = 0);
 
-        void run(const unsigned int refine, const std::vector <std::vector<unsigned int>> &reps, double tol,
+        void run(const unsigned int refine, const std::vector <std::vector<unsigned int>> &reps,
+        		 const std::vector <std::vector<unsigned int>> &reps_st, double tol,
                  unsigned int maxiter, unsigned int quad_degree = 11);
 
     private:
@@ -104,6 +106,7 @@ namespace vt_darcy
         void make_grid_and_dofs();
         void assemble_system();
         void get_interface_dofs();
+        void get_interface_dofs_st(); //get inteface dofs from the space time interface.
         void assemble_rhs_bar();
         void assemble_rhs_star(FEFaceValues<dim> &fe_face_values);
         void solve_bar();
@@ -167,7 +170,9 @@ namespace vt_darcy
         std::vector<int> neighbors;
         std::vector<unsigned int> faces_on_interface;
         std::vector<unsigned int> faces_on_interface_mortar;
-        std::vector <std::vector<unsigned int>> interface_dofs;
+        std::vector<unsigned int> faces_on_interface_st;
+        std::vector <std::vector<unsigned int>> interface_dofs; //dofs on the mortar space time interface.
+        std::vector <std::vector<unsigned int>> interface_dofs_st; //subdomain space time subdomain.
 
 
 
@@ -182,6 +187,11 @@ namespace vt_darcy
         Triangulation <dim> triangulation;
         FESystem <dim> fe;
         DoFHandler <dim> dof_handler;
+
+        //3d Space time triangulation for subdomain.
+        Triangulation<3> triangulation_st;
+        FE_FaceQ<3> fe_face_q;
+        DoFHandler<3> dof_handler_st;
 
         // Mortar triangulation
         Triangulation <dim> triangulation_mortar;

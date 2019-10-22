@@ -30,25 +30,34 @@ int main (int argc, char *argv[])
         mesh_m2d[4] = {1,1};
         double c0=1;
         double alpha=1;
-        int num_cycle=2;
+        int num_cycle=3;
         int max_itr=500;
         double tolerence = 1.e-11;
-        BiotParameters bparam (0.001,2,c0,alpha);
+        BiotParameters bparam (0.001,4,c0,alpha);
+
+        // Time space mortar mesh parameters   (non-matching checkerboard in space-time)
+        std::vector<std::vector<unsigned int>> mesh_m3d(5);
+        mesh_m3d[0] = {2,2,bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 1.
+        mesh_m3d[1] = {3,3,bparam.num_time_steps};
+        mesh_m3d[2] = {3,3,bparam.num_time_steps};
+        mesh_m3d[3] = {2,2,bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 4.
+        mesh_m3d[4] = {1,1,bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for mortar domain.
+
 
 //        //DarcyDD without mortar
 //        DarcyVTProblem<2> no_mortar(1,bparam,0,0);
 
 
-//        no_mortar.run (num_cycle, mesh_m2d, tolerence, max_itr);
+//        no_mortar.run (num_cycle, mesh_m2d, mesh_m3d, tolerence, max_itr);
 
      //DarcyDD with mortar
         DarcyVTProblem<2> lin_mortar(0,bparam,1,1);
-        DarcyVTProblem<2> quad_mortar(1,bparam,1,2);
+//        DarcyVTProblem<2> quad_mortar(1,bparam,1,2);
 //        DarcyVTProblem<2> cubic_mortar(1,bparam,1,3);
 
-//        lin_mortar.run(num_cycle,mesh_m2d,tolerence,max_itr);
-        quad_mortar.run(num_cycle,mesh_m2d,tolerence,max_itr);
-//        cubic_mortar.run(num_cycle,mesh_m2d,tolerence,max_itr);
+        lin_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr);
+//        quad_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr);
+//        cubic_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr);
 
     }
     catch (std::exception &exc)
