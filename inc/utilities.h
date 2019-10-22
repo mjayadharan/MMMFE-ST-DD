@@ -397,6 +397,76 @@ namespace vt_darcy
                 }
             }
     }
+    template <int dim, typename Number>
+        void
+        mark_interface_faces_space_time (const Triangulation<3> &tria, const std::vector<int> &neighbors, const Point<dim> &p1, const Point<dim> &p2, std::vector<Number> &faces_per_interface)
+        {
+            Assert(faces_per_interface.size() == neighbors.size(), ExcDimensionMismatch(faces_per_interface.size(), neighbors.size()));
+
+            // Label boundaries
+            // On unit hypercube for example:
+            //  1 - plane y=0, 2 - plane x=1, 3 - plane y=1, 4 - plane x=0, 5 - plane z=0, 6 - plane z=1 for interfaces,
+            //  0 - for outside
+
+            typename Triangulation<3>::cell_iterator cell, endc;
+            cell = tria.begin_active (),
+                    endc = tria.end();
+
+            for (; cell!=endc; ++cell)
+                for (unsigned int face_number=0;
+                     face_number<GeometryInfo<dim>::faces_per_cell;
+                     ++face_number)
+                {
+                    // If left boundary of the subdomain in 2d or
+                    if ( std::fabs(cell->face(face_number)->center()(0) - p1[0]) < 1e-12 )
+                    {
+                        // If it is outside boundary (no neighbor) or interface
+                        if (neighbors[3] < 0 )
+                            cell->face(face_number)->set_boundary_id (0);
+                        else
+                        {
+                            cell->face(face_number)->set_boundary_id (4);
+                            faces_per_interface[3] += 1;
+                        }
+                    }
+                        // If bottom boundary of the subdomain
+                    else if ( std::fabs(cell->face(face_number)->center()(1) - p1[1]) < 1e-12 )
+                    {
+                        // If it is outside boundary (no neighbor) or interface
+                        if (neighbors[0] < 0 )
+                            cell->face(face_number)->set_boundary_id (0);
+                        else
+                        {
+                            cell->face(face_number)->set_boundary_id (1);
+                            faces_per_interface[0] += 1;
+                        }
+                    }
+                        // If right boundary of the subdomain
+                    else if ( std::fabs(cell->face(face_number)->center()(0) - p2[0]) < 1e-12 )
+                    {
+                        // If it is outside boundary (no neighbor) or interface
+                        if (neighbors[1] < 0 )
+                            cell->face(face_number)->set_boundary_id (0);
+                        else
+                        {
+                            cell->face(face_number)->set_boundary_id (2);
+                            faces_per_interface[1] += 1;
+                        }
+                    }
+                        // If top boundary of the subdomain
+                    else if ( std::fabs(cell->face(face_number)->center()(1) - p2[1]) < 1e-12 )
+                    {
+                        // If it is outside boundary (no neighbor) or interface
+                        if (neighbors[2] < 0 )
+                            cell->face(face_number)->set_boundary_id (0);
+                        else
+                        {
+                            cell->face(face_number)->set_boundary_id (3);
+                            faces_per_interface[2] += 1;
+                        }
+                    }
+                }
+        }
 
     template <int dim>
     void
