@@ -30,10 +30,10 @@ int main (int argc, char *argv[])
         mesh_m2d[4] = {1,1};
         double c0=1;
         double alpha=1;
-        int num_cycle=3;
+        int num_cycle=2;
         int max_itr=500;
         double tolerence = 1.e-11;
-        BiotParameters bparam (0.001,4,c0,alpha);
+        BiotParameters bparam (0.001,2,c0,alpha);
 
         // Time space mortar mesh parameters   (non-matching checkerboard in space-time)
         std::vector<std::vector<unsigned int>> mesh_m3d(5);

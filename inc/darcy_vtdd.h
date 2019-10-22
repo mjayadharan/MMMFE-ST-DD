@@ -172,6 +172,7 @@ namespace vt_darcy
         std::vector<unsigned int> faces_on_interface_mortar;
         std::vector<unsigned int> faces_on_interface_st;
         std::vector <std::vector<unsigned int>> interface_dofs; //dofs on the mortar space time interface.
+        std::vector <std::vector<unsigned int>> interface_dofs_subd; //dofs on 2d-subdomain interface.
         std::vector <std::vector<unsigned int>> interface_dofs_st; //subdomain space time subdomain.
 
 

@@ -337,6 +337,10 @@ namespace vt_darcy
     void DarcyVTProblem<dim>::get_interface_dofs ()
     {
         TimerOutput::Scope t(computing_timer, "Get interface DoFs");
+
+        { //getting interace dof normal subdomain part for no-mortar a
+        	//a nd getting interace dofs for mortar grid in case of mortar.
+
         interface_dofs.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
 
         std::vector<types::global_dof_index> local_face_dof_indices;
@@ -350,7 +354,7 @@ namespace vt_darcy
         }
         else
         {
-            cell = dof_handler_mortar.begin_active(),
+        	cell = dof_handler_mortar.begin_active(),
                     endc = dof_handler_mortar.end();
             local_face_dof_indices.resize(fe_mortar.dofs_per_face);
         }
@@ -370,7 +374,40 @@ namespace vt_darcy
 
                     }
                 }
-        }
+         }
+        }// end of getting normal/mortar inteface_dofs.
+
+        if(mortar_flag){ //getting interace dof normal subdomain part for no-mortar a
+        	//a nd getting interace dofs for mortar grid in case of mortar.
+
+			interface_dofs_subd.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+
+			std::vector<types::global_dof_index> local_face_dof_indices;
+
+			typename DoFHandler<dim>::active_cell_iterator cell, endc;
+
+				cell = dof_handler.begin_active(),
+						endc = dof_handler.end();
+				local_face_dof_indices.resize(fe.dofs_per_face);
+
+
+			for (;cell!=endc;++cell)
+			{
+				for (unsigned int face_n=0;
+					 face_n<GeometryInfo<dim>::faces_per_cell;
+					 ++face_n)
+					if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+					{
+						cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
+
+						for (auto el : local_face_dof_indices){
+								interface_dofs_subd[cell->face(face_n)->boundary_id()-1].push_back(el);
+
+
+						}
+					}
+			 }
+			}// end of getting subdomain interface dofs in mortar case: used for space-time mortar.
     }
 
     template <int dim>
@@ -1705,6 +1742,7 @@ namespace vt_darcy
         faces_on_interface_mortar.clear();
         interface_dofs.clear();
         interface_dofs_st.clear();
+        interface_dofs_subd.clear();
         interface_fe_function = 0;
 
         if (mortar_flag)
@@ -1749,6 +1787,7 @@ namespace vt_darcy
             cg_iteration = 0;
             interface_dofs.clear();
             interface_dofs_st.clear();
+            interface_dofs_subd.clear();
 
             if (cycle == 0)
             {
@@ -1768,6 +1807,7 @@ namespace vt_darcy
 
                 if (mortar_flag){
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps[this_mpi], p1, p2);
+                    //Making space-time subdomain mesh in 3d .
                     std::vector<std::vector<unsigned int>> mesh_reps(reps_st);
                     for(int dum_i=0; dum_i<reps_st.size();dum_i++){
                     	mesh_reps[dum_i][0]=2*mesh_reps[dum_i][0];
@@ -1775,7 +1815,35 @@ namespace vt_darcy
 
                     }
                     GridGenerator::subdivided_hyper_rectangle(triangulation_st, mesh_reps[this_mpi], p_st1, p_st2);
-//                    triangulation_st.refine_global(1);
+
+//                    //feface_q just to check the suport points match with the 3d case.
+//                    Triangulation<dim> triangulation_face_dummy;
+//                    std::vector<std::vector<unsigned int>> mesh_reps_2(reps);
+//                    for(int dum_i=0; dum_i<mesh_reps_2.size();dum_i++){
+//                       mesh_reps_2[dum_i][0]=2*mesh_reps_2[dum_i][0];
+//                       mesh_reps_2[dum_i][1]=2*mesh_reps_2[dum_i][1];
+//                       }
+//                    GridGenerator::subdivided_hyper_rectangle(triangulation_face_dummy, mesh_reps_2[this_mpi], p1, p2);
+//                    FE_FaceQ<dim> fe_face_2(0);
+//                    DoFHandler<dim> fe_face_dof_handler(triangulation_face_dummy);
+//                    fe_face_dof_handler.distribute_dofs(fe_face_2);
+//                    DoFRenumbering::component_wise(fe_face_dof_handler);
+//                                	if(this_mpi==0){
+//                                		 std::vector<Point<dim>> support_points(fe_face_dof_handler.n_dofs());
+//                                		 MappingQGeneric<dim> mapping_generic(1);
+//                                		 DoFTools::map_dofs_to_support_points(mapping_generic,fe_face_dof_handler,support_points);
+//                                		 std::ofstream output_into_file("output_data_2.txt");
+//                                		 for(int i=0; i<fe_face_dof_handler.n_dofs(); i++){
+//                                			 output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<") \n";
+//                                		 }
+//                                		 output_into_file.close();
+//                                	}
+//
+//                    //end of feface_q just to check the suport points match with the 3d case.
+
+
+
+
 
                 }
                 else
@@ -1797,8 +1865,16 @@ namespace vt_darcy
             {
                 if (mortar_flag == 0)
                     triangulation.refine_global(1);
-                else if (mortar_degree <= 2)
-                    triangulation.refine_global(1);
+                else if (mortar_degree <= 2){
+//                    triangulation.refine_global(1);
+                	triangulation.clear();
+                    std::vector<std::vector<unsigned int>> mesh_reps_2(reps);
+                    for(int dum_i=0; dum_i<mesh_reps_2.size();dum_i++){
+                       mesh_reps_2[dum_i][0]=2*mesh_reps_2[dum_i][0];
+                       mesh_reps_2[dum_i][1]=2*mesh_reps_2[dum_i][1];
+                       }
+                    GridGenerator::subdivided_hyper_rectangle(triangulation, mesh_reps_2[this_mpi], p1, p2);
+                }
                 else if (mortar_degree > 2)
                     triangulation.refine_global(1);
 
@@ -1811,14 +1887,15 @@ namespace vt_darcy
             pcout << "Making grid and DOFs...\n";
             make_grid_and_dofs();
 //            get_interface_dofs_st();
-//            	if(cycle==0 && this_mpi==0){
+//
+//            if(cycle==0 && this_mpi==1){
 //            		pcout<<"rached here 1 \n";
 ////            		get_interface_dofs_st();
 //            		 std::vector<Point<3>> support_points(dof_handler_st.n_dofs());
 //            		 MappingQGeneric<3> mapping_generic(1);
 //            		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_st,support_points);
 //
-//            		 std::ofstream output_into_file("output_data.txt",std::ofstream::app);
+//            		 std::ofstream output_into_file("output_data.txt");
 //            		 for(int i=0; i<interface_dofs_st[2].size(); i++){
 //            			 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[2][i]][0]<<" , "<<support_points[interface_dofs_st[2][i]][1]<<" , "<<support_points[interface_dofs_st[2][i]][2]<<") \n";
 //            		 }
@@ -1857,6 +1934,33 @@ namespace vt_darcy
             if (Utilities::MPI::n_mpi_processes(mpi_communicator) != 1)
             		get_interface_dofs();
 
+//            //feface_q just to check the suport points match with the 3d case.
+//            if(cycle==1){
+//            Triangulation<dim> triangulation_face_dummy;
+//            std::vector<std::vector<unsigned int>> mesh_reps_2(reps);
+//            for(int dum_i=0; dum_i<mesh_reps_2.size();dum_i++){
+//               mesh_reps_2[dum_i][0]=2*mesh_reps_2[dum_i][0];
+//               mesh_reps_2[dum_i][1]=2*mesh_reps_2[dum_i][1];
+//               }
+//            GridGenerator::subdivided_hyper_rectangle(triangulation_face_dummy, mesh_reps_2[this_mpi], p1, p2);
+//            FE_FaceQ<dim> fe_face_2(0);
+////            FESystem<dim> fe_face_2(FE_FaceQ<dim>(0), 1,
+////			                FE_Nothing<dim>(degree), 1);
+//            DoFHandler<dim> fe_face_dof_handler(triangulation_face_dummy);
+//            fe_face_dof_handler.distribute_dofs(fe_face_2);
+//            DoFRenumbering::component_wise(fe_face_dof_handler);
+//                        	if(this_mpi==1){
+//                        		 std::vector<Point<dim>> support_points(fe_face_dof_handler.n_dofs());
+//                        		 MappingQGeneric<dim> mapping_generic(1);
+//                        		 DoFTools::map_dofs_to_support_points(mapping_generic,fe_face_dof_handler,support_points);
+//                        		 std::ofstream output_into_file("output_data_2.txt");
+//                        		 for(int i=0; i<interface_dofs_subd[2].size(); i++){
+//                        			 output_into_file<<i<<" : ("<<support_points[interface_dofs_subd[2][i]][0]<<" , "<<support_points[interface_dofs_subd[2][i]][1]<<") \n";
+//                        		 }
+//                        		 output_into_file.close();
+//                        	}
+//            }
+//            //end of feface_q just to check the suport points match with the 3d case.
 //            if(this_mpi==0 &&cycle==2){
 //            	pcout<<"number of interface dofs is: "<<interface_dofs[1].size()<<"\n";
 //            }
