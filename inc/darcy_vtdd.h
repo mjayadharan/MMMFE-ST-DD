@@ -85,7 +85,7 @@ namespace vt_darcy
     };
 
     // Mixed Biot Domain Decomposition class template
-    template<int dim>
+    template<int dim=2>
     class DarcyVTProblem
     {
     public:
@@ -190,9 +190,9 @@ namespace vt_darcy
         DoFHandler <dim> dof_handler;
 
         //3d Space time triangulation for subdomain.
-        Triangulation<3> triangulation_st;
-        FE_FaceQ<3> fe_face_q;
-        DoFHandler<3> dof_handler_st;
+        Triangulation<dim+1> triangulation_st;
+        FE_FaceQ<dim+1> fe_face_q;
+        DoFHandler<dim+1> dof_handler_st;
 
         // Mortar triangulation
         Triangulation <dim> triangulation_mortar;

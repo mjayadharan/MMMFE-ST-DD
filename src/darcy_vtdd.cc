@@ -848,15 +848,6 @@ namespace vt_darcy
 
 
 
-
-
-
-//          // CG structures and parameters
-//          std::vector<double> alpha_side(n_faces_per_cell, 0),
-//            alpha_side_d(n_faces_per_cell, 0), beta_side(n_faces_per_cell, 0),
-//            beta_side_d(n_faces_per_cell, 0); //to be deleted
-//          std::vector<double> alpha(2, 0), beta(2, 0); //to be deleted
-
           std::vector<std::vector<double>> r(n_faces_per_cell); //to be deleted probably: p?
           std::vector<double> r_norm_side(n_faces_per_cell,0);
           std::vector<std::vector<std::vector<double>>>	Q_side(n_faces_per_cell) ;
@@ -865,35 +856,38 @@ namespace vt_darcy
           //defing q  to push_back to Q (reused in Arnoldi algorithm)
           std::vector<std::vector<double>> q(n_faces_per_cell);
 
-
+          //Edit 3: remove/comment out this solve_bar() since its already done in the solve_darcy_vt() function before calling local_gmres.
           solve_bar();
 
+          //Edit 4: introduce interface_fe_function_vt in the .h file, then do
+          // interface_fe_function_vt.reinit(solution_bar_vt)
           interface_fe_function.reinit(solution_bar);
 
           if (mortar_flag == 1)
           {
+        	  //Edit 5: change dof_handler to dof_handler_vt and solution_bar to solution_bar_vr, quad to quad_mortar(2d faces).
               interface_fe_function_mortar.reinit(solution_bar_mortar);
               project_mortar(P_fine2coarse, dof_handler, solution_bar, quad, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
           }
-          else if (mortar_flag == 2)
-          {
-              interface_fe_function_mortar.reinit(solution_bar_mortar);
-              solution_star_mortar = 0;
-
-              compute_multiscale_basis();
-              pcout << "Done computing multiscale basis\n";
-              project_mortar(P_fine2coarse, dof_handler, solution_bar, quad, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
-
-              // Instead of solving subdomain problems we compute the response using basis
-              unsigned int j=0;
-              for (unsigned int side=0; side<n_faces_per_cell; ++side)
-                  for (unsigned int i=0;i<interface_dofs[side].size();++i)
-                  {
-                	  solution_star_mortar.block(0).sadd(1.0, interface_fe_function_mortar[interface_dofs[side][i]], multiscale_basis[j].block(0));
-
-                      j += 1;
-                  }
-          }
+//          else if (mortar_flag == 2)
+//          {
+//              interface_fe_function_mortar.reinit(solution_bar_mortar);
+//              solution_star_mortar = 0;
+//
+//              compute_multiscale_basis();
+//              pcout << "Done computing multiscale basis\n";
+//              project_mortar(P_fine2coarse, dof_handler, solution_bar, quad, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
+//
+//              // Instead of solving subdomain problems we compute the response using basis
+//              unsigned int j=0;
+//              for (unsigned int side=0; side<n_faces_per_cell; ++side)
+//                  for (unsigned int i=0;i<interface_dofs[side].size();++i)
+//                  {
+//                	  solution_star_mortar.block(0).sadd(1.0, interface_fe_function_mortar[interface_dofs[side][i]], multiscale_basis[j].block(0));
+//
+//                      j += 1;
+//                  }
+//          }
 
 
           double l0 = 0.0;
@@ -905,8 +899,14 @@ namespace vt_darcy
 
                 // Something will be here to initialize lambda correctly, right now it
                 // is just zero
+
+            	//Edit 6: change interface_dofs to interface_dofs mortar if decided to make such a distinction.
                 Ap[side].resize(interface_dofs[side].size(), 0);
                 lambda[side].resize(interface_dofs[side].size(), 0);
+                //Edit 7: get rid of the if conditions in the following  and resize Ap and lambda for once. Remove else condition
+                // and everything inside the else condition since we wont be needing a guess for VT.
+                //Edit 8: Also remove replace with interface_dofs_mortar if needed. NO more stating this from now on.
+                // Search for interface_dofs and do it if needed.
                 if (true || prm.time == prm.time_step)
 						{
 							Ap[side].resize(interface_dofs[side].size(), 0);
@@ -926,6 +926,7 @@ namespace vt_darcy
 
 
                 // Right now it is effectively solution_bar - A\lambda (0)
+                //Edit 9: remove the second term - get_normal_direction(side) * Ap[side][i] since we are getting rid of guess.
                 if(mortar_flag)
                 	for (unsigned int i=0;i<interface_dofs[side].size();++i){
                 	                      r[side][i] = get_normal_direction(side) * solution_bar_mortar[interface_dofs[side][i]]
@@ -1039,6 +1040,7 @@ namespace vt_darcy
                       for (unsigned int i=0;i<interface_dofs[side].size();++i)
                           interface_fe_function_mortar[interface_dofs[side][i]] = interface_data[side][i];
 
+                  //Edit 10: change dof_handler to dof_handler_vt and interface_fe_function to interface_fe_function_vt.
                   project_mortar(P_coarse2fine, dof_handler_mortar,
                                  interface_fe_function_mortar,
                                  quad,
@@ -1047,24 +1049,32 @@ namespace vt_darcy
                                  dof_handler,
                                  interface_fe_function);
 
+
 //                  interface_fe_function.block(2) = 0;
+                  //Edit 11: Replace assemble_rhs_ and solve_star with the following lines:
+//
+//                  for(loop over the number of time levels){
+//                	  prm.time += prm.time_step;
+//                	  solve_time_step(star_bar_flag=1,time_level);
+//                  }
+//                  prm.time=0;
 
                   assemble_rhs_star(fe_face_values);
                   solve_star();
               }
-              else if (mortar_flag == 2)
-              {
-                  solution_star_mortar = 0;
-                  unsigned int j=0;
-                  for (unsigned int side=0; side<n_faces_per_cell; ++side)
-                      for (unsigned int i=0;i<interface_dofs[side].size();++i)
-                      {
-
-                          solution_star_mortar.block(0).sadd(1.0, interface_data[side][i], multiscale_basis[j].block(0));
-                          j += 1;
-                      }
-
-              }
+//              else if (mortar_flag == 2)
+//              {
+//                  solution_star_mortar = 0;
+//                  unsigned int j=0;
+//                  for (unsigned int side=0; side<n_faces_per_cell; ++side)
+//                      for (unsigned int i=0;i<interface_dofs[side].size();++i)
+//                      {
+//
+//                          solution_star_mortar.block(0).sadd(1.0, interface_data[side][i], multiscale_basis[j].block(0));
+//                          j += 1;
+//                      }
+//
+//              }
               else
               {
                   for (unsigned int side=0; side<n_faces_per_cell; ++side)
@@ -1081,6 +1091,7 @@ namespace vt_darcy
 
               cg_iteration++;
               if (mortar_flag == 1){
+            	  //Edit 12: change dof_handler, solution_star to dof_handler_st and solution_star_st and also quad to quad_mortar.
                         project_mortar(P_fine2coarse,
                                        dof_handler,
                                        solution_star,
@@ -1215,6 +1226,7 @@ namespace vt_darcy
               if (combined_error_iter/e_all_iter[0] < tolerance)
                 {
                   pcout << "\n  GMRES converges in " << cg_iteration << " iterations!\n and residual is"<<combined_error_iter/e_all_iter[0]<<"\n";
+                  //Edit 13: Get rid of guesses.
                   Alambda_guess = Ap;
                   lambda_guess = lambda;
                   break;
@@ -1256,7 +1268,7 @@ namespace vt_darcy
                      for (unsigned int side=0;side<n_faces_per_cell;++side)
                          for (unsigned int i=0;i<interface_dofs[side].size();++i)
                              interface_fe_function_mortar[interface_dofs[side][i]] = interface_data[side][i];
-
+                     //Edit 14:  change dof_handler and interface_fe_function to _st counterpart.
                      project_mortar(P_coarse2fine,
                                     dof_handler_mortar,
                                     interface_fe_function_mortar,
@@ -1275,6 +1287,12 @@ namespace vt_darcy
                              interface_fe_function[interface_dofs[side][i]] = interface_data[side][i];
                  }
 
+          //Edit 15: replace the following six lines with the following loop:
+          //                  for(loop over the number of time levels){
+          //                	  prm.time += prm.time_step;
+          //                	  solve_time_step(star_bar_flag=3,time_level);
+          //                  }
+          //                  prm.time=0;
 
           assemble_rhs_star(fe_face_values);
           solve_star();
@@ -1992,5 +2010,5 @@ namespace vt_darcy
 
 
     template class DarcyVTProblem<2>;
-    template class DarcyVTProblem<3>;
+//    template class DarcyVTProblem<3>;
 }
