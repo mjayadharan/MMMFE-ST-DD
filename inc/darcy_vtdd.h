@@ -225,6 +225,11 @@ namespace vt_darcy
         BlockVector<double> solution_star_mortar;
         std::vector <BlockVector<double>> multiscale_basis;
 
+        // 3d Space-time data structures
+        BlockVector<double> interface_fe_function_st;
+        BlockVector<double> solution_bar_st;
+        BlockVector<double> solution_star_st;
+
         // Output extra
         ConditionalOStream pcout;
         ConvergenceTable convergence_table;

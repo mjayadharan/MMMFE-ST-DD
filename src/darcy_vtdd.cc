@@ -813,7 +813,7 @@ namespace vt_darcy
 
           for (unsigned int side = 0; side < n_faces_per_cell; ++side)
             if (neighbors[side] >= 0)
-              {
+              {	// Edit 1 : In the following places to interface_dofs_mortar iff interface_dofs is replaced with interface_dofs_mortar.
                     interface_data_receive[side].resize(interface_dofs[side].size(),
                                                         0);
                     interface_data_send[side].resize(interface_dofs[side].size(), 0);
@@ -822,6 +822,8 @@ namespace vt_darcy
               }
 
           // Extra for projections from mortar to fine grid and RHS assembly
+          //Edit 2: add extra quad_mortar for mortar projection: Quadrature<dim> will be needed(2d faces). Also replace all the quad from the
+          //projections with quad_mortar
           Quadrature<dim - 1> quad;
           quad = QGauss<dim - 1>(qdegree);
 
@@ -849,11 +851,11 @@ namespace vt_darcy
 
 
 
-          // CG structures and parameters
-          std::vector<double> alpha_side(n_faces_per_cell, 0),
-            alpha_side_d(n_faces_per_cell, 0), beta_side(n_faces_per_cell, 0),
-            beta_side_d(n_faces_per_cell, 0); //to be deleted
-          std::vector<double> alpha(2, 0), beta(2, 0); //to be deleted
+//          // CG structures and parameters
+//          std::vector<double> alpha_side(n_faces_per_cell, 0),
+//            alpha_side_d(n_faces_per_cell, 0), beta_side(n_faces_per_cell, 0),
+//            beta_side_d(n_faces_per_cell, 0); //to be deleted
+//          std::vector<double> alpha(2, 0), beta(2, 0); //to be deleted
 
           std::vector<std::vector<double>> r(n_faces_per_cell); //to be deleted probably: p?
           std::vector<double> r_norm_side(n_faces_per_cell,0);
@@ -862,6 +864,7 @@ namespace vt_darcy
 
           //defing q  to push_back to Q (reused in Arnoldi algorithm)
           std::vector<std::vector<double>> q(n_faces_per_cell);
+
 
           solve_bar();
 
