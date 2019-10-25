@@ -414,11 +414,19 @@ namespace vt_darcy
     void DarcyVTProblem<dim>::get_interface_dofs_st()
     {
         TimerOutput::Scope t(computing_timer, "Get interface DoFs S-T");
-        interface_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+        assert(interface_dofs_subd.size()!=0);
+        int n_faces = GeometryInfo<dim>::faces_per_cell;
+        interface_dofs_st.resize(prm.num_time_steps,interface_dofs_subd);
+        std::vector<unsigned int> dofs_count_per_side(n_faces,0);
+        for(int side=0; side<n_faces; side++)
+        	if(neighbors[side]>=0)
+        		dofs_count_per_side[side]= interface_dofs_subd[side].size();
+        std::vector<unsigned int> counter_per_side(n_faces,0);
+        std::vector<int> time_step_level(n_faces,0);
+//        interface_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
 
         std::vector<types::global_dof_index> local_face_dof_indices;
-
-        typename DoFHandler<3>::active_cell_iterator cell, endc;
+        typename DoFHandler<dim+1>::active_cell_iterator cell, endc;
 
         cell = dof_handler_st.begin_active(),
                endc = dof_handler_st.end();
@@ -426,16 +434,19 @@ namespace vt_darcy
 
         for (;cell!=endc;++cell)
         {
-            for (unsigned int face_n=0;
-                 face_n<GeometryInfo<dim>::faces_per_cell;
-                 ++face_n)
+            for (unsigned int face_n=0; face_n<n_faces; ++face_n)
                 if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
                 {
                     cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
-
                     for (auto el : local_face_dof_indices){
-                            interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
-
+//                            interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
+                    	interface_dofs_st[time_step_level[face_n]][cell->face(face_n)->boundary_id()-1][counter_per_side[face_n]] = el;
+                    	counter_per_side[face_n]+=1;
+                    	if(counter_per_side[face_n]==dofs_count_per_side[face_n])
+                    	{
+                    		counter_per_side[face_n]=0;
+                    		time_step_level[face_n]+=1;
+                    	}
 
                     }
                 }
@@ -1837,33 +1848,6 @@ namespace vt_darcy
                     }
                     GridGenerator::subdivided_hyper_rectangle(triangulation_st, mesh_reps[this_mpi], p_st1, p_st2);
 
-//                    //feface_q just to check the suport points match with the 3d case.
-//                    Triangulation<dim> triangulation_face_dummy;
-//                    std::vector<std::vector<unsigned int>> mesh_reps_2(reps);
-//                    for(int dum_i=0; dum_i<mesh_reps_2.size();dum_i++){
-//                       mesh_reps_2[dum_i][0]=2*mesh_reps_2[dum_i][0];
-//                       mesh_reps_2[dum_i][1]=2*mesh_reps_2[dum_i][1];
-//                       }
-//                    GridGenerator::subdivided_hyper_rectangle(triangulation_face_dummy, mesh_reps_2[this_mpi], p1, p2);
-//                    FE_FaceQ<dim> fe_face_2(0);
-//                    DoFHandler<dim> fe_face_dof_handler(triangulation_face_dummy);
-//                    fe_face_dof_handler.distribute_dofs(fe_face_2);
-//                    DoFRenumbering::component_wise(fe_face_dof_handler);
-//                                	if(this_mpi==0){
-//                                		 std::vector<Point<dim>> support_points(fe_face_dof_handler.n_dofs());
-//                                		 MappingQGeneric<dim> mapping_generic(1);
-//                                		 DoFTools::map_dofs_to_support_points(mapping_generic,fe_face_dof_handler,support_points);
-//                                		 std::ofstream output_into_file("output_data_2.txt");
-//                                		 for(int i=0; i<fe_face_dof_handler.n_dofs(); i++){
-//                                			 output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<") \n";
-//                                		 }
-//                                		 output_into_file.close();
-//                                	}
-//
-//                    //end of feface_q just to check the suport points match with the 3d case.
-
-
-
 
 
                 }
@@ -1907,21 +1891,7 @@ namespace vt_darcy
 //            pcout<<"\n \n grid diameter is : "<<GridTools::minimal_cell_diameter(triangulation)<<"\n \n ";
             pcout << "Making grid and DOFs...\n";
             make_grid_and_dofs();
-//            get_interface_dofs_st();
-//
-//            if(cycle==0 && this_mpi==1){
-//            		pcout<<"rached here 1 \n";
-////            		get_interface_dofs_st();
-//            		 std::vector<Point<3>> support_points(dof_handler_st.n_dofs());
-//            		 MappingQGeneric<3> mapping_generic(1);
-//            		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_st,support_points);
-//
-//            		 std::ofstream output_into_file("output_data.txt");
-//            		 for(int i=0; i<interface_dofs_st[2].size(); i++){
-//            			 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[2][i]][0]<<" , "<<support_points[interface_dofs_st[2][i]][1]<<" , "<<support_points[interface_dofs_st[2][i]][2]<<") \n";
-//            		 }
-//            		 output_into_file.close();
-//            	}
+
 
             lambda_guess.resize(GeometryInfo<dim>::faces_per_cell);
             Alambda_guess.resize(GeometryInfo<dim>::faces_per_cell);
@@ -1955,6 +1925,29 @@ namespace vt_darcy
             if (Utilities::MPI::n_mpi_processes(mpi_communicator) != 1)
             		get_interface_dofs();
 
+//            /************************************************************************************************************/
+//            pcout<<"rached here 1 \n";
+////                        get_interface_dofs_st();
+//                        if(cycle==1 && this_mpi==1){
+//                        	get_interface_dofs_st();
+//            //            		get_interface_dofs_st();
+//                        		 std::vector<Point<3>> support_points(dof_handler_st.n_dofs());
+//                        		 MappingQGeneric<3> mapping_generic(1);
+//                        		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_st,support_points);
+//
+//                        		 std::ofstream output_into_file("output_data.txt");
+//                        		 for(int time_level_it=0; time_level_it<prm.num_time_steps; time_level_it++)
+//                        		 {
+//                        			 output_into_file<<"time level= "<<time_level_it<<". \n";
+//									 for(int i=0; i<interface_dofs_st[time_level_it][2].size(); i++){
+//										 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[time_level_it][2][i]][0]<<" , "<<support_points[interface_dofs_st[time_level_it][2][i]][1]<<" , "<<support_points[interface_dofs_st[time_level_it][2][i]][2]<<") \n";
+//									 }
+//                        		 }
+//                        		 output_into_file.close();
+//                        	}
+//            /************************************************************************************************************/
+//
+//            /************************************************************************************************************/
 //            //feface_q just to check the suport points match with the 3d case.
 //            if(cycle==1){
 //            Triangulation<dim> triangulation_face_dummy;
@@ -1982,9 +1975,7 @@ namespace vt_darcy
 //                        	}
 //            }
 //            //end of feface_q just to check the suport points match with the 3d case.
-//            if(this_mpi==0 &&cycle==2){
-//            	pcout<<"number of interface dofs is: "<<interface_dofs[1].size()<<"\n";
-//            }
+//            /************************************************************************************************************/
 
             for(unsigned int i=0; i<prm.num_time_steps; i++)
             {

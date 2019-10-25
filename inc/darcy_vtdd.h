@@ -173,7 +173,7 @@ namespace vt_darcy
         std::vector<unsigned int> faces_on_interface_st;
         std::vector <std::vector<unsigned int>> interface_dofs; //dofs on the mortar space time interface.
         std::vector <std::vector<unsigned int>> interface_dofs_subd; //dofs on 2d-subdomain interface.
-        std::vector <std::vector<unsigned int>> interface_dofs_st; //subdomain space time subdomain.
+        std::vector<std::vector <std::vector<unsigned int>>> interface_dofs_st; //for 3d space-tiem subdomain mesh. first component corresponds to time_level.
 
 
 
