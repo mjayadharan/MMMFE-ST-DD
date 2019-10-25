@@ -414,16 +414,22 @@ namespace vt_darcy
     void DarcyVTProblem<dim>::get_interface_dofs_st()
     {
         TimerOutput::Scope t(computing_timer, "Get interface DoFs S-T");
-        assert(interface_dofs_subd.size()!=0);
-        int n_faces = GeometryInfo<dim>::faces_per_cell;
-        interface_dofs_st.resize(prm.num_time_steps,interface_dofs_subd);
-        std::vector<unsigned int> dofs_count_per_side(n_faces,0);
-        for(int side=0; side<n_faces; side++)
-        	if(neighbors[side]>=0)
-        		dofs_count_per_side[side]= interface_dofs_subd[side].size();
-        std::vector<unsigned int> counter_per_side(n_faces,0);
-        std::vector<int> time_step_level(n_faces,0);
-//        interface_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+        pcout<<"inteface_dofs_subd size is : "<<interface_dofs_subd.size()<<"\n";
+//        assert(interface_dofs_subd.size()!=0);
+        unsigned int n_faces = GeometryInfo<dim>::faces_per_cell;
+        interface_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+//        /***********************************************************/
+//        //taking care of different time levels.
+////        interface_dofs_st.resize(prm.num_time_steps,interface_dofs_subd);
+//        interface_dofs_st.resize(prm.num_time_steps,interface_dofs_subd);
+//        std::vector<unsigned int> dofs_count_per_side(n_faces,0);
+//        for(unsigned int side=0; side<n_faces; side++)
+//        	if(neighbors[side]>=0)
+//        		dofs_count_per_side[side]= interface_dofs_subd[side].size();
+//        std::vector<unsigned int> counter_per_side(n_faces,0);
+//        std::vector<int> time_step_level(n_faces,0);
+////        interface_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+//        /***********************************************************/
 
         std::vector<types::global_dof_index> local_face_dof_indices;
         typename DoFHandler<dim+1>::active_cell_iterator cell, endc;
@@ -439,14 +445,14 @@ namespace vt_darcy
                 {
                     cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
                     for (auto el : local_face_dof_indices){
-//                            interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
-                    	interface_dofs_st[time_step_level[face_n]][cell->face(face_n)->boundary_id()-1][counter_per_side[face_n]] = el;
-                    	counter_per_side[face_n]+=1;
-                    	if(counter_per_side[face_n]==dofs_count_per_side[face_n])
-                    	{
-                    		counter_per_side[face_n]=0;
-                    		time_step_level[face_n]+=1;
-                    	}
+                            interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
+//                    	interface_dofs_st[time_step_level[face_n]][cell->face(face_n)->boundary_id()-1][counter_per_side[face_n]] = el;
+//                    	counter_per_side[face_n]+=1;
+//                    	if(counter_per_side[face_n]==dofs_count_per_side[face_n])
+//                    	{
+//                    		counter_per_side[face_n]=0;
+//                    		time_step_level[face_n]+=1;
+//                    	}
 
                     }
                 }
@@ -1800,6 +1806,7 @@ namespace vt_darcy
     {
         tolerance = tol;
         qdegree = quad_degree;
+        std::vector<std::vector<unsigned int>> reps_local(reps), reps_st_local(reps_st); //local copy of mesh partition information.
 
         const unsigned int this_mpi = Utilities::MPI::this_mpi_process(mpi_communicator);
         const unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
@@ -1834,21 +1841,19 @@ namespace vt_darcy
                 get_subdomain_coordinates(this_mpi, n_domains, subdomain_dimensions, p1, p2);
 
                 //corners of the space time sub-domain.
-                Point<3> p_st1, p_st2;
-                p_st1 = {p1[0],p1[1],0}, p_st2={p2[0],p2[1],prm.num_time_steps*prm.time_step};
+                p1_st = {p1[0],p1[1],0}, p2_st={p2[0],p2[1],prm.num_time_steps*prm.time_step};
 
                 if (mortar_flag){
-                    GridGenerator::subdivided_hyper_rectangle(triangulation, reps[this_mpi], p1, p2);
+                    GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
                     //Making space-time subdomain mesh in 3d .
-                    std::vector<std::vector<unsigned int>> mesh_reps(reps_st);
-                    for(int dum_i=0; dum_i<reps_st.size();dum_i++){
-                    	mesh_reps[dum_i][0]=2*mesh_reps[dum_i][0];
-                    	mesh_reps[dum_i][1]=2*mesh_reps[dum_i][1];
-
-                    }
-                    GridGenerator::subdivided_hyper_rectangle(triangulation_st, mesh_reps[this_mpi], p_st1, p_st2);
-
-
+//                    for(int dum_i=0; dum_i<reps_st.size();dum_i++){
+//                    	mesh_reps[dum_i][0]=2*mesh_reps[dum_i][0];
+//                    	mesh_reps[dum_i][1]=2*mesh_reps[dum_i][1];
+//
+//                    }
+                    GridGenerator::subdivided_hyper_rectangle(triangulation_st, reps_st_local[this_mpi], p1_st, p2_st);
+                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_local[n_processes], p1, p2);
+                    pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
 
                 }
                 else
@@ -1858,11 +1863,11 @@ namespace vt_darcy
                       GridTools::distort_random (0.1*(1+this_mpi), triangulation, true);
                 }
 
-                if (mortar_flag)
-                {
-                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps[n_processes], p1, p2);
-                    pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
-                }
+//                if (mortar_flag)
+//                {
+//                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_local[n_processes], p1, p2);
+//                    pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
+//                }
 
 
             }
@@ -1870,23 +1875,29 @@ namespace vt_darcy
             {
                 if (mortar_flag == 0)
                     triangulation.refine_global(1);
-                else if (mortar_degree <= 2){
+                else  //(if there is mortar flag)
+                {
 //                    triangulation.refine_global(1);
                 	triangulation.clear();
-                    std::vector<std::vector<unsigned int>> mesh_reps_2(reps);
-                    for(int dum_i=0; dum_i<mesh_reps_2.size();dum_i++){
-                       mesh_reps_2[dum_i][0]=2*mesh_reps_2[dum_i][0];
-                       mesh_reps_2[dum_i][1]=2*mesh_reps_2[dum_i][1];
+                    for(unsigned int dum_i=0; dum_i<reps_local.size();dum_i++){
+                       reps_local[dum_i][0]*=2;
+                       reps_local[dum_i][1]*=2;
                        }
-                    GridGenerator::subdivided_hyper_rectangle(triangulation, mesh_reps_2[this_mpi], p1, p2);
-                }
-                else if (mortar_degree > 2)
-                    triangulation.refine_global(1);
+                    GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
 
-                if (mortar_flag){
-                    triangulation_mortar.refine_global(1);
+                	triangulation_st.clear();
+                    for(unsigned int dum_i=0; dum_i<reps_st_local.size();dum_i++){
+                       reps_st_local[dum_i][0]*=2;
+                       reps_st_local[dum_i][1]*=2;
+                       }
+                    GridGenerator::subdivided_hyper_rectangle(triangulation_st, reps_st_local[this_mpi], p1_st, p2_st);
+
+                	triangulation_mortar.clear();
+                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_local[n_processes], p1, p2);
                     pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
+
                 }
+
             }
 //            pcout<<"\n \n grid diameter is : "<<GridTools::minimal_cell_diameter(triangulation)<<"\n \n ";
             pcout << "Making grid and DOFs...\n";
@@ -1924,13 +1935,14 @@ namespace vt_darcy
 
             if (Utilities::MPI::n_mpi_processes(mpi_communicator) != 1)
             		get_interface_dofs();
+            get_interface_dofs_st();
 
-//            /************************************************************************************************************/
-//            pcout<<"rached here 1 \n";
+                        pcout<<"rached here 1 \n";
+////            /************************************************************************************************************/
+////            pcout<<"rached here 1 \n";
 ////                        get_interface_dofs_st();
-//                        if(cycle==1 && this_mpi==1){
-//                        	get_interface_dofs_st();
-//            //            		get_interface_dofs_st();
+//                        if(cycle==2 && this_mpi==1){
+////                        	get_interface_dofs_st();
 //                        		 std::vector<Point<3>> support_points(dof_handler_st.n_dofs());
 //                        		 MappingQGeneric<3> mapping_generic(1);
 //                        		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_st,support_points);
@@ -1939,13 +1951,15 @@ namespace vt_darcy
 //                        		 for(int time_level_it=0; time_level_it<prm.num_time_steps; time_level_it++)
 //                        		 {
 //                        			 output_into_file<<"time level= "<<time_level_it<<". \n";
-//									 for(int i=0; i<interface_dofs_st[time_level_it][2].size(); i++){
-//										 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[time_level_it][2][i]][0]<<" , "<<support_points[interface_dofs_st[time_level_it][2][i]][1]<<" , "<<support_points[interface_dofs_st[time_level_it][2][i]][2]<<") \n";
+//                        			 int dum_size = interface_dofs_subd[2].size();
+//									 for(int i=0; i<interface_dofs_subd[2].size(); i++){
+//										 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[2][dum_size*time_level_it+i]][0]<<" , "<<support_points[interface_dofs_st[2][dum_size*time_level_it+i]][1]<<" , "<<support_points[interface_dofs_st[2][dum_size*time_level_it+i]][2]<<") \n";
+////										 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[time_level_it][2][i]][0]<<" , "<<support_points[interface_dofs_st[time_level_it][2][i]][1]<<" , "<<support_points[interface_dofs_st[time_level_it][2][i]][2]<<") \n";
 //									 }
 //                        		 }
 //                        		 output_into_file.close();
 //                        	}
-//            /************************************************************************************************************/
+////            /************************************************************************************************************/
 //
 //            /************************************************************************************************************/
 //            //feface_q just to check the suport points match with the 3d case.
