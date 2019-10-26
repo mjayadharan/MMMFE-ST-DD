@@ -30,11 +30,12 @@ namespace vt_darcy
 
     struct BiotParameters
     {
-      BiotParameters(const double dt, const unsigned int nt,
+      BiotParameters(const double dt, const unsigned int nt, const double f_time,
                      const double c = 1.0, const double a = 1.0)
               :
               time(0.0),
               time_step(dt),
+			  final_time(f_time),
               num_time_steps(nt),
               c_0(c),
               alpha(a)
@@ -43,6 +44,7 @@ namespace vt_darcy
       mutable double time;
       const double time_step;
       const unsigned int num_time_steps;
+      const double final_time;
       const double c_0;
       const double alpha;
     };
@@ -108,17 +110,19 @@ namespace vt_darcy
         void get_interface_dofs();
         void get_interface_dofs_st(); //get inteface dofs from the space time interface.
         void assemble_rhs_bar();
-        void assemble_rhs_star(FEFaceValues<dim> &fe_face_values);
+//        void assemble_rhs_star(FEFaceValues<dim> &fe_face_values);
+        void assemble_rhs_star();
         void solve_bar();
 
 
         void solve_star();
-        void solve_timestep(unsigned int maxiter);
+        void solve_timestep(int star_bar_flag, int time_level); //star_bar_flag == 0:solving bar problem, 1: solving star problem, 3: solving bar problem at end after gmres converges, compute final solution, error and output.
+        void solve_darcy_vt(unsigned int maxiter);
 
         void compute_multiscale_basis();
         std::vector<double> compute_interface_error_dh(); //return_vector[0] gives interface_error for elast part and return_vector[1] gives that of flow part.
         double compute_interface_error_l2();
-        void compute_errors(const unsigned int cycle);
+        void compute_errors(const unsigned int refinement_index);
         void output_results(const unsigned int cycle, const unsigned int refine);
 
         void set_current_errors_to_zero();
@@ -164,6 +168,8 @@ namespace vt_darcy
         unsigned int max_cg_iteration;
         double tolerance;
         unsigned int qdegree;
+        unsigned int refinement_index;
+        const unsigned int total_refinements;
 
 
         // Neighbors and interface information
@@ -197,13 +203,13 @@ namespace vt_darcy
 
         //3d Space time triangulation for subdomain.
         Triangulation<dim+1> triangulation_st;
-        FE_FaceQ<dim+1> fe_face_q;
+        FESystem<dim+1> fe_st;
         DoFHandler<dim+1> dof_handler_st;
 
         // Mortar triangulation
-        Triangulation <dim> triangulation_mortar;
-        FESystem <dim> fe_mortar;
-        DoFHandler <dim> dof_handler_mortar;
+        Triangulation <dim+1> triangulation_mortar;
+        FESystem <dim+1> fe_mortar;
+        DoFHandler <dim+1> dof_handler_mortar;
 
         // Star and bar problem data structures
         BlockSparsityPattern sparsity_pattern;
@@ -215,15 +221,16 @@ namespace vt_darcy
         BlockVector<double> solution;
 
         BlockVector<double> old_solution;
+        BlockVector<double> initialc_solution;
 
         BlockVector<double> system_rhs_bar;
-
         BlockVector<double> system_rhs_star;
+        BlockVector<double> interface_fe_function; //need to decide whether to keep this.
+        BlockVector<double> interface_fe_function_subdom;
 
-        BlockVector<double> interface_fe_function;
 
-        std::vector<std::vector<double>> lambda_guess;
-        std::vector<std::vector<double>> Alambda_guess;
+//        std::vector<std::vector<double>> lambda_guess;
+//        std::vector<std::vector<double>> Alambda_guess;
 
         // Mortar data structures
         BlockVector<double> interface_fe_function_mortar;

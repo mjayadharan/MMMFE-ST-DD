@@ -31,17 +31,20 @@ int main (int argc, char *argv[])
         double c0=1;
         double alpha=1;
         int num_cycle=3;
+        double time_step_size = 0.001;
+        int n_time_steps = 3; //this is just used to define the final_time in next line and to give a starting point for the actual num_time_steps, not anywhere else.
+        double final_time = n_time_steps*time_step_size;
         int max_itr=500;
         double tolerence = 1.e-11;
-        BiotParameters bparam (0.001,2,c0,alpha);
+        BiotParameters bparam (time_step_size,n_time_steps,final_time,c0,alpha);
 
         // Time space mortar mesh parameters   (non-matching checkerboard in space-time)
         std::vector<std::vector<unsigned int>> mesh_m3d(5);
-        mesh_m3d[0] = {2,2,bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 1.
-        mesh_m3d[1] = {3,3,bparam.num_time_steps};
-        mesh_m3d[2] = {3,3,bparam.num_time_steps};
-        mesh_m3d[3] = {2,2,bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 4.
-        mesh_m3d[4] = {1,1,bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for mortar domain.
+        mesh_m3d[0] = {2,2,2*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 1.
+        mesh_m3d[1] = {3,3,3*bparam.num_time_steps};
+        mesh_m3d[2] = {3,3,3*bparam.num_time_steps};
+        mesh_m3d[3] = {2,2,2*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 4.
+        mesh_m3d[4] = {1,1,1*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for mortar domain.
 
 
 //        //DarcyDD without mortar
