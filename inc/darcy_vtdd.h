@@ -242,6 +242,7 @@ namespace vt_darcy
         BlockVector<double> interface_fe_function_st;
         BlockVector<double> solution_bar_st;
         BlockVector<double> solution_star_st;
+        std::vector<BlockVector<double>> solution_bar_collection;
 
         // Output extra
         ConditionalOStream pcout;

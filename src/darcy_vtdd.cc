@@ -229,11 +229,13 @@ namespace vt_darcy
 			            solution_bar_mortar.block(0).reinit (n_z_mortar);
 			            solution_bar_mortar.block(1).reinit (n_p_mortar);
 			            solution_bar_mortar.collect_sizes ();
+			            solution_bar_mortar=0;
 
 			            solution_star_mortar.reinit(2);
 			            solution_star_mortar.block(0).reinit (n_z_mortar);
 			            solution_star_mortar.block(1).reinit (n_p_mortar);
 			            solution_star_mortar.collect_sizes ();
+			            solution_star_mortar=0;
 
 						//Space-time part.
 			            std::vector<types::global_dof_index> dofs_per_component_st (dim+1 + 1);
@@ -247,11 +249,15 @@ namespace vt_darcy
 			            solution_bar_st.block(0).reinit (n_z_st);
 			            solution_bar_st.block(1).reinit (n_p_st);
 			            solution_bar_st.collect_sizes ();
+			            solution_bar_st=0;
 
 			            solution_star_st.reinit(2);
 			            solution_star_st.block(0).reinit (n_z_st);
 			            solution_star_st.block(1).reinit (n_p_st);
 			            solution_star_st.collect_sizes ();
+			            solution_star_st=0;
+
+			            solution_bar_collection.resize(prm.num_time_steps,solution_bar);
 			        }
 
 
@@ -602,22 +608,34 @@ namespace vt_darcy
     {
         TimerOutput::Scope t(computing_timer, "Assemble RHS star");
         system_rhs_star = 0;
-        Quadrature<dim - 1> quad;
-        quad = QGauss<dim - 1>(qdegree);
-        FEFaceValues<dim> fe_face_values(fe,
-                                         quad,
-                                         update_values | update_normal_vectors |
-                                         update_quadrature_points |
-        								update_JxW_values);
 
+//        Quadrature<dim - 1> quad;
+//        quad = QGauss<dim - 1>(qdegree);
+//        FEFaceValues<dim> fe_face_values(fe,
+//                                         quad,
+//                                         update_values | update_normal_vectors |
+//                                         update_quadrature_points |
+//        								update_JxW_values);
+        QGauss<dim>   quadrature_formula(degree+3);
+        QGauss<dim-1> face_quadrature_formula(qdegree);
+
+        FEValues<dim> fe_values (fe, quadrature_formula,
+                                 update_values    |
+                                 update_quadrature_points  | update_JxW_values);
+        FEFaceValues<dim> fe_face_values (fe, face_quadrature_formula,
+                                          update_values    | update_normal_vectors |
+                                          update_quadrature_points  | update_JxW_values);
+
+        const unsigned int dofs_per_cell   = fe.dofs_per_cell;
+        const unsigned int n_q_points      = fe_values.get_quadrature().size();
         const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
-        const unsigned int dofs_per_cell = fe.dofs_per_cell;
 
         Vector<double>       local_rhs (dofs_per_cell);
         std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
 
         const FEValuesExtractors::Vector velocity (0);
+        const FEValuesExtractors::Scalar pressure (dim);
 
         std::vector<Tensor<1, dim>> interface_values_flux(n_face_q_points);
 
@@ -627,8 +645,28 @@ namespace vt_darcy
         for (;cell!=endc;++cell)
         {
             local_rhs = 0;
+            fe_values.reinit (cell);
 
-            Tensor<2,dim> interface_lambda;
+            std::vector <double> phi_p(dofs_per_cell);
+            std::vector<double> old_pressure_values(n_q_points);
+
+            if(prm.time>prm.time_step)
+            	fe_values[pressure].get_function_values (old_solution, old_pressure_values);
+
+            for (unsigned int q=0; q<n_q_points; ++q)
+               {
+
+                   for (unsigned int k=0; k<dofs_per_cell; ++k)
+                   {
+                       // Evaluate test functions
+                       phi_p[k] = fe_values[pressure].value (k, q);
+
+                   }
+
+                   for (unsigned int i=0; i<dofs_per_cell; ++i)
+                       local_rhs(i) += ( prm.c_0*old_pressure_values[q] * phi_p[i] )* fe_values.JxW(q);
+               }
+
 
             for (unsigned int face_n=0;
                  face_n<GeometryInfo<dim>::faces_per_cell;
@@ -691,12 +729,10 @@ namespace vt_darcy
     template<int dim>
     void DarcyVTProblem<dim>::solve_darcy_vt(unsigned int maxiter)
     {
-		  if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
-		  {
+
 			  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
 			  {
 				  prm.time +=prm.time_step;
-				  //Edit solve_darcy: add the improved sove time step here.
 				  solve_timestep(0,time_level);
 //				  assemble_rhs_bar ();
 //			//old_solution.print(std::cout);
@@ -707,23 +743,24 @@ namespace vt_darcy
 //			  system_rhs_bar = 0;
 //				 compute_errors(refinement_index);
 //				 output_results(refinement_index,total_refinements);
-			  }
+			  }//end of solving the bar problems.
 			  prm.time=0.0;
-		  }
-		  else
-		  {
-			pcout << "\nStarting GMRES iterations, time t=" << prm.time << "s..." << "\n";
-			assemble_rhs_bar ();
-	//        local_cg(maxiter);
-			local_gmres (maxiter);
 
-			if (cg_iteration > max_cg_iteration)
-			  max_cg_iteration = cg_iteration;
-
-			system_rhs_bar = 0;
-			system_rhs_star = 0;
-			  cg_iteration = 0;
-		  }
+			  local_gmres(maxiter);
+//		  if(something_happnes)
+//		  {
+//			pcout << "\nStarting GMRES iterations, time t=" << prm.time << "s..." << "\n";
+//			assemble_rhs_bar ();
+//	//        local_cg(maxiter);
+//			local_gmres (maxiter);
+//
+//			if (cg_iteration > max_cg_iteration)
+//			  max_cg_iteration = cg_iteration;
+//
+//			system_rhs_bar = 0;
+//			system_rhs_star = 0;
+//			  cg_iteration = 0;
+//		  }
 
 
     }
@@ -745,23 +782,48 @@ namespace vt_darcy
 				old_solution = solution_bar;
 				system_rhs_bar=0;
 				//transferring solution to st mesh.
-				if(mortar_flag)
+				if(mortar_flag){
+					solution_bar_collection[time_level]= solution_bar;
 					subdom_to_st_distribute<dim>(solution_bar_st, interface_dofs_st,
 											solution_bar, interface_dofs_subd,
 											time_level, neighbors);
-				break;
+					solution_bar=0;
+				}
+				break; //break for case 0
+
 			case 1: //solving star problem at time_level and carrying solution to st mesh boundary multiple times during local_gmres.
 				st_to_subdom_distribute<dim>(interface_fe_function_st, interface_dofs_st,
 											interface_fe_function, interface_dofs_subd,
 											time_level, neighbors);
 				assemble_rhs_star();
+				solve_star();
+				interface_fe_function=0;
 				old_solution = solution_star;
 				subdom_to_st_distribute<dim>(solution_star_st, interface_dofs_st,
 											 solution_star, interface_dofs_subd,
 											 time_level, neighbors);
+				solution_star=0;
 
 
-				break;
+				break; //break for case 1
+
+			case 2: //solving star problem final time after gmres converges: also compute error and output result corresponding to time_level.
+				st_to_subdom_distribute<dim>(interface_fe_function_st, interface_dofs_st,
+											interface_fe_function, interface_dofs_subd,
+											time_level, neighbors);
+				assemble_rhs_star();
+				solve_star();
+				interface_fe_function=0;
+				old_solution = solution_star;
+				solution=0;
+				solution.sadd(1.0,solution_star);
+				solution.sadd(1.0,solution_bar_collection[time_level]);
+				compute_errors(refinement_index);
+				output_results(refinement_index,total_refinements);
+				solution_star=0;
+
+
+				break; //break for case 1
 
     	}
 //		  if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
