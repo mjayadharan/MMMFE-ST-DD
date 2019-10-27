@@ -766,7 +766,7 @@ namespace vt_darcy
     }
 
     template<int dim>
-    void DarcyVTProblem<dim>::solve_timestep(int star_bar_flag, int time_level)
+    void DarcyVTProblem<dim>::solve_timestep(int star_bar_flag, unsigned int time_level)
     {
     	switch(star_bar_flag){
 
@@ -1610,64 +1610,64 @@ namespace vt_darcy
         return return_vector;
     }
 
-    // MixedBiotProblemDD::compute_interface_error in the l2 norm
-    template <int dim>
-    double DarcyVTProblem<dim>::compute_interface_error_l2()
-    {
-        system_rhs_star = 0;
-        double error_calculated =0;
-
-        QGauss<dim-1> quad (qdegree);
-        QGauss<dim-1> project_quad (qdegree);
-        FEFaceValues<dim+1> fe_face_values (fe_mortar, quad,
-                                          update_values    | update_normal_vectors |
-                                          update_quadrature_points  | update_JxW_values);
-
-        const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
-        const unsigned int dofs_per_cell = fe_mortar.dofs_per_cell;
-        const unsigned int dofs_per_cell_mortar = fe_mortar.dofs_per_cell;
-        const FEValuesExtractors::Vector velocity (0);
-        PressureBoundaryValues<dim>     pressure_boundary_values;
-        pressure_boundary_values.set_time(prm.time);
-        std::vector<Tensor<1, dim>> interface_values_flux(n_face_q_points);
-        std::vector<Tensor<1, dim>> solution_values_flow(n_face_q_points);
-        std::vector<double> pressure_values(n_face_q_points);
-//        Vector<double> pressure_values(n_face_q_points);
-
-        // Assemble rhs for star problem with data = u - lambda_H on interfaces
-        typename DoFHandler<dim>::active_cell_iterator
-                cell = dof_handler_mortar.begin_active(),
-                endc = dof_handler_mortar.end();
-        for (;cell!=endc;++cell)
-        {
-            for (unsigned int face_n=0;
-                 face_n<GeometryInfo<dim>::faces_per_cell;
-                 ++face_n)
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
-                {
-                    fe_face_values.reinit (cell, face_n);
-                    fe_face_values[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);
-                    pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), pressure_values);
-
-                    for (unsigned int q=0; q<n_face_q_points; ++q)
-                        for (unsigned int i=0; i<dofs_per_cell; ++i)
-                        {
-
-                        	 double error_add = pow((
-                	                 (interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
-                	                 fe_face_values.normal_vector(q) - pressure_values[q])),2)*
-                	                 fe_face_values.JxW(q);
-                        	 error_calculated+= error_add;
-
-
-
-                        }
-                }
-
-        }
-
-        return error_calculated;
-    }
+//    // MixedBiotProblemDD::compute_interface_error in the l2 norm
+//    template <int dim>
+//    double DarcyVTProblem<dim>::compute_interface_error_l2()
+//    {
+//        system_rhs_star = 0;
+//        double error_calculated =0;
+//
+//        QGauss<dim-1> quad (qdegree);
+//        QGauss<dim-1> project_quad (qdegree);
+//        FEFaceValues<dim+1> fe_face_values (fe_mortar, quad,
+//                                          update_values    | update_normal_vectors |
+//                                          update_quadrature_points  | update_JxW_values);
+//
+//        const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
+//        const unsigned int dofs_per_cell = fe_mortar.dofs_per_cell;
+//        const unsigned int dofs_per_cell_mortar = fe_mortar.dofs_per_cell;
+//        const FEValuesExtractors::Vector velocity (0);
+//        PressureBoundaryValues<dim>     pressure_boundary_values;
+//        pressure_boundary_values.set_time(prm.time);
+//        std::vector<Tensor<1, dim>> interface_values_flux(n_face_q_points);
+//        std::vector<Tensor<1, dim>> solution_values_flow(n_face_q_points);
+//        std::vector<double> pressure_values(n_face_q_points);
+////        Vector<double> pressure_values(n_face_q_points);
+//
+//        // Assemble rhs for star problem with data = u - lambda_H on interfaces
+//        typename DoFHandler<dim>::active_cell_iterator
+//                cell = dof_handler_mortar.begin_active(),
+//                endc = dof_handler_mortar.end();
+//        for (;cell!=endc;++cell)
+//        {
+//            for (unsigned int face_n=0;
+//                 face_n<GeometryInfo<dim>::faces_per_cell;
+//                 ++face_n)
+//                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+//                {
+//                    fe_face_values.reinit (cell, face_n);
+//                    fe_face_values[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);
+//                    pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), pressure_values);
+//
+//                    for (unsigned int q=0; q<n_face_q_points; ++q)
+//                        for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                        {
+//
+//                        	 double error_add = pow((
+//                	                 (interface_values_flux[q] * get_normal_direction(cell->face(face_n)->boundary_id()-1) *
+//                	                 fe_face_values.normal_vector(q) - pressure_values[q])),2)*
+//                	                 fe_face_values.JxW(q);
+//                        	 error_calculated+= error_add;
+//
+//
+//
+//                        }
+//                }
+//
+//        }
+//
+//        return error_calculated;
+//    }
 
 
     // MixedBiotProblemDD::compute_errors
@@ -1792,7 +1792,7 @@ namespace vt_darcy
             interface_fe_function_subdom = 0;
             interface_fe_function_mortar = 0;
             tmp_err_vect = compute_interface_error_dh();
-            err.l2_l2_norms[2] += compute_interface_error_l2();
+//            err.l2_l2_norms[2] += compute_interface_error_l2();
             l_int_norm_darcy = tmp_err_vect[1];
 //            }
         }

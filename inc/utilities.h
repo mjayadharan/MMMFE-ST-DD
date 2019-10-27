@@ -473,7 +473,7 @@ namespace vt_darcy
     project_mortar (Projector::Projector<dim+1> &proj,
                     const DoFHandler<dim+1>     &dof1,
                     BlockVector<double>       &in_vec,
-                    const Quadrature<dim+1>   &quad,
+                    const Quadrature<dim>   &quad,
                     ConstraintMatrix          &constraints,
                     const std::vector<int>    &neighbors,
                     const DoFHandler<dim+1>     &dof2,

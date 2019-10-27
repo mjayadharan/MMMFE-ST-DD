@@ -116,7 +116,7 @@ namespace vt_darcy
 
 
         void solve_star();
-        void solve_timestep(int star_bar_flag, int time_level); //star_bar_flag == 0:solving bar problem, 1: solving star problem, 3: solving bar problem at end after gmres converges, compute final solution, error and output.
+        void solve_timestep(int star_bar_flag, unsigned int time_level); //star_bar_flag == 0:solving bar problem, 1: solving star problem, 3: solving bar problem at end after gmres converges, compute final solution, error and output.
         void solve_darcy_vt(unsigned int maxiter);
 
         void compute_multiscale_basis();
@@ -152,7 +152,7 @@ namespace vt_darcy
 
 
         // Physical parameters
-        const BiotParameters prm;
+         BiotParameters prm;
         BiotErrors err;
 
         double grid_diameter;
