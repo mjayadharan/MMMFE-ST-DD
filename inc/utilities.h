@@ -505,36 +505,36 @@ namespace vt_darcy
 
     //Functions to transfer solution between 2d RT space mesh and 3d space-time mesh.
 
-    // from space-time subdomain mesh to 2d sub-domain space mesh
-    template <int dim>
-    void
-    st_to_subdom_distribute (BlockVector<double> &vector_st, std::vector <std::vector<unsigned int>> &interface_dofs_st,
-    						 BlockVector<double> &vector_subdom, std::vector <std::vector<unsigned int>> &interface_dofs_subd,
-							 unsigned int &time_level,  const std::vector<int> &neighbors)
-    {
-        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
-              if (neighbors[side] >= 0){
-            	  int interface_dofs_side_size = interface_dofs_subd[side].size();
-            	  for(int i=0; i<interface_dofs_side_size; i++)
-            		  vector_subdom[ interface_dofs_subd[side][i]] = vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]];
-              }
-
-    }
-
-    // from 2-d subdomain space mesh to 3-d subdomain space-time mesh
-    template <int dim>
-    void
-    subdom_to_st_distribute (BlockVector<double> &vector_st, std::vector <std::vector<unsigned int>> &interface_dofs_st,
-    						 BlockVector<double> &vector_subdom, std::vector <std::vector<unsigned int>> &interface_dofs_subd,
-							 unsigned int &time_level,  const std::vector<int> &neighbors)
-    {
-        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
-            if (neighbors[side] >= 0){
-          	  int interface_dofs_side_size = interface_dofs_subd[side].size();
-          	  for(int i=0; i<interface_dofs_side_size; i++)
-          		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= vector_subdom[ interface_dofs_subd[side][i]];
-            }
-    }
+//    // from space-time subdomain mesh to 2d sub-domain space mesh
+//    template <int dim>
+//    void
+//    st_to_subdom_distribute (BlockVector<double> &vector_st, std::vector <std::vector<unsigned int>> &interface_dofs_st,
+//    						 BlockVector<double> &vector_subdom, std::vector <std::vector<unsigned int>> &interface_dofs_subd,
+//							 unsigned int &time_level,  const std::vector<int> &neighbors)
+//    {
+//        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
+//              if (neighbors[side] >= 0){
+//            	  int interface_dofs_side_size = interface_dofs_subd[side].size();
+//            	  for(int i=0; i<interface_dofs_side_size; i++)
+//            		  vector_subdom[ interface_dofs_subd[side][i]] = vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]];
+//              }
+//
+//    }
+//
+//    // from 2-d subdomain space mesh to 3-d subdomain space-time mesh
+//    template <int dim>
+//    void
+//    subdom_to_st_distribute (BlockVector<double> &vector_st, std::vector <std::vector<unsigned int>> &interface_dofs_st,
+//    						 BlockVector<double> &vector_subdom, std::vector <std::vector<unsigned int>> &interface_dofs_subd,
+//							 unsigned int &time_level,  const std::vector<int> &neighbors)
+//    {
+//        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
+//            if (neighbors[side] >= 0){
+//          	  int interface_dofs_side_size = interface_dofs_subd[side].size();
+//          	  for(int i=0; i<interface_dofs_side_size; i++)
+//          		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= vector_subdom[ interface_dofs_subd[side][i]];
+//            }
+//    }
 
 
 

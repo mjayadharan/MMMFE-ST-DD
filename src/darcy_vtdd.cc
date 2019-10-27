@@ -355,6 +355,8 @@ namespace vt_darcy
                                        local_matrix(i,j));
         }
 
+        pcout << "  ...factorized..." << "\n";
+        A_direct.initialize(system_matrix);
     }
 
 
@@ -500,7 +502,7 @@ namespace vt_darcy
   template <int dim>
   void DarcyVTProblem<dim>::assemble_rhs_bar ()
   {
-      TimerOutput::Scope t(computing_timer, "Assemble RHS bar");
+//      TimerOutput::Scope t(computing_timer, "Assemble RHS bar");
       system_rhs_bar = 0;
 
       QGauss<dim>   quadrature_formula(degree+3);
@@ -606,7 +608,7 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::assemble_rhs_star ()
     {
-        TimerOutput::Scope t(computing_timer, "Assemble RHS star");
+//        TimerOutput::Scope t(computing_timer, "Assemble RHS star");
         system_rhs_star = 0;
 
 //        Quadrature<dim - 1> quad;
@@ -700,15 +702,15 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::solve_bar ()
     {
-        TimerOutput::Scope t(computing_timer, "Solve bar");
+//        TimerOutput::Scope t(computing_timer, "Solve bar");
 
-        if (cg_iteration == 0 && prm.time == prm.time_step)
-        {
-
+//        if (cg_iteration == 0 && prm.time == prm.time_step)
+//        {
+//
+////          A_direct.initialize(system_matrix);
+//          pcout << "  ...factorized..." << "\n";
 //          A_direct.initialize(system_matrix);
-          pcout << "  ...factorized..." << "\n";
-          A_direct.initialize(system_matrix);
-        }
+//        }
 
         A_direct.vmult (solution_bar, system_rhs_bar);
 
@@ -720,7 +722,7 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::solve_star ()
     {
-        TimerOutput::Scope t(computing_timer, "Solve star");
+//        TimerOutput::Scope t(computing_timer, "Solve star");
 
         A_direct.vmult (solution_star, system_rhs_star);
 
@@ -784,33 +786,25 @@ namespace vt_darcy
 				//transferring solution to st mesh.
 				if(mortar_flag){
 					solution_bar_collection[time_level]= solution_bar;
-					subdom_to_st_distribute<dim>(solution_bar_st, interface_dofs_st,
-											solution_bar, interface_dofs_subd,
-											time_level, neighbors);
+					subdom_to_st_distribute(solution_bar_st, solution_bar, time_level);
 					solution_bar=0;
 				}
 				break; //break for case 0
 
 			case 1: //solving star problem at time_level and carrying solution to st mesh boundary multiple times during local_gmres.
-				st_to_subdom_distribute<dim>(interface_fe_function_st, interface_dofs_st,
-											interface_fe_function_subdom, interface_dofs_subd,
-											time_level, neighbors);
+				st_to_subdom_distribute(interface_fe_function_st, interface_fe_function_subdom, time_level);
 				assemble_rhs_star();
 				solve_star();
 				interface_fe_function_subdom=0;
 				old_solution = solution_star;
-				subdom_to_st_distribute<dim>(solution_star_st, interface_dofs_st,
-											 solution_star, interface_dofs_subd,
-											 time_level, neighbors);
+				subdom_to_st_distribute(solution_star_st, solution_star, time_level);
 				solution_star=0;
 
 
 				break; //break for case 1
 
 			case 2: //solving star problem final time after gmres converges: also compute error and output result corresponding to time_level.
-				st_to_subdom_distribute<dim>(interface_fe_function_st, interface_dofs_st,
-											interface_fe_function_subdom, interface_dofs_subd,
-											time_level, neighbors);
+				st_to_subdom_distribute(interface_fe_function_st, interface_fe_function_subdom, time_level);
 				assemble_rhs_star();
 				solve_star();
 				interface_fe_function_subdom=0;
@@ -901,6 +895,36 @@ namespace vt_darcy
 //
 //    }
 
+    // from space-time subdomain mesh to 2d sub-domain space mesh
+    template<int dim>
+    void DarcyVTProblem<dim>::st_to_subdom_distribute (BlockVector<double> &vector_st,
+    												   BlockVector<double> &vector_subdom,
+													   unsigned int &time_level)
+    {
+        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
+              if (neighbors[side] >= 0){
+            	  int interface_dofs_side_size = interface_dofs_subd[side].size();
+            	  for(int i=0; i<interface_dofs_side_size; i++)
+            		  vector_subdom[ interface_dofs_subd[side][i]] = vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]];
+              }
+
+    }
+
+    // // from 2-d subdomain space mesh to 3-d subdomain space-time mesh
+    template<int dim>
+    void DarcyVTProblem<dim>::subdom_to_st_distribute (BlockVector<double> &vector_st,
+    												   BlockVector<double> &vector_subdom,
+													   unsigned int &time_level)
+    {
+        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
+            if (neighbors[side] >= 0){
+               	  int interface_dofs_side_size = interface_dofs_subd[side].size();
+               	  for(int i=0; i<interface_dofs_side_size; i++)
+               		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= vector_subdom[ interface_dofs_subd[side][i]];
+                 }
+
+    }
+
     //Functions for GMRES:-------------------
 
 
@@ -984,7 +1008,7 @@ namespace vt_darcy
         void
 		DarcyVTProblem<dim>::local_gmres(const unsigned int maxiter)
         {
-          TimerOutput::Scope t(computing_timer, "Local GMRES");
+//          TimerOutput::Scope t(computing_timer, "Local GMRES");
 
           const unsigned int this_mpi =
             Utilities::MPI::this_mpi_process(mpi_communicator);
@@ -1049,6 +1073,7 @@ namespace vt_darcy
           // interface_fe_function_vt.reinit(solution_bar_vt)
 //          interface_fe_function.reinit(solution_bar);
           interface_fe_function_st.reinit(solution_bar_st);
+          interface_fe_function_subdom.reinit(solution_bar);
 
           if (mortar_flag == 1)
           {
@@ -1283,6 +1308,8 @@ namespace vt_darcy
               cg_iteration++;
               if (mortar_flag == 1){
             	  //Edit 12 Done: change dof_handler, solution_star to dof_handler_st and solution_star_st and also quad to quad_mortar.
+//            	  for(int i_index=0; i_index<solution_star_st.size();++i_index)
+//            		  pcout<<solution_star_st[i_index]<<std::endl;
                         project_mortar<2>(P_fine2coarse,
                                        dof_handler_st,
                                        solution_star_st,
@@ -1410,9 +1437,9 @@ namespace vt_darcy
               //saving the combined error at each iteration
               e_all_iter[k_counter+1]=(combined_error_iter);
 
-//              pcout << "\r  ..." << cg_iteration
-//                    << " iterations completed, (residual = " << combined_error_iter
-//                    << ")..." << std::flush;
+              pcout << "\r  ..." << cg_iteration
+                    << " iterations completed, (residual = " << combined_error_iter
+                    << ")..." << std::flush;
               // Exit criterion
               if (combined_error_iter/e_all_iter[0] < tolerance)
                 {
@@ -1674,7 +1701,7 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::compute_errors (const unsigned int refinement_index)
     {
-      TimerOutput::Scope t(computing_timer, "Compute errors");
+//      TimerOutput::Scope t(computing_timer, "Compute errors");
 
       const unsigned int total_dim = static_cast<unsigned int>(dim + 1);
       const ComponentSelectFunction<dim> velocity_mask(std::make_pair(0, dim), total_dim);
@@ -1849,7 +1876,7 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::output_results (const unsigned int cycle, const unsigned int refine)
 	{
-	        TimerOutput::Scope t(computing_timer, "Output results");
+//	        TimerOutput::Scope t(computing_timer, "Output results");
 	        unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
 	        unsigned int this_mpi = Utilities::MPI::this_mpi_process(mpi_communicator);
 
