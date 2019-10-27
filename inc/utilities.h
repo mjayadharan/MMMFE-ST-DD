@@ -470,21 +470,21 @@ namespace vt_darcy
 
     template <int dim>
     void
-    project_mortar (Projector::Projector<dim> &proj,
-                    const DoFHandler<dim>     &dof1,
+    project_mortar (Projector::Projector<dim+1> &proj,
+                    const DoFHandler<dim+1>     &dof1,
                     BlockVector<double>       &in_vec,
-                    const Quadrature<dim-1>   &quad,
+                    const Quadrature<dim+1>   &quad,
                     ConstraintMatrix          &constraints,
                     const std::vector<int>    &neighbors,
-                    const DoFHandler<dim>     &dof2,
+                    const DoFHandler<dim+1>     &dof2,
                     BlockVector<double>       &out_vec)
     {
         out_vec = 0;
 
-        Functions::FEFieldFunction<dim, DoFHandler<dim>, BlockVector<double>> fe_interface_data (dof1, in_vec);
+        Functions::FEFieldFunction<dim+1, DoFHandler<dim+1>, BlockVector<double>> fe_interface_data (dof1, in_vec);
         std::map<types::global_dof_index,double> boundary_values_velocity;
 
-        typename FunctionMap<dim>::type boundary_functions_velocity;
+        typename FunctionMap<dim+1>::type boundary_functions_velocity;
 
         constraints.clear ();
 

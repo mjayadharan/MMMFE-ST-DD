@@ -42,8 +42,8 @@ namespace vt_darcy
       {}
 
       mutable double time;
-      const double time_step;
-      const unsigned int num_time_steps;
+      double time_step;
+      unsigned int num_time_steps;
       const double final_time;
       const double c_0;
       const double alpha;
@@ -102,8 +102,8 @@ namespace vt_darcy
         MPI_Comm mpi_communicator;
         MPI_Status mpi_status;
 
-        Projector::Projector <dim> P_coarse2fine;
-        Projector::Projector <dim> P_fine2coarse;
+        Projector::Projector <dim+1> P_coarse2fine;
+        Projector::Projector <dim+1> P_fine2coarse;
 
         void make_grid_and_dofs();
         void assemble_system();
@@ -169,7 +169,7 @@ namespace vt_darcy
         double tolerance;
         unsigned int qdegree;
         unsigned int refinement_index;
-        const unsigned int total_refinements;
+        unsigned int total_refinements;
 
 
         // Neighbors and interface information
@@ -225,7 +225,7 @@ namespace vt_darcy
 
         BlockVector<double> system_rhs_bar;
         BlockVector<double> system_rhs_star;
-        BlockVector<double> interface_fe_function; //need to decide whether to keep this.
+//        BlockVector<double> interface_fe_function; //need to decide whether to keep this.
         BlockVector<double> interface_fe_function_subdom;
 
 

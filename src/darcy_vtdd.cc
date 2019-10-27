@@ -674,7 +674,7 @@ namespace vt_darcy
                 if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
                 {
                     fe_face_values.reinit (cell, face_n);
-                    fe_face_values[velocity].get_function_values (interface_fe_function, interface_values_flux);
+                    fe_face_values[velocity].get_function_values (interface_fe_function_subdom, interface_values_flux);
 
                     for (unsigned int q=0; q<n_face_q_points; ++q)
                         for (unsigned int i=0; i<dofs_per_cell; ++i)
@@ -793,11 +793,11 @@ namespace vt_darcy
 
 			case 1: //solving star problem at time_level and carrying solution to st mesh boundary multiple times during local_gmres.
 				st_to_subdom_distribute<dim>(interface_fe_function_st, interface_dofs_st,
-											interface_fe_function, interface_dofs_subd,
+											interface_fe_function_subdom, interface_dofs_subd,
 											time_level, neighbors);
 				assemble_rhs_star();
 				solve_star();
-				interface_fe_function=0;
+				interface_fe_function_subdom=0;
 				old_solution = solution_star;
 				subdom_to_st_distribute<dim>(solution_star_st, interface_dofs_st,
 											 solution_star, interface_dofs_subd,
@@ -809,11 +809,11 @@ namespace vt_darcy
 
 			case 2: //solving star problem final time after gmres converges: also compute error and output result corresponding to time_level.
 				st_to_subdom_distribute<dim>(interface_fe_function_st, interface_dofs_st,
-											interface_fe_function, interface_dofs_subd,
+											interface_fe_function_subdom, interface_dofs_subd,
 											time_level, neighbors);
 				assemble_rhs_star();
 				solve_star();
-				interface_fe_function=0;
+				interface_fe_function_subdom=0;
 				old_solution = solution_star;
 				solution=0;
 				solution.sadd(1.0,solution_star);
@@ -855,51 +855,51 @@ namespace vt_darcy
 
     }
 
-    template <int dim>
-    void DarcyVTProblem<dim>::compute_multiscale_basis ()
-    {
-        TimerOutput::Scope t(computing_timer, "Compute multiscale basis");
-        ConstraintMatrix constraints;
-        QGauss<dim-1> quad(qdegree);
-        FEFaceValues<dim> fe_face_values (fe, quad,
-                                          update_values    | update_normal_vectors |
-                                          update_quadrature_points  | update_JxW_values);
-
-        std::vector<size_t> block_sizes {solution_bar_mortar.block(0).size(), solution_bar_mortar.block(1).size()};
-        long n_interface_dofs = 0;
-
-        for (auto vec : interface_dofs)
-            for (auto el : vec)
-                n_interface_dofs += 1;
-
-        multiscale_basis.resize(n_interface_dofs);
-        BlockVector<double> tmp_basis (solution_bar_mortar);
-
-        interface_fe_function.reinit(solution_bar);
-
-        unsigned int ind = 0;
-        for (unsigned int side=0; side<GeometryInfo<dim>::faces_per_cell; ++side)
-            for (unsigned int i=0; i<interface_dofs[side].size(); ++i)
-            {
-                interface_fe_function = 0;
-                multiscale_basis[ind].reinit(solution_bar_mortar);
-                multiscale_basis[ind] = 0;
-
-                tmp_basis = 0;
-                tmp_basis[interface_dofs[side][i]] = 1.0;
-                project_mortar(P_coarse2fine, dof_handler_mortar, tmp_basis, quad, constraints, neighbors, dof_handler, interface_fe_function);
-
-                interface_fe_function.block(1) = 0;
-//                interface_fe_function.block(2) = 0;
-//                interface_fe_function.block(4) = 0;
-                assemble_rhs_star(fe_face_values);
-                solve_star();
-
-                project_mortar(P_fine2coarse, dof_handler, solution_star, quad, constraints, neighbors, dof_handler_mortar, multiscale_basis[ind]);
-                ind += 1;
-            }
-
-    }
+//    template <int dim>
+//    void DarcyVTProblem<dim>::compute_multiscale_basis ()
+//    {
+//        TimerOutput::Scope t(computing_timer, "Compute multiscale basis");
+//        ConstraintMatrix constraints;
+//        QGauss<dim-1> quad(qdegree);
+//        FEFaceValues<dim> fe_face_values (fe, quad,
+//                                          update_values    | update_normal_vectors |
+//                                          update_quadrature_points  | update_JxW_values);
+//
+//        std::vector<size_t> block_sizes {solution_bar_mortar.block(0).size(), solution_bar_mortar.block(1).size()};
+//        long n_interface_dofs = 0;
+//
+//        for (auto vec : interface_dofs)
+//            for (auto el : vec)
+//                n_interface_dofs += 1;
+//
+//        multiscale_basis.resize(n_interface_dofs);
+//        BlockVector<double> tmp_basis (solution_bar_mortar);
+//
+//        interface_fe_function_subdom.reinit(solution_bar);
+//
+//        unsigned int ind = 0;
+//        for (unsigned int side=0; side<GeometryInfo<dim>::faces_per_cell; ++side)
+//            for (unsigned int i=0; i<interface_dofs[side].size(); ++i)
+//            {
+//                interface_fe_function_subdom = 0;
+//                multiscale_basis[ind].reinit(solution_bar_mortar);
+//                multiscale_basis[ind] = 0;
+//
+//                tmp_basis = 0;
+//                tmp_basis[interface_dofs[side][i]] = 1.0;
+//                project_mortar(P_coarse2fine, dof_handler_mortar, tmp_basis, quad, constraints, neighbors, dof_handler, interface_fe_function);
+//
+//                interface_fe_function_subdom.block(1) = 0;
+////                interface_fe_function.block(2) = 0;
+////                interface_fe_function.block(4) = 0;
+//                assemble_rhs_star();
+//                solve_star();
+//
+//                project_mortar(P_fine2coarse, dof_handler, solution_star, quad, constraints, neighbors, dof_handler_mortar, multiscale_basis[ind]);
+//                ind += 1;
+//            }
+//
+//    }
 
     //Functions for GMRES:-------------------
 
@@ -1009,19 +1009,19 @@ namespace vt_darcy
               }
 
           // Extra for projections from mortar to fine grid and RHS assembly
-          //Edit 2: add extra quad_mortar for mortar projection: Quadrature<dim> will be needed(2d faces). Also replace all the quad from the
+          //Edit 2 Done: add extra quad_mortar for mortar projection: Quadrature<dim> will be needed(2d faces). Also replace all the quad from the
           //projections with quad_mortar
-          Quadrature<dim - 1> quad;
-          quad = QGauss<dim - 1>(qdegree);
+          Quadrature<dim > quad;
+          quad = QGauss<dim >(qdegree);
 
           ConstraintMatrix  constraints;
           constraints.clear();
           constraints.close();
-          FEFaceValues<dim> fe_face_values(fe,
-                                           quad,
-                                           update_values | update_normal_vectors |
-                                             update_quadrature_points |
-											 update_JxW_values);
+//          FEFaceValues<dim> fe_face_values(fe,
+//                                           quad,
+//                                           update_values | update_normal_vectors |
+//                                             update_quadrature_points |
+//											 update_JxW_values);
           int temp_array_size = maxiter/4;
           //GMRES structures and parameters
           std::vector<double>	sn(temp_array_size);
@@ -1042,18 +1042,19 @@ namespace vt_darcy
           //defing q  to push_back to Q (reused in Arnoldi algorithm)
           std::vector<std::vector<double>> q(n_faces_per_cell);
 
-          //Edit 3: remove/comment out this solve_bar() since its already done in the solve_darcy_vt() function before calling local_gmres.
-          solve_bar();
+          //Edit 3 Done: remove/comment out this solve_bar() since its already done in the solve_darcy_vt() function before calling local_gmres.
+//          solve_bar();
 
-          //Edit 4: introduce interface_fe_function_vt in the .h file, then do
+          //Edit 4 Done: introduce interface_fe_function_vt in the .h file, then do
           // interface_fe_function_vt.reinit(solution_bar_vt)
-          interface_fe_function.reinit(solution_bar);
+//          interface_fe_function.reinit(solution_bar);
+          interface_fe_function_st.reinit(solution_bar_st);
 
           if (mortar_flag == 1)
           {
-        	  //Edit 5: change dof_handler to dof_handler_vt and solution_bar to solution_bar_vr, quad to quad_mortar(2d faces).
+        	  //Edit Done 5: change dof_handler to dof_handler_vt and solution_bar to solution_bar_vr, quad to quad_mortar(2d faces).
               interface_fe_function_mortar.reinit(solution_bar_mortar);
-              project_mortar(P_fine2coarse, dof_handler, solution_bar, quad, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
+              project_mortar<dim>(P_fine2coarse, dof_handler_st, solution_bar_st, quad, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
           }
 //          else if (mortar_flag == 2)
 //          {
@@ -1086,23 +1087,25 @@ namespace vt_darcy
                 // Something will be here to initialize lambda correctly, right now it
                 // is just zero
 
-            	//Edit 6: change interface_dofs to interface_dofs mortar if decided to make such a distinction.
+            	//Edit 6 Done: change interface_dofs to interface_dofs mortar if decided to make such a distinction.
                 Ap[side].resize(interface_dofs[side].size(), 0);
                 lambda[side].resize(interface_dofs[side].size(), 0);
-                //Edit 7: get rid of the if conditions in the following  and resize Ap and lambda for once. Remove else condition
+                //Edit 7 Done: get rid of the if conditions in the following  and resize Ap and lambda for once. Remove else condition
                 // and everything inside the else condition since we wont be needing a guess for VT.
-                //Edit 8: Also remove replace with interface_dofs_mortar if needed. NO more stating this from now on.
+                //Edit 8 Done: Also remove replace with interface_dofs_mortar if needed. NO more stating this from now on.
                 // Search for interface_dofs and do it if needed.
-                if (true || prm.time == prm.time_step)
-						{
-							Ap[side].resize(interface_dofs[side].size(), 0);
-							lambda[side].resize(interface_dofs[side].size(), 0);
-						}
-						else
-						{
-							Ap = Alambda_guess;
-							lambda = lambda_guess;
-						}
+//                if (true || prm.time == prm.time_step)
+//						{
+//							Ap[side].resize(interface_dofs[side].size(), 0);
+//							lambda[side].resize(interface_dofs[side].size(), 0);
+//						}
+//						else
+//						{
+//							Ap = Alambda_guess;
+//							lambda = lambda_guess;
+//						}
+                Ap[side].resize(interface_dofs[side].size(), 0);
+                lambda[side].resize(interface_dofs[side].size(), 0);
 
                 q[side].resize(interface_dofs[side].size());
                 r[side].resize(interface_dofs[side].size(), 0);
@@ -1112,18 +1115,18 @@ namespace vt_darcy
 
 
                 // Right now it is effectively solution_bar - A\lambda (0)
-                //Edit 9: remove the second term - get_normal_direction(side) * Ap[side][i] since we are getting rid of guess.
+                //Edit 9 Done: remove the second term - get_normal_direction(side) * Ap[side][i] since we are getting rid of guess.
                 if(mortar_flag)
                 	for (unsigned int i=0;i<interface_dofs[side].size();++i){
-                	                      r[side][i] = get_normal_direction(side) * solution_bar_mortar[interface_dofs[side][i]]
-                	                                   - get_normal_direction(side) * Ap[side][i];
+                	                      r[side][i] = get_normal_direction(side) * solution_bar_mortar[interface_dofs[side][i]];
+//                	                                   - get_normal_direction(side) * Ap[side][i];
 //                	                      pcout<<"r[side][i] is: "<<solution_bar_mortar[interface_dofs[side][i]]<<"\n";
                 	}
                 else
                 	for (unsigned int i = 0; i < interface_dofs[side].size(); ++i)
 						r[side][i] = get_normal_direction(side) *
-									   solution_bar[interface_dofs[side][i]] -
-									   get_normal_direction(side) *solution_star[interface_dofs[side][i]] ;
+									   solution_bar[interface_dofs[side][i]] ;
+//									  - get_normal_direction(side) *solution_star[interface_dofs[side][i]] ;
 
 
 
@@ -1226,27 +1229,29 @@ namespace vt_darcy
                       for (unsigned int i=0;i<interface_dofs[side].size();++i)
                           interface_fe_function_mortar[interface_dofs[side][i]] = interface_data[side][i];
 
-                  //Edit 10: change dof_handler to dof_handler_vt and interface_fe_function to interface_fe_function_vt.
+                  //Edit 10 Done: change dof_handler to dof_handler_vt and interface_fe_function to interface_fe_function_vt.
                   project_mortar(P_coarse2fine, dof_handler_mortar,
                                  interface_fe_function_mortar,
                                  quad,
                                  constraints,
                                  neighbors,
-                                 dof_handler,
-                                 interface_fe_function);
+                                 dof_handler_st,
+                                 interface_fe_function_st);
 
 
 //                  interface_fe_function.block(2) = 0;
-                  //Edit 11: Replace assemble_rhs_ and solve_star with the following lines:
-//
-//                  for(loop over the number of time levels){
-//                	  prm.time += prm.time_step;
-//                	  solve_time_step(star_bar_flag=1,time_level);
-//                  }
-//                  prm.time=0;
+                  //Edit 11 Done: Replace assemble_rhs_ and solve_star with the following lines:
+				//Solving the star problems.
+        		  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
+        			  {
+        				  prm.time +=prm.time_step;
+        				  solve_timestep(1,time_level);
 
-                  assemble_rhs_star(fe_face_values);
-                  solve_star();
+        			  }//end of solving the star problems
+        			  prm.time=0.0;
+
+//                  assemble_rhs_star(fe_face_values);
+//                  solve_star();
               }
 //              else if (mortar_flag == 2)
 //              {
@@ -1265,10 +1270,10 @@ namespace vt_darcy
               {
                   for (unsigned int side=0; side<n_faces_per_cell; ++side)
                       for (unsigned int i=0; i<interface_dofs[side].size(); ++i)
-                          interface_fe_function[interface_dofs[side][i]] = interface_data[side][i];
+                          interface_fe_function_subdom[interface_dofs[side][i]] = interface_data[side][i];
 
 //                  interface_fe_function.block(2) = 0;
-                  assemble_rhs_star(fe_face_values);
+                  assemble_rhs_star();
                   solve_star();
               }
 
@@ -1277,10 +1282,10 @@ namespace vt_darcy
 
               cg_iteration++;
               if (mortar_flag == 1){
-            	  //Edit 12: change dof_handler, solution_star to dof_handler_st and solution_star_st and also quad to quad_mortar.
-                        project_mortar(P_fine2coarse,
-                                       dof_handler,
-                                       solution_star,
+            	  //Edit 12 Done: change dof_handler, solution_star to dof_handler_st and solution_star_st and also quad to quad_mortar.
+                        project_mortar<2>(P_fine2coarse,
+                                       dof_handler_st,
+                                       solution_star_st,
                                        quad,
                                        constraints,
                                        neighbors,
@@ -1412,9 +1417,9 @@ namespace vt_darcy
               if (combined_error_iter/e_all_iter[0] < tolerance)
                 {
                   pcout << "\n  GMRES converges in " << cg_iteration << " iterations!\n and residual is"<<combined_error_iter/e_all_iter[0]<<"\n";
-                  //Edit 13: Get rid of guesses.
-                  Alambda_guess = Ap;
-                  lambda_guess = lambda;
+                  //Edit 13 Done: Get rid of guesses.
+//                  Alambda_guess = Ap;
+//                  lambda_guess = lambda;
                   break;
                 }
               else if(k_counter>maxiter-2)
@@ -1454,15 +1459,15 @@ namespace vt_darcy
                      for (unsigned int side=0;side<n_faces_per_cell;++side)
                          for (unsigned int i=0;i<interface_dofs[side].size();++i)
                              interface_fe_function_mortar[interface_dofs[side][i]] = interface_data[side][i];
-                     //Edit 14:  change dof_handler and interface_fe_function to _st counterpart.
+                     //Edit 14 Done:  change dof_handler and interface_fe_function to _st counterpart.
                      project_mortar(P_coarse2fine,
                                     dof_handler_mortar,
                                     interface_fe_function_mortar,
                                     quad,
                                     constraints,
                                     neighbors,
-                                    dof_handler,
-                                    interface_fe_function);
+                                    dof_handler_st,
+                                    interface_fe_function_st);
 //                     interface_fe_function.block(2) = 0;
                  }
                  else
@@ -1470,7 +1475,7 @@ namespace vt_darcy
                      interface_data = lambda;
                      for (unsigned int side=0; side<n_faces_per_cell; ++side)
                          for (unsigned int i=0; i<interface_dofs[side].size(); ++i)
-                             interface_fe_function[interface_dofs[side][i]] = interface_data[side][i];
+                             interface_fe_function_subdom[interface_dofs[side][i]] = interface_data[side][i];
                  }
 
           //Edit 15: replace the following six lines with the following loop:
@@ -1480,13 +1485,21 @@ namespace vt_darcy
           //                  }
           //                  prm.time=0;
 
-          assemble_rhs_star(fe_face_values);
-          solve_star();
-          solution.reinit(solution_bar);
-          solution = solution_bar;
-          solution.sadd(1.0, solution_star);
+          //Finally solving star problems.
+		  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
+			  {
+				  prm.time +=prm.time_step;
+				  solve_timestep(2,time_level);
 
-          solution_star.sadd(1.0, solution_bar);
+			  }//end of solving the star problems at the endand outputting results for all time levels.
+			  prm.time=0.0;
+//          assemble_rhs_star(fe_face_values);
+//          solve_star();
+//          solution.reinit(solution_bar);
+//          solution = solution_bar;
+//          solution.sadd(1.0, solution_star);
+//
+//          solution_star.sadd(1.0, solution_bar);
           pcout<<"finished local_gmres"<<"\n";
 
 
@@ -1542,7 +1555,7 @@ namespace vt_darcy
                     fe_face_values.reinit (cell, face_n);
 
 
-                    fe_face_values[velocity].get_function_values (interface_fe_function, interface_values_flux);
+                    fe_face_values[velocity].get_function_values (interface_fe_function_subdom, interface_values_flux);
 
                     pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), pressure_values);
 
@@ -1606,7 +1619,7 @@ namespace vt_darcy
 
         QGauss<dim-1> quad (qdegree);
         QGauss<dim-1> project_quad (qdegree);
-        FEFaceValues<dim> fe_face_values (fe_mortar, quad,
+        FEFaceValues<dim+1> fe_face_values (fe_mortar, quad,
                                           update_values    | update_normal_vectors |
                                           update_quadrature_points  | update_JxW_values);
 
@@ -1774,9 +1787,9 @@ namespace vt_darcy
         {
             std::vector<double> tmp_err_vect(2,0);
             tmp_err_vect = compute_interface_error_dh(); //note that the second component of this vector gives the inreface error for darcy part. first component is 0.
-            err.l2_l2_errors[2]+= compute_interface_error_l2();
+//            err.l2_l2_errors[2]+= compute_interface_error_l2();
             l_int_error_darcy =tmp_err_vect[1];
-            interface_fe_function = 0;
+            interface_fe_function_subdom = 0;
             interface_fe_function_mortar = 0;
             tmp_err_vect = compute_interface_error_dh();
             err.l2_l2_norms[2] += compute_interface_error_l2();
@@ -1882,19 +1895,19 @@ namespace vt_darcy
 	      int tmp = prm.time/prm.time_step;
 	      std::ofstream output ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
 	      data_out.write_vtu (output);
-	      //following lines create a file which paraview can use to link the subdomain results
-	            if (this_mpi == 0)
-	              {
-	                std::vector<std::string> filenames;
-	                for (unsigned int i=0;
-	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
-	                     ++i)
-	                  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
-
-	                std::ofstream master_output (("solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
-	                                              ".pvtu").c_str());
-	                data_out.write_pvtu_record (master_output, filenames);
-	              }
+//	      //following lines create a file which paraview can use to link the subdomain results
+//	            if (this_mpi == 0)
+//	              {
+//	                std::vector<std::string> filenames;
+//	                for (unsigned int i=0;
+//	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+//	                     ++i)
+//	                  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+//
+//	                std::ofstream master_output (("solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
+//	                                              ".pvtu").c_str());
+//	                data_out.write_pvtu_record (master_output, filenames);
+//	              }
 
 	     /* end of commenting out for disabling vtu outputs*/
 
@@ -1950,7 +1963,8 @@ namespace vt_darcy
         interface_dofs.clear();
         interface_dofs_st.clear();
         interface_dofs_subd.clear();
-        interface_fe_function = 0;
+        interface_fe_function_subdom = 0;
+        interface_fe_function_st=0;
 
         if (mortar_flag)
         {
@@ -1987,7 +2001,7 @@ namespace vt_darcy
         //finding the num_time_steps and time_step_size using final_time and number of time steps required.
         prm.num_time_steps = reps_st[this_mpi][2];
         prm.time_step = prm.final_time/double(prm.num_time_steps);
-        pcout<<"Final time= "<<prm.final_time"\n";
+        pcout<<"Final time= "<<prm.final_time<<"\n";
         pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
 
         std::vector<std::vector<unsigned int>> reps_local(reps), reps_st_local(reps_st); //local copy of mesh partition information.
@@ -2166,18 +2180,20 @@ namespace vt_darcy
 //            }
 //            //end of feface_q just to check the suport points match with the 3d case.
 //            /************************************************************************************************************/
- //Edit: start cleaning up from here on:
-            for(unsigned int i=0; i<prm.num_time_steps; i++)
-            {
-              prm.time += prm.time_step;
+ //Edit Done: start cleaning up from here on:
+//            for(unsigned int i=0; i<prm.num_time_steps; i++)
+//            {
+//              prm.time += prm.time_step;
+//
+//              solve_timestep (maxiter);
+//              compute_errors(refinement_index);
+//              old_solution = solution;
+//              output_results (refinement_index, refine);
+//              max_cg_iteration=0;
+//
+//            }
 
-              solve_timestep (maxiter);
-              compute_errors(refinement_index);
-              old_solution = solution;
-              output_results (refinement_index, refine);
-              max_cg_iteration=0;
-
-            }
+            solve_darcy_vt(maxiter);
 
             set_current_errors_to_zero();
             prm.time = 0.0;
