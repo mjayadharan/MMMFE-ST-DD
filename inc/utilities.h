@@ -491,7 +491,11 @@ namespace vt_darcy
         for (unsigned int side=0; side<GeometryInfo<dim>::faces_per_cell; ++side)
             if (neighbors[side] >= 0)
                 boundary_functions_velocity[side+1] = &fe_interface_data;
-
+//        VectorTools::project_boundary_values(dof2,
+//                                      boundary_functions_velocity,
+//                                      quad,
+//                                      constraints);
+//
         proj.project_boundary_values (dof2,
                                       boundary_functions_velocity,
                                       quad,

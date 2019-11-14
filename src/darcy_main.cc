@@ -22,29 +22,29 @@ int main (int argc, char *argv[])
         Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
         // Mortar mesh parameters   (non-matching checkerboard)
-        std::vector<std::vector<unsigned int>> mesh_m2d(5);
+        std::vector<std::vector<unsigned int>> mesh_m2d(3);
         mesh_m2d[0] = {2,2};
         mesh_m2d[1] = {3,3};
-        mesh_m2d[2] = {3,3};
-        mesh_m2d[3] = {2,2};
-        mesh_m2d[4] = {1,1};
+//        mesh_m2d[2] = {2,2};
+//        mesh_m2d[3] = {2,2};
+        mesh_m2d[2] = {1,1};
         double c0=1;
         double alpha=1;
-        int num_cycle=3;
-        double time_step_size = 0.001;
-        int n_time_steps = 3; //this is just used to define the final_time in next line and to give a starting point for the actual num_time_steps, not anywhere else.
+        int num_cycle=2;
+        double time_step_size = 0.05;
+        int n_time_steps = 1; //this is just used to define the final_time in next line and to give a starting point for the actual num_time_steps, not anywhere else.
         double final_time = n_time_steps*time_step_size;
         int max_itr=500;
         double tolerence = 1.e-11;
         BiotParameters bparam (time_step_size,n_time_steps,final_time,c0,alpha);
 
         // Time space mortar mesh parameters   (non-matching checkerboard in space-time)
-        std::vector<std::vector<unsigned int>> mesh_m3d(5);
-        mesh_m3d[0] = {2,2,2*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 1.
-        mesh_m3d[1] = {3,3,3*bparam.num_time_steps};
-        mesh_m3d[2] = {3,3,3*bparam.num_time_steps};
-        mesh_m3d[3] = {2,2,2*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 4.
-        mesh_m3d[4] = {1,1,1*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for mortar domain.
+        std::vector<std::vector<unsigned int>> mesh_m3d(3);
+        mesh_m3d[0] = {2,2,10*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 1.
+        mesh_m3d[1] = {3,3,15*bparam.num_time_steps};
+//        mesh_m3d[2] = {2,2,12*bparam.num_time_steps};
+//        mesh_m3d[3] = {2,2,12*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 4.
+        mesh_m3d[2] = {1,1,2*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for mortar domain.
 
 
 //        //DarcyDD without mortar
@@ -58,9 +58,9 @@ int main (int argc, char *argv[])
 //        DarcyVTProblem<2> quad_mortar(1,bparam,1,2);
 //        DarcyVTProblem<2> cubic_mortar(1,bparam,1,3);
 
-        lin_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr);
-//        quad_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr);
-//        cubic_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr);
+        lin_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr,4);
+//        quad_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr,5);
+//        cubic_mortar.run(num_cycle,mesh_m2d,mesh_m3d,tolerence,max_itr,6);
 
     }
     catch (std::exception &exc)

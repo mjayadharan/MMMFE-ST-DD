@@ -269,6 +269,7 @@ namespace vt_darcy
         solution = 0;
         old_solution.reinit(solution);
         initialc_solution.reinit(solution);
+        initialc_solution=0;
 
         pcout << "N flux dofs: " << n_flux << std::endl;
     }
@@ -508,6 +509,7 @@ namespace vt_darcy
       QGauss<dim>   quadrature_formula(degree+3);
       QGauss<dim-1> face_quadrature_formula(qdegree);
 
+
       FEValues<dim> fe_values (fe, quadrature_formula,
                                update_values    | update_gradients |
                                update_quadrature_points  | update_JxW_values);
@@ -550,7 +552,7 @@ namespace vt_darcy
 
           std::vector<double> old_pressure_values(n_q_points);
 
-          if(prm.time==prm.time_step)
+          if(std::fabs(prm.time-prm.time_step)<1.0e-10)
         	  fe_values[pressure].get_function_values (initialc_solution, old_pressure_values);
           else
         	  fe_values[pressure].get_function_values (old_solution, old_pressure_values);
@@ -652,22 +654,24 @@ namespace vt_darcy
             std::vector <double> phi_p(dofs_per_cell);
             std::vector<double> old_pressure_values(n_q_points);
 
-            if(prm.time>prm.time_step)
+            if(std::fabs(prm.time-prm.time_step)>1.0e-10)
+            {
             	fe_values[pressure].get_function_values (old_solution, old_pressure_values);
 
-            for (unsigned int q=0; q<n_q_points; ++q)
-               {
+				for (unsigned int q=0; q<n_q_points; ++q)
+				   {
 
-                   for (unsigned int k=0; k<dofs_per_cell; ++k)
-                   {
-                       // Evaluate test functions
-                       phi_p[k] = fe_values[pressure].value (k, q);
+					   for (unsigned int k=0; k<dofs_per_cell; ++k)
+					   {
+						   // Evaluate test functions
+						   phi_p[k] = fe_values[pressure].value (k, q);
 
-                   }
+					   }
 
-                   for (unsigned int i=0; i<dofs_per_cell; ++i)
-                       local_rhs(i) += ( prm.c_0*old_pressure_values[q] * phi_p[i] )* fe_values.JxW(q);
-               }
+					   for (unsigned int i=0; i<dofs_per_cell; ++i)
+						   local_rhs(i) += ( prm.c_0*old_pressure_values[q] * phi_p[i] )* fe_values.JxW(q);
+				   }
+            }
 
 
             for (unsigned int face_n=0;
@@ -731,7 +735,7 @@ namespace vt_darcy
     template<int dim>
     void DarcyVTProblem<dim>::solve_darcy_vt(unsigned int maxiter)
     {
-
+    			prm.time=0.0;
 			  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
 			  {
 				  prm.time +=prm.time_step;
@@ -748,6 +752,20 @@ namespace vt_darcy
 			  }//end of solving the bar problems.
 			  prm.time=0.0;
 
+
+//			  std::ofstream star_solution_output("star_solution.txt");
+//
+//			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//				  for(int dummy_i=0;dummy_i<prm.num_time_steps;dummy_i++)
+//				  {
+//					  star_solution_output<<"time_level= "<<dummy_i <<"................\n";
+//					  for(int dummy_j=0; dummy_j<solution_bar_collection[dummy_i].size();dummy_j++)
+//						  star_solution_output<<solution_bar_collection[dummy_i][dummy_j]<<"\n";
+//
+//				  }
+
+
+			  pcout << "\nStarting GMRES iterations.........\n";
 			  local_gmres(maxiter);
 //		  if(something_happnes)
 //		  {
@@ -795,9 +813,28 @@ namespace vt_darcy
 				st_to_subdom_distribute(interface_fe_function_st, interface_fe_function_subdom, time_level);
 				assemble_rhs_star();
 				solve_star();
+//				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//				                        						  {
+//				                        						  std::ofstream star_solution_output("interface_fe_subd.txt", std::ofstream::app);
+//				                        							  star_solution_output<<"time_level= "<<time_level<<"................\n";
+//				                        							  for(int dummy_j=0; dummy_j<interface_fe_function_subdom.size();dummy_j++)
+//				                        								  star_solution_output<<interface_fe_function_subdom[dummy_j]<<"\n";
+//
+//				                        						  }
+//				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//				                        						  {
+//				                        						  std::ofstream star_solution_output("interface_fe_st.txt", std::ofstream::app);
+//				                        						  star_solution_output<<"time_level= "<<time_level<<"................\n";
+//				                        							  for(int dummy_j=0; dummy_j<interface_fe_function_st.size();dummy_j++)
+//				                        								  star_solution_output<<interface_fe_function_st[dummy_j]<<"\n";
+//
+//				                        						  }
+
 				interface_fe_function_subdom=0;
 				old_solution = solution_star;
+
 				subdom_to_st_distribute(solution_star_st, solution_star, time_level);
+
 				solution_star=0;
 
 
@@ -812,9 +849,25 @@ namespace vt_darcy
 				solution=0;
 				solution.sadd(1.0,solution_star);
 				solution.sadd(1.0,solution_bar_collection[time_level]);
+
+
+
+//				//------------------------------------------
+
+
+//				  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//					  {
+//					  std::ofstream star_solution_output("star_solution.txt");
+//						  star_solution_output<<"time_level= "<<time_level <<"................\n";
+//						  for(int dummy_j=0; dummy_j<solution_star.size();dummy_j++)
+//							  star_solution_output<<solution_star[dummy_j]<<"\n";
+//
+//					  }
+//				  //---------------------------------------------
+
 				compute_errors(refinement_index);
 				output_results(refinement_index,total_refinements);
-				solution_star=0;
+//				solution_star=0;
 
 
 				break; //break for case 1
@@ -1038,6 +1091,9 @@ namespace vt_darcy
           Quadrature<dim > quad;
           quad = QGauss<dim >(qdegree);
 
+          Quadrature<dim > quad_project;
+          quad_project = QGauss<dim >(qdegree);
+
           ConstraintMatrix  constraints;
           constraints.clear();
           constraints.close();
@@ -1079,7 +1135,8 @@ namespace vt_darcy
           {
         	  //Edit Done 5: change dof_handler to dof_handler_vt and solution_bar to solution_bar_vr, quad to quad_mortar(2d faces).
               interface_fe_function_mortar.reinit(solution_bar_mortar);
-              project_mortar<dim>(P_fine2coarse, dof_handler_st, solution_bar_st, quad, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
+              interface_fe_function_mortar=0;
+              project_mortar<dim>(P_fine2coarse, dof_handler_st, solution_bar_st, quad_project, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
           }
 //          else if (mortar_flag == 2)
 //          {
@@ -1129,8 +1186,8 @@ namespace vt_darcy
 //							Ap = Alambda_guess;
 //							lambda = lambda_guess;
 //						}
-                Ap[side].resize(interface_dofs[side].size(), 0);
-                lambda[side].resize(interface_dofs[side].size(), 0);
+//                Ap[side].resize(interface_dofs[side].size(), 0);
+//                lambda[side].resize(interface_dofs[side].size(), 0);
 
                 q[side].resize(interface_dofs[side].size());
                 r[side].resize(interface_dofs[side].size(), 0);
@@ -1250,23 +1307,48 @@ namespace vt_darcy
 
               if (mortar_flag == 1)
               {
+            	  interface_fe_function_mortar=0;
                   for (unsigned int side=0;side<n_faces_per_cell;++side)
                       for (unsigned int i=0;i<interface_dofs[side].size();++i)
                           interface_fe_function_mortar[interface_dofs[side][i]] = interface_data[side][i];
 
                   //Edit 10 Done: change dof_handler to dof_handler_vt and interface_fe_function to interface_fe_function_vt.
+//                  pcout<<"\n reached before starting of projection 1\n";
                   project_mortar(P_coarse2fine, dof_handler_mortar,
                                  interface_fe_function_mortar,
-                                 quad,
+                                 quad_project,
                                  constraints,
                                  neighbors,
                                  dof_handler_st,
                                  interface_fe_function_st);
 
+//                  				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==1)
+//                  				    {
+//                  					pcout<<"reached file here0\n";
+//                  				     std::ofstream int_mortar_output("interface_fe_mortar.txt", std::ofstream::app);
+//                  				     pcout<<"reached file here1\n";
+//                  				     int_mortar_output<<"cg_iteration= "<<cg_iteration<<"................\n";
+//                  				   pcout<<"reached file here2:  "<<interface_fe_function_mortar.size()<<"\n";
+//                  				     for(int dummy_j=0; dummy_j<interface_fe_function_mortar.size();dummy_j++)
+//                  				     int_mortar_output<<interface_fe_function_mortar[dummy_j]<<"\n";
+//                  				    }
+//
+//                  				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==1)
+//                  				   {
+//                  				    std::ofstream int_st_output("interface_fe_st.txt", std::ofstream::app);
+//                  				    int_st_output<<"cg_iteration= "<<cg_iteration<<"................\n";
+//                  				    for(int dummy_j=0; dummy_j<interface_fe_function_st.size();dummy_j++)
+//                  				    int_st_output<<interface_fe_function_st[dummy_j]<<"\n";
+//                  				   }
+
+
+//                  pcout<<"reached at end of projection 1\n";
+
 
 //                  interface_fe_function.block(2) = 0;
                   //Edit 11 Done: Replace assemble_rhs_ and solve_star with the following lines:
 				//Solving the star problems.
+                  prm.time=0.0;
         		  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
         			  {
         				  prm.time +=prm.time_step;
@@ -1274,6 +1356,7 @@ namespace vt_darcy
 
         			  }//end of solving the star problems
         			  prm.time=0.0;
+
 
 //                  assemble_rhs_star(fe_face_values);
 //                  solve_star();
@@ -1310,22 +1393,38 @@ namespace vt_darcy
             	  //Edit 12 Done: change dof_handler, solution_star to dof_handler_st and solution_star_st and also quad to quad_mortar.
 //            	  for(int i_index=0; i_index<solution_star_st.size();++i_index)
 //            		  pcout<<solution_star_st[i_index]<<std::endl;
+//            	  pcout<<"reached before starting of projection 2\n";
                         project_mortar<2>(P_fine2coarse,
                                        dof_handler_st,
                                        solution_star_st,
-                                       quad,
+                                       quad_project,
                                        constraints,
                                        neighbors,
                                        dof_handler_mortar,
                                        solution_star_mortar);
 
+//
+//                        					  if(Utilities::MPI::this_mpi_process(mpi_communicator)==1)
+//                        						  {
+//                        						  std::ofstream star_solution_mortar_output("solution_star_mortar.txt", std::ofstream::app);
+//                        						  std::ofstream star_solution_st_output("solution_star_st.txt", std::ofstream::app);
+//                        							  star_solution_mortar_output<<"iteration= "<<cg_iteration<<"................\n";
+//                        							  star_solution_st_output<<"iteration= "<<cg_iteration<<"................\n";
+//                        							  for(int dummy_j=0; dummy_j<solution_star_mortar.size();dummy_j++)
+//                        								  star_solution_mortar_output<<solution_star_mortar[dummy_j]<<"\n";
+//                        							  for(int dummy_j=0; dummy_j<solution_star_st.size();dummy_j++)
+//                        							      star_solution_st_output<<solution_star_st[dummy_j]<<"\n";
+//
+//                        						  }
+//                        pcout<<"reached at end of projection 2\n";
               }
 
               //defing q  to push_back to Q (Arnoldi algorithm)
               //defing h  to push_back to H (Arnoldi algorithm)
               std::vector<double> h(k_counter+2,0);
 
-
+//              pcout<<"\nreached before mpi 1\n";
+              //Main time lag is in the following loop where there is intense mpi communication.
               for (unsigned int side = 0; side < n_faces_per_cell; ++side)
                 if (neighbors[side] >= 0)
                   {
@@ -1337,7 +1436,6 @@ namespace vt_darcy
                     else
                         for (unsigned int i=0; i<interface_dofs[side].size(); ++i)
                             interface_data_send[side][i] = get_normal_direction(side) * solution_star[interface_dofs[side][i]];
-
                     MPI_Send(&interface_data_send[side][0],
                              interface_dofs[side].size(),
                              MPI_DOUBLE,
@@ -1351,6 +1449,7 @@ namespace vt_darcy
                              neighbors[side],
                              mpi_communicator,
                              &mpi_status);
+
 
                     // Compute Ap and with it compute alpha
                     for (unsigned int i = 0; i < interface_dofs[side].size(); ++i)
@@ -1372,17 +1471,17 @@ namespace vt_darcy
                   }
 
                   } //////-----------end of loop over side, q is calculated as AQ[][k] and ARnoldi Algorithm continued-------------------------------
-
+//              pcout<<"reached end mpi 1\n";
               //Arnoldi Algorithm continued
                     //combining summing h[i] over all subdomains
                     std::vector<double> h_buffer(k_counter+2,0);
-
                 	MPI_Allreduce(&h[0],
                 			&h_buffer[0],
     						k_counter+2,
     						MPI_DOUBLE,
     						MPI_SUM,
     						mpi_communicator);
+
 
                 	h=h_buffer;
                 	for (unsigned int side = 0; side < n_faces_per_cell; ++side)
@@ -1398,7 +1497,6 @@ namespace vt_darcy
                 	            		if (neighbors[side] >= 0)
                 	            			h_dummy+=vect_norm(q[side])*vect_norm(q[side]);
                 	double h_k_buffer=0;
-
                 	MPI_Allreduce(&h_dummy,
                             			&h_k_buffer,
                 						1,
@@ -1455,9 +1553,14 @@ namespace vt_darcy
               //maxing interface_data_receive and send zero so it can be used is solving for Ap(or A*Q([k_counter]).
               for (unsigned int side = 0; side < n_faces_per_cell; ++side)
                 {
-
-                  interface_data_receive[side].resize(interface_dofs[side].size(), 0);
-                  interface_data_send[side].resize(interface_dofs[side].size(), 0);
+//            	  interface_data_receive[side].clear();
+//            	  interface_data_send[side].clear();
+            	  for(int i=0; i<interface_data_send[side].size(); i++){
+            		  interface_data_receive[side][i]=0;
+            		  interface_data_send[side][i]=0;
+//            		  interface_data_receive[side].resize(interface_dofs[side].size(), 0);
+//            		  interface_data_send[side].resize(interface_dofs[side].size(), 0);
+            	  }
 
 
                 }
@@ -1490,12 +1593,13 @@ namespace vt_darcy
                      project_mortar(P_coarse2fine,
                                     dof_handler_mortar,
                                     interface_fe_function_mortar,
-                                    quad,
+                                    quad_project,
                                     constraints,
                                     neighbors,
                                     dof_handler_st,
                                     interface_fe_function_st);
 //                     interface_fe_function.block(2) = 0;
+
                  }
                  else
                  {
@@ -1513,10 +1617,27 @@ namespace vt_darcy
           //                  prm.time=0;
 
           //Finally solving star problems.
+          max_cg_iteration=cg_iteration;
+
+//        	  std::ofstream star_solution_output("star_solution.txt");
 		  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
 			  {
 				  prm.time +=prm.time_step;
 				  solve_timestep(2,time_level);
+//
+//					//------------------------------------------
+//
+//
+//					  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//						  {
+//						  	  std::ofstream star_solution_output("star_solution.txt");
+//							  star_solution_output<<"time_level= "<<time_level <<"................\n";
+//							  for(int dummy_j=0; dummy_j<solution_star.size();dummy_j++)
+//								  star_solution_output<<solution_star[dummy_j]<<"\n";
+//
+//						  }
+//					  //---------------------------------------------
+
 
 			  }//end of solving the star problems at the endand outputting results for all time levels.
 			  prm.time=0.0;
@@ -1728,6 +1849,7 @@ namespace vt_darcy
 
       // Since we want to compute the relative norm
       BlockVector<double> zerozeros(1, solution.size());
+      zerozeros=0;
 
       // Pressure error and norm
       VectorTools::integrate_difference (dof_handler, solution, exact_solution,
@@ -1781,56 +1903,56 @@ namespace vt_darcy
       double u_l2_norm = cellwise_norms.norm_sqr();
 
       // following is actually calculating H_div norm for velocity
-//      err.l2_l2_errors[0] +=u_l2_error;
+      err.l2_l2_errors[0] +=u_l2_error;
       err.l2_l2_norms[0] += u_l2_norm;
       double total_time = prm.time_step * prm.num_time_steps;
-      {
-        // Velocity Hdiv error and seminorm
-        VectorTools::integrate_difference (dof_handler, solution, exact_solution,
-                                           cellwise_errors, quadrature,
-                                           VectorTools::Hdiv_seminorm,
-                                           &velocity_mask);
-        const double u_hd_error = cellwise_errors.norm_sqr();
-
-        VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
-                                           cellwise_norms, quadrature,
-                                           VectorTools::Hdiv_seminorm,
-                                           &velocity_mask);
-        const double u_hd_norm = cellwise_norms.norm_sqr();
-
-        //std::cout << u_hd_error << std::endl;
-
-        // L2 in time error
-        //if (std::fabs(time-5*time_step) > 1.0e-12) {
-        err.velocity_stress_l2_div_errors[0] += u_hd_error;
-        err.velocity_stress_l2_div_norms[0] += u_hd_norm;     // put += back!
-        //}
-        u_l2_error+=u_hd_error;
-		u_l2_norm+=u_hd_norm;
-      }
-      err.l2_l2_errors[0] = std::max(err.l2_l2_errors[0],sqrt(u_l2_error)/sqrt(u_l2_norm));
+//      {
+//        // Velocity Hdiv error and seminorm
+//        VectorTools::integrate_difference (dof_handler, solution, exact_solution,
+//                                           cellwise_errors, quadrature,
+//                                           VectorTools::Hdiv_seminorm,
+//                                           &velocity_mask);
+//        const double u_hd_error = cellwise_errors.norm_sqr();
+//
+//        VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
+//                                           cellwise_norms, quadrature,
+//                                           VectorTools::Hdiv_seminorm,
+//                                           &velocity_mask);
+//        const double u_hd_norm = cellwise_norms.norm_sqr();
+//
+//        //std::cout << u_hd_error << std::endl;
+//
+//        // L2 in time error
+//        //if (std::fabs(time-5*time_step) > 1.0e-12) {
+//        err.velocity_stress_l2_div_errors[0] += u_hd_error;
+//        err.velocity_stress_l2_div_norms[0] += u_hd_norm;     // put += back!
+//        //}
+//        u_l2_error+=u_hd_error;
+//		u_l2_norm+=u_hd_norm;
+//      }
+//      err.l2_l2_errors[0] = std::max(err.l2_l2_errors[0],sqrt(u_l2_error)/sqrt(u_l2_norm));
       double l_int_error_darcy=1, l_int_norm_darcy=1;;
-        if (mortar_flag)
-        {
-            std::vector<double> tmp_err_vect(2,0);
-            tmp_err_vect = compute_interface_error_dh(); //note that the second component of this vector gives the inreface error for darcy part. first component is 0.
-//            err.l2_l2_errors[2]+= compute_interface_error_l2();
-            l_int_error_darcy =tmp_err_vect[1];
-            interface_fe_function_subdom = 0;
-            interface_fe_function_mortar = 0;
-            tmp_err_vect = compute_interface_error_dh();
-//            err.l2_l2_norms[2] += compute_interface_error_l2();
-            l_int_norm_darcy = tmp_err_vect[1];
-//            }
-        }
+//        if (mortar_flag)
+//        {
+//            std::vector<double> tmp_err_vect(2,0);
+////            tmp_err_vect = compute_interface_error_dh(); //note that the second component of this vector gives the inreface error for darcy part. first component is 0.
+////            err.l2_l2_errors[2]+= compute_interface_error_l2();
+//            l_int_error_darcy =tmp_err_vect[1];
+//            interface_fe_function_subdom = 0;
+//            interface_fe_function_mortar = 0;
+////            tmp_err_vect = compute_interface_error_dh();
+////            err.l2_l2_norms[2] += compute_interface_error_l2();
+//            l_int_norm_darcy = tmp_err_vect[1];
+////            }
+//        }
 
 
       // On the last time step compute actual errors
       if(std::fabs(prm.time-total_time) < 1.0e-12)
       {
         // Assemble convergence table
-        const unsigned int n_active_cells=triangulation.n_active_cells();
-        const unsigned int n_dofs=dof_handler.n_dofs();
+//        const unsigned int n_active_cells=triangulation.n_active_cells();
+//        const unsigned int n_dofs=dof_handler.n_dofs();
 
         double send_buf_num[7] = {err.l2_l2_errors[0],
                                    err.velocity_stress_l2_div_errors[0],
@@ -1848,19 +1970,61 @@ namespace vt_darcy
 								   l_int_norm_darcy,
 								   err.l2_l2_norms[2]};
 
-        double recv_buf_num[7] = {0,0,0,0,0,0};
-        double recv_buf_den[7] = {0,0,0,0,0,0};
+        double recv_buf_num[7] = {0,0,0,0,0,0,0};
+        double recv_buf_den[7] = {0,0,0,0,0,0,0};
+//        {
+//        	  const unsigned int this_mpi =
+//        	            Utilities::MPI::this_mpi_process(mpi_communicator);
+//        	          const unsigned int n_processes =
+//        	            Utilities::MPI::n_mpi_processes(mpi_communicator);
+//        	          if(this_mpi==0){
+//						  MPI_Send(&send_buf_num[0],
+//								   7,
+//								   MPI_DOUBLE,
+//								   1,
+//								   0,
+//								   mpi_communicator);
+//						  MPI_Recv(&recv_buf_num[0],
+//								   7,
+//								   MPI_DOUBLE,
+//								   1,
+//								   1,
+//								   mpi_communicator,
+//								   &mpi_status);
+//        	          }
+//        	          if(this_mpi==1){
+//						  MPI_Send(&send_buf_num[0],
+//								   7,
+//								   MPI_DOUBLE,
+//								   0,
+//								   1,
+//								   mpi_communicator);
+//						  MPI_Recv(&recv_buf_num[0],
+//								   7,
+//								   MPI_DOUBLE,
+//								   0,
+//								   0,
+//								   mpi_communicator,
+//								   &mpi_status);
+//        	          }
+//
+//        }
 
         MPI_Reduce(&send_buf_num[0], &recv_buf_num[0], 7, MPI_DOUBLE, MPI_SUM, 0, mpi_communicator);
         MPI_Reduce(&send_buf_den[0], &recv_buf_den[0], 7, MPI_DOUBLE, MPI_SUM, 0, mpi_communicator);
 
+//        recv_buf_den[2]=1.0;
+//        recv_buf_den[0]=1.0;
         for (unsigned int i=0; i<7; ++i)
-          if (i != 4  && i != 0  )
+          if (i != 4   ){
             recv_buf_num[i] = sqrt(recv_buf_num[i])/sqrt(recv_buf_den[i]);
+//        	  recv_buf_num[i]+=send_buf_num[i];
+          }
         convergence_table.add_value("cycle", refinement_index);
         convergence_table.add_value("# GMRES", max_cg_iteration);
         convergence_table.add_value("Velocity,L8-Hdiv", recv_buf_num[0]);
         convergence_table.add_value("Pressure,L8-L2", recv_buf_num[4]);
+        convergence_table.add_value("Pressure,L2-L2", recv_buf_num[2]);
 
         if (mortar_flag)
         {
@@ -1940,20 +2104,24 @@ namespace vt_darcy
 
 
 	      double total_time = prm.time_step * prm.num_time_steps;
-	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::abs(prm.time-total_time)<1.0e-12){
+	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12){
 	        convergence_table.set_precision("Velocity,L8-Hdiv", 3);
 	        convergence_table.set_precision("Pressure,L8-L2", 3);
+	        convergence_table.set_precision("Pressure,L2-L2", 3);
 
 	        convergence_table.set_scientific("Velocity,L8-Hdiv", true);
 	        convergence_table.set_scientific("Pressure,L8-L2", true);
+	        convergence_table.set_scientific("Pressure,L2-L2", true);
 
 	        convergence_table.set_tex_caption("# GMRES", "\\# gmres");
 	        convergence_table.set_tex_caption("Velocity,L8-Hdiv", "$ \\|z - z_h\\|_{L^{\\infty}(H_{div})} $");
 	        convergence_table.set_tex_caption("Pressure,L8-L2", "$ \\|p - p_h\\|_{L^{\\infty}(L^2)} $");
+	        convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^{2}(L^2)} $");
 
 	        convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
 	        convergence_table.evaluate_convergence_rates("Velocity,L8-Hdiv", ConvergenceTable::reduction_rate_log2);
 	        convergence_table.evaluate_convergence_rates("Pressure,L8-L2", ConvergenceTable::reduction_rate_log2);
+	        convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
 
 
 	        if (mortar_flag)
@@ -2097,6 +2265,7 @@ namespace vt_darcy
                     for(unsigned int dum_i=0; dum_i<reps_local.size();dum_i++){
                        reps_local[dum_i][0]*=2;
                        reps_local[dum_i][1]*=2;
+//                       reps_local[dum_i][2]*=2;
                        }
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
 
@@ -2104,6 +2273,7 @@ namespace vt_darcy
                     for(unsigned int dum_i=0; dum_i<reps_st_local.size();dum_i++){
                        reps_st_local[dum_i][0]*=2;
                        reps_st_local[dum_i][1]*=2;
+//                       reps_st_local[dum_i][2]*=2;
                        }
                     GridGenerator::subdivided_hyper_rectangle(triangulation_st, reps_st_local[this_mpi], p1_st, p2_st);
 
@@ -2129,6 +2299,7 @@ namespace vt_darcy
               InitialCondition<dim> ic;
 
               ConstraintMatrix constraints;
+              constraints.clear();
               constraints.close();
               VectorTools::project (dof_handler,
                                     constraints,
@@ -2221,12 +2392,19 @@ namespace vt_darcy
 //            }
 
             solve_darcy_vt(maxiter);
+            max_cg_iteration=0;
 
             set_current_errors_to_zero();
             prm.time = 0.0;
 
             computing_timer.print_summary();
             computing_timer.reset();
+
+////            //finding the num_time_steps and time_step_size using final_time and number of time steps required.
+//            prm.num_time_steps *=2;
+//            prm.time_step = prm.final_time/double(prm.num_time_steps);
+////            pcout<<"Final time= "<<prm.final_time<<"\n";
+//            pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
         }
 
         reset_mortars();
