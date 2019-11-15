@@ -70,8 +70,6 @@ int main (int argc, char *argv[])
 
         }//end of reading parameter.dat file.
 
-        std::cout<<"reached here\n";
-        std::cout.flush();
 //        // Mortar mesh parameters   (non-matching checkerboard)
 //        std::vector<std::vector<unsigned int>> mesh_m2d(3);
 //        mesh_m2d[0] = {2,2};
