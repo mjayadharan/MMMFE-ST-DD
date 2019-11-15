@@ -343,7 +343,7 @@ namespace vt_darcy
 
                         local_matrix(i, j) += ( phi_u[i] * k_inverse_values[q] * phi_u[j] - phi_p[j] * div_phi_u[i]                                     // Darcy law
                                                + prm.time_step*div_phi_u[j] * phi_p[i] + prm.c_0*phi_p[i]*phi_p[j] )
-                                              * fe_values.JxW(q);
+                                              * fe_values.JxW(q) ;
                     }
                 }
             }
@@ -355,6 +355,7 @@ namespace vt_darcy
                                        local_dof_indices[j],
                                        local_matrix(i,j));
         }
+
 
         pcout << "  ...factorized..." << "\n";
         A_direct.initialize(system_matrix);
@@ -604,6 +605,8 @@ namespace vt_darcy
           for (unsigned int i=0; i<dofs_per_cell; ++i)
               system_rhs_bar(local_dof_indices[i]) += local_rhs(i);
       }
+//      for(int i=0; i<system_rhs_bar.size();i++)
+//    	  system_rhs_bar[i]*= prm.time_step;
   }
 
     // MixedBiotProblemDD - assemble RHS of star problems
@@ -698,7 +701,10 @@ namespace vt_darcy
                 system_rhs_star(local_dof_indices[i]) += local_rhs(i);
             //
         }
+//        for(int i=0; i<system_rhs_star.size();i++)
+//      	  system_rhs_star[i]*= prm.time_step;
     }
+
 
 
 
@@ -753,9 +759,9 @@ namespace vt_darcy
 			  prm.time=0.0;
 
 
-//			  std::ofstream star_solution_output("star_solution.txt");
-//
+
 //			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//			  { std::ofstream star_solution_output("solution_bar_collection.txt");
 //				  for(int dummy_i=0;dummy_i<prm.num_time_steps;dummy_i++)
 //				  {
 //					  star_solution_output<<"time_level= "<<dummy_i <<"................\n";
@@ -763,6 +769,8 @@ namespace vt_darcy
 //						  star_solution_output<<solution_bar_collection[dummy_i][dummy_j]<<"\n";
 //
 //				  }
+//				  star_solution_output.close();
+//			  }
 
 
 			  pcout << "\nStarting GMRES iterations.........\n";
@@ -1233,7 +1241,6 @@ namespace vt_darcy
                 r_norm_side[side] = vect_norm(r[side]);
 
 
-
               }
 
 
@@ -1242,14 +1249,17 @@ namespace vt_darcy
           for(unsigned int side=0; side<n_faces_per_cell;++side)
         	  if (neighbors[side] >= 0)
         		  r_norm+=r_norm_side[side]*r_norm_side[side];
-          double r_norm_buffer =0;
-          MPI_Allreduce(&r_norm,
-        		  &r_norm_buffer,
-    			  1,
-    			  MPI_DOUBLE,
-    			  MPI_SUM,
-                  mpi_communicator);
-          r_norm = sqrt(r_norm_buffer);
+
+//          double r_norm_buffer =0;
+//          MPI_Allreduce(&r_norm,
+//        		  &r_norm_buffer,
+//    			  1,
+//    			  MPI_DOUBLE,
+//    			  MPI_SUM,
+//                  mpi_communicator);
+//        	std::cout<<"r_norm initially for subdoms is: "<<r_norm_buffer<<"\n";
+//          r_norm = sqrt(r_norm_buffer);
+          r_norm= sqrt(r_norm);
           //end -----------of calclatig r-norm------------------
 
           //Making the first element of matrix Q[side] same as r_side[side/r_norm
@@ -1474,16 +1484,16 @@ namespace vt_darcy
 //              pcout<<"reached end mpi 1\n";
               //Arnoldi Algorithm continued
                     //combining summing h[i] over all subdomains
-                    std::vector<double> h_buffer(k_counter+2,0);
-                	MPI_Allreduce(&h[0],
-                			&h_buffer[0],
-    						k_counter+2,
-    						MPI_DOUBLE,
-    						MPI_SUM,
-    						mpi_communicator);
+//                    std::vector<double> h_buffer(k_counter+2,0);
+//                	MPI_Allreduce(&h[0],
+//                			&h_buffer[0],
+//    						k_counter+2,
+//    						MPI_DOUBLE,
+//    						MPI_SUM,
+//    						mpi_communicator);
 
 
-                	h=h_buffer;
+//                	h=h_buffer;
                 	for (unsigned int side = 0; side < n_faces_per_cell; ++side)
                 		if (neighbors[side] >= 0)
                 			for(unsigned int i=0; i<=k_counter; ++i)
@@ -1496,14 +1506,17 @@ namespace vt_darcy
                 	for (unsigned int side = 0; side < n_faces_per_cell; ++side)
                 	            		if (neighbors[side] >= 0)
                 	            			h_dummy+=vect_norm(q[side])*vect_norm(q[side]);
-                	double h_k_buffer=0;
-                	MPI_Allreduce(&h_dummy,
-                            			&h_k_buffer,
-                						1,
-                						MPI_DOUBLE,
-                						MPI_SUM,
-                						mpi_communicator);
-                	h[k_counter+1]=sqrt(h_k_buffer);
+//                	double h_k_buffer=0;
+////                	if(k_counter==1 | k_counter==2 | k_counter==3)
+////                		std::cout<<"h_dummy value is: "<<h_dummy<<"\n";
+//                	MPI_Allreduce(&h_dummy,
+//                            			&h_k_buffer,
+//                						1,
+//                						MPI_DOUBLE,
+//                						MPI_SUM,
+//                						mpi_communicator);
+//                	h[k_counter+1]=sqrt(h_k_buffer);
+                	h[k_counter+1]=sqrt(h_dummy);
 
 
                 	for (unsigned int side = 0; side < n_faces_per_cell; ++side)
