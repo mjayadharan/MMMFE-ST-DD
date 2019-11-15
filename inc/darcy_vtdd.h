@@ -94,8 +94,8 @@ namespace vt_darcy
         DarcyVTProblem(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
                            const unsigned int mortar_degree = 0);
 
-        void run(const unsigned int refine, const std::vector <std::vector<unsigned int>> &reps,
-        		 const std::vector <std::vector<unsigned int>> &reps_st, double tol,
+        void run(const unsigned int refine,
+        		 const std::vector <std::vector<int>> &reps_st, double tol,
                  unsigned int maxiter, unsigned int quad_degree = 11);
 
     private:

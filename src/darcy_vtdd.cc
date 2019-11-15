@@ -1856,55 +1856,67 @@ namespace vt_darcy
                                          cellwise_errors, quadrature,
                                          VectorTools::L2_norm,
                                          &pressure_mask);
-      const double p_l2_error = cellwise_errors.norm_sqr();
+//      const double p_l2_error = cellwise_errors.norm_sqr();
+      const double p_l2_error = VectorTools::compute_global_error(triangulation,
+    		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_errors,
+																  VectorTools::L2_norm);
 
       VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
                                          cellwise_norms, quadrature,
                                          VectorTools::L2_norm,
                                          &pressure_mask);
-      const double p_l2_norm = cellwise_norms.norm_sqr();
+//      const double p_l2_norm = cellwise_norms.norm_sqr();
+      const double p_l2_norm = VectorTools::compute_global_error(triangulation,
+    		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_norms,
+																  VectorTools::L2_norm);
 
       // L2 in time error
-      err.l2_l2_errors[1] += p_l2_error;
-      err.l2_l2_norms[1] += p_l2_norm;
+      err.l2_l2_errors[1] += p_l2_error*p_l2_error;
+      err.l2_l2_norms[1] += p_l2_norm*p_l2_norm;
 
       // Linf in time error
       err.linf_l2_errors[1] = std::max(err.linf_l2_errors[1], sqrt(p_l2_error)/sqrt(p_l2_norm));
 
-      // Pressure error and norm at midcells
-      VectorTools::integrate_difference (dof_handler, solution, exact_solution,
-                                         cellwise_errors, quadrature_super,
-                                         VectorTools::L2_norm,
-                                         &pressure_mask);
-      const double p_l2_mid_error = cellwise_errors.norm_sqr();
-
-      VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
-                                         cellwise_norms, quadrature_super,
-                                         VectorTools::L2_norm,
-                                         &pressure_mask);
-      const double p_l2_mid_norm = cellwise_norms.norm_sqr();
-
-      // L2 in time error
-      err.pressure_disp_l2_midcell_errors[0] +=p_l2_mid_error;
-      err.pressure_disp_l2_midcell_norms[0] += p_l2_mid_norm;
+//      // Pressure error and norm at midcells
+//      VectorTools::integrate_difference (dof_handler, solution, exact_solution,
+//                                         cellwise_errors, quadrature_super,
+//                                         VectorTools::L2_norm,
+//                                         &pressure_mask);
+//      const double p_l2_mid_error = cellwise_errors.norm_sqr();
+//
+//      VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
+//                                         cellwise_norms, quadrature_super,
+//                                         VectorTools::L2_norm,
+//                                         &pressure_mask);
+//      const double p_l2_mid_norm = cellwise_norms.norm_sqr();
+//
+//      // L2 in time error
+//      err.pressure_disp_l2_midcell_errors[0] +=p_l2_mid_error;
+//      err.pressure_disp_l2_midcell_norms[0] += p_l2_mid_norm;
 
       // Velocity L2 error and norm
       VectorTools::integrate_difference (dof_handler, solution, exact_solution,
                                          cellwise_errors, quadrature,
                                          VectorTools::L2_norm,
                                          &velocity_mask);
-      double u_l2_error = cellwise_errors.norm_sqr();
+//      double u_l2_error = cellwise_errors.norm_sqr();
+      const double u_l2_error = VectorTools::compute_global_error(triangulation,
+    		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_errors,
+																  VectorTools::L2_norm);
 
       VectorTools::integrate_difference (dof_handler, zerozeros, exact_solution,
                                          cellwise_norms, quadrature,
                                          VectorTools::L2_norm,
                                          &velocity_mask);
 
-      double u_l2_norm = cellwise_norms.norm_sqr();
+//      double u_l2_norm = cellwise_norms.norm_sqr();
+      const double u_l2_norm = VectorTools::compute_global_error(triangulation,
+    		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_norms,
+																  VectorTools::L2_norm);
 
       // following is actually calculating H_div norm for velocity
-      err.l2_l2_errors[0] +=u_l2_error;
-      err.l2_l2_norms[0] += u_l2_norm;
+      err.l2_l2_errors[0] +=u_l2_error*u_l2_error;
+      err.l2_l2_norms[0] += u_l2_norm*u_l2_norm;
       double total_time = prm.time_step * prm.num_time_steps;
 //      {
 //        // Velocity Hdiv error and seminorm
@@ -2022,7 +2034,7 @@ namespace vt_darcy
           }
         convergence_table.add_value("cycle", refinement_index);
         convergence_table.add_value("# GMRES", max_cg_iteration);
-        convergence_table.add_value("Velocity,L8-Hdiv", recv_buf_num[0]);
+        convergence_table.add_value("Velocity,L2-L2", recv_buf_num[0]);
         convergence_table.add_value("Pressure,L8-L2", recv_buf_num[4]);
         convergence_table.add_value("Pressure,L2-L2", recv_buf_num[2]);
 
@@ -2105,21 +2117,21 @@ namespace vt_darcy
 
 	      double total_time = prm.time_step * prm.num_time_steps;
 	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12){
-	        convergence_table.set_precision("Velocity,L8-Hdiv", 3);
+	        convergence_table.set_precision("Velocity,L2-L2", 3);
 	        convergence_table.set_precision("Pressure,L8-L2", 3);
 	        convergence_table.set_precision("Pressure,L2-L2", 3);
 
-	        convergence_table.set_scientific("Velocity,L8-Hdiv", true);
+	        convergence_table.set_scientific("Velocity,L2-L2", true);
 	        convergence_table.set_scientific("Pressure,L8-L2", true);
 	        convergence_table.set_scientific("Pressure,L2-L2", true);
 
 	        convergence_table.set_tex_caption("# GMRES", "\\# gmres");
-	        convergence_table.set_tex_caption("Velocity,L8-Hdiv", "$ \\|z - z_h\\|_{L^{\\infty}(H_{div})} $");
+	        convergence_table.set_tex_caption("Velocity,L2-L2", "$ \\|z - z_h\\|_{L^{2}(L^2)} $");
 	        convergence_table.set_tex_caption("Pressure,L8-L2", "$ \\|p - p_h\\|_{L^{\\infty}(L^2)} $");
 	        convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^{2}(L^2)} $");
 
 	        convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
-	        convergence_table.evaluate_convergence_rates("Velocity,L8-Hdiv", ConvergenceTable::reduction_rate_log2);
+	        convergence_table.evaluate_convergence_rates("Velocity,L2-L2", ConvergenceTable::reduction_rate_log2);
 	        convergence_table.evaluate_convergence_rates("Pressure,L8-L2", ConvergenceTable::reduction_rate_log2);
 	        convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
 
@@ -2176,8 +2188,7 @@ namespace vt_darcy
     // MixedBiotProblemDD::run
     template <int dim>
     void DarcyVTProblem<dim>::run (const unsigned int refine,
-                                             const std::vector<std::vector<unsigned int>> &reps,
-											 const std::vector<std::vector<unsigned int>> &reps_st,
+											 const std::vector<std::vector<int>> &reps_st,
                                              double tol,
                                              unsigned int maxiter,
                                              unsigned int quad_degree)
@@ -2191,7 +2202,7 @@ namespace vt_darcy
         const unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
         pcout<<"\n\n Total number of processes is "<<n_processes<<"\n\n";
 
-        Assert(reps[0].size() == dim, ExcDimensionMismatch(reps[0].size(), dim));
+        Assert(reps_st[0].size() == dim+1, ExcDimensionMismatch(reps_st[0].size(), dim));
 
         //finding the num_time_steps and time_step_size using final_time and number of time steps required.
         prm.num_time_steps = reps_st[this_mpi][2];
@@ -2199,13 +2210,25 @@ namespace vt_darcy
         pcout<<"Final time= "<<prm.final_time<<"\n";
         pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
 
-        std::vector<std::vector<unsigned int>> reps_local(reps), reps_st_local(reps_st); //local copy of mesh partition information.
+        std::vector<std::vector<unsigned int>> reps_local(reps_st.size()), reps_st_local(reps_st.size()); //local copy of mesh partition information.
+        for(int i=0; i<reps_st_local.size(); i++)
+        {
+        	reps_local[i].resize(2);
+        	reps_st_local[i].resize(3);
+
+        	reps_st_local[i][0] = reps_st[i][0] ;
+        	reps_st_local[i][1] = reps_st[i][1] ;
+        	reps_st_local[i][2] = reps_st[i][2] ;
+
+        	reps_local[i][0] = reps_st_local[i][0] ;
+        	reps_local[i][1] = reps_st_local[i][1] ;
+        }
 
         if (mortar_flag)
         {
         	pcout<<"number of processors is "<<n_processes<<std::endl;
             Assert(n_processes > 1, ExcMessage("Mortar MFEM is impossible with 1 subdomain"));
-            Assert(reps.size() >= n_processes + 1, ExcMessage("Some of the mesh parameters were not provided"));
+            Assert(reps_st.size() >= n_processes + 1, ExcMessage("Some of the mesh parameters were not provided"));
         }
 
         for (refinement_index=0; refinement_index<total_refinements; ++refinement_index)
@@ -2241,7 +2264,7 @@ namespace vt_darcy
                 }
                 else
                 {
-                    GridGenerator::subdivided_hyper_rectangle(triangulation, reps[0], p1, p2);
+                    GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[0], p1, p2);
                     if (this_mpi == 0 || this_mpi == 3)
                       GridTools::distort_random (0.1*(1+this_mpi), triangulation, true);
                 }
