@@ -103,7 +103,8 @@ namespace vt_darcy
       {
         case 2:
 //          return c0*t_scale*exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)-exp(t*t_scale)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0)+(3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793)*2.0;
-        	return c0*t_scale*exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]) + exp(t*t_scale)*5.0*sin(p[0])*sin(2.0*p[1]);
+//        	return c0*t_scale*exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]) + exp(t*t_scale)*5.0*sin(p[0])*sin(2.0*p[1]);
+        	return 5.0*sin(p[0])*sin(2.0*p[1]);
         default:
         Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
       }
@@ -133,7 +134,8 @@ namespace vt_darcy
       {
         case 2:
 //          return exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
-        	return exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
+//        	return exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
+        	return sin(p[0])*sin(2.0*p[1]);
         default:
         Assert(false, ExcMessage("The BC data for dim != 2 is not provided"));
       }
@@ -173,9 +175,12 @@ namespace vt_darcy
 //                values(1) = 3.141592653589793*exp(t*t_scale)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
 //                values(2) = exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
 
-            	  values(0) = -exp(t*t_scale)*cos(p[0])*sin(2.0*p[1]) ;
-            	  values(1) = -exp(t*t_scale)*2.0*sin(p[0])*cos(2.0*p[1]) ;
-            	  values(2) = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
+//            	  values(0) = -exp(t*t_scale)*cos(p[0])*sin(2.0*p[1]) ;
+//            	  values(1) = -exp(t*t_scale)*2.0*sin(p[0])*cos(2.0*p[1]) ;
+//            	  values(2) = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
+            	  values(0) = -cos(p[0])*sin(2.0*p[1]) ;
+            	  values(1) = -2.0*sin(p[0])*cos(2.0*p[1]) ;
+            	  values(2) = sin(p[0])*sin(2.0*p[1]);
 
                 break;
             case 3:
@@ -201,6 +206,7 @@ namespace vt_darcy
                 Assert(false, ExcNotImplemented());
         }
     }
+
 
     template <int dim>
     void
@@ -232,11 +238,17 @@ namespace vt_darcy
 //            grads[1][0] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
 //            grads[1][1] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
 
-        	 grads[0][0] = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);;
-        	 grads[0][1] = -exp(t*t_scale)*2.0*cos(p[0])*cos(2*p[1]);
+//        	 grads[0][0] = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);;
+//        	 grads[0][1] = -exp(t*t_scale)*2.0*cos(p[0])*cos(2*p[1]);
+//
+//        	 grads[1][0] = -exp(t*t_scale)*2.0*cos(p[0])*cos(2.0*p[1]);
+//        	 grads[1][1] = exp(t*t_scale)*4.0*sin(p[0])*sin(2.0*p[1]);
 
-        	 grads[1][0] = -exp(t*t_scale)*2.0*cos(p[0])*cos(2.0*p[1]);
-        	 grads[1][1] = exp(t*t_scale)*4.0*sin(p[0])*sin(2.0*p[1]);
+        	 grads[0][0] = sin(p[0])*sin(2.0*p[1]);;
+        	 grads[0][1] = -2.0*cos(p[0])*cos(2*p[1]);
+
+        	 grads[1][0] = -2.0*cos(p[0])*cos(2.0*p[1]);
+        	 grads[1][1] = 4.0*sin(p[0])*sin(2.0*p[1]);
 
             break;
         case 3:
@@ -260,7 +272,6 @@ namespace vt_darcy
                                Vector<double>   &values) const;
   };
 
-
   template <int dim>
   void
   InitialCondition<dim>::vector_value (const Point<dim> &p,
@@ -282,7 +293,8 @@ namespace vt_darcy
               values(1) = 0;
 //              values(2) = (cos(y*M_PI)*sin(x*M_PI)+1.0E1);
 
-              values(2) = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
+//              values(2) = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
+              values(2) = sin(p[0])*sin(2.0*p[1]);
           break;
           case 3:
 

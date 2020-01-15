@@ -22,6 +22,7 @@
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
 #include <deal.II/grid/grid_in.h>
+#include <deal.II/grid/grid_out.h>
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_renumbering.h>
@@ -344,6 +345,9 @@ namespace vt_darcy
                         local_matrix(i, j) += ( phi_u[i] * k_inverse_values[q] * phi_u[j] - phi_p[j] * div_phi_u[i]                                     // Darcy law
                                                + prm.time_step*div_phi_u[j] * phi_p[i] + prm.c_0*phi_p[i]*phi_p[j] )
                                               * fe_values.JxW(q) ;
+//                    	  local_matrix(i, j) += ( phi_u[i] * k_inverse_values[q] * phi_u[j] - phi_p[j] * div_phi_u[i]                                     // Darcy law
+//                    	                                               + prm.time_step*div_phi_u[j] * phi_p[i]  )
+//                    	                                              * fe_values.JxW(q) ;
                     }
                 }
             }
@@ -573,6 +577,9 @@ namespace vt_darcy
                   local_rhs(i) += ( prm.time_step*phi_p[i] * rhs_values_flow[q]
                                             + prm.c_0*old_pressure_values[q] * phi_p[i] )
                                            * fe_values.JxW(q);
+//                  local_rhs(i) += ( prm.time_step*phi_p[i] * rhs_values_flow[q]
+//                                                             )
+//                                                            * fe_values.JxW(q);
 
               }
           }
@@ -656,7 +663,6 @@ namespace vt_darcy
 
             std::vector <double> phi_p(dofs_per_cell);
             std::vector<double> old_pressure_values(n_q_points);
-
             if(std::fabs(prm.time-prm.time_step)>1.0e-10)
             {
             	fe_values[pressure].get_function_values (old_solution, old_pressure_values);
@@ -843,6 +849,25 @@ namespace vt_darcy
 
 				subdom_to_st_distribute(solution_star_st, solution_star, time_level);
 
+//								 if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//								                        						  {
+//								                        						  std::ofstream star_solution_output("solution_star_sub.txt", std::ofstream::app);
+//								                        						  star_solution_output<<"cg_iteraton= "<<cg_iteration<<"................\n";
+//								                        							  star_solution_output<<"time_level= "<<time_level<<"................\n";
+//								                        							  for(int dummy_j=0; dummy_j<solution_star.size();dummy_j++)
+//								                        								  star_solution_output<<solution_star[dummy_j]<<"\n";
+//
+//								                        						  }
+//								 if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//								                        						  {
+//								                        						  std::ofstream star_solution_output("solution_star_st.txt", std::ofstream::app);
+//								                        						  star_solution_output<<"cg_iteraton= "<<cg_iteration<<"................\n";
+//								                        						  star_solution_output<<"time_level= "<<time_level<<"................\n";
+//								                        							  for(int dummy_j=0; dummy_j<solution_star_st.size();dummy_j++)
+//								                        								  star_solution_output<<solution_star_st[dummy_j]<<"\n";
+//
+//								                        						  }
+
 				solution_star=0;
 
 
@@ -859,13 +884,13 @@ namespace vt_darcy
 				solution.sadd(1.0,solution_bar_collection[time_level]);
 
 
-
+//
 //				//------------------------------------------
-
-
+//
+//
 //				  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
 //					  {
-//					  std::ofstream star_solution_output("star_solution.txt");
+//					  std::ofstream star_solution_output("star_final_solution.txt");
 //						  star_solution_output<<"time_level= "<<time_level <<"................\n";
 //						  for(int dummy_j=0; dummy_j<solution_star.size();dummy_j++)
 //							  star_solution_output<<solution_star[dummy_j]<<"\n";
@@ -1144,7 +1169,15 @@ namespace vt_darcy
         	  //Edit Done 5: change dof_handler to dof_handler_vt and solution_bar to solution_bar_vr, quad to quad_mortar(2d faces).
               interface_fe_function_mortar.reinit(solution_bar_mortar);
               interface_fe_function_mortar=0;
+              constraints.clear();
               project_mortar<dim>(P_fine2coarse, dof_handler_st, solution_bar_st, quad_project, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
+//                                				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==1)
+//                                				    {
+//                                				     std::ofstream int_mortar_output("solution_bar_mortar.txt");
+//                                				     for(int dummy_j=0; dummy_j<solution_bar_mortar.size();dummy_j++)
+//                                				     int_mortar_output<<solution_bar_mortar[dummy_j]<<"\n";
+//                                				    }
+
           }
 //          else if (mortar_flag == 2)
 //          {
@@ -1257,7 +1290,6 @@ namespace vt_darcy
 //    			  MPI_DOUBLE,
 //    			  MPI_SUM,
 //                  mpi_communicator);
-//        	std::cout<<"r_norm initially for subdoms is: "<<r_norm_buffer<<"\n";
 //          r_norm = sqrt(r_norm_buffer);
           r_norm= sqrt(r_norm);
           //end -----------of calclatig r-norm------------------
@@ -1324,6 +1356,7 @@ namespace vt_darcy
 
                   //Edit 10 Done: change dof_handler to dof_handler_vt and interface_fe_function to interface_fe_function_vt.
 //                  pcout<<"\n reached before starting of projection 1\n";
+                  constraints.clear();
                   project_mortar(P_coarse2fine, dof_handler_mortar,
                                  interface_fe_function_mortar,
                                  quad_project,
@@ -1342,7 +1375,7 @@ namespace vt_darcy
 //                  				     for(int dummy_j=0; dummy_j<interface_fe_function_mortar.size();dummy_j++)
 //                  				     int_mortar_output<<interface_fe_function_mortar[dummy_j]<<"\n";
 //                  				    }
-//
+////
 //                  				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==1)
 //                  				   {
 //                  				    std::ofstream int_st_output("interface_fe_st.txt", std::ofstream::app);
@@ -1352,6 +1385,7 @@ namespace vt_darcy
 //                  				   }
 
 
+
 //                  pcout<<"reached at end of projection 1\n";
 
 
@@ -1359,6 +1393,7 @@ namespace vt_darcy
                   //Edit 11 Done: Replace assemble_rhs_ and solve_star with the following lines:
 				//Solving the star problems.
                   prm.time=0.0;
+                  solution_star_st=0;
         		  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
         			  {
         				  prm.time +=prm.time_step;
@@ -1404,6 +1439,7 @@ namespace vt_darcy
 //            	  for(int i_index=0; i_index<solution_star_st.size();++i_index)
 //            		  pcout<<solution_star_st[i_index]<<std::endl;
 //            	  pcout<<"reached before starting of projection 2\n";
+            	  constraints.clear();
                         project_mortar<2>(P_fine2coarse,
                                        dof_handler_st,
                                        solution_star_st,
@@ -1477,6 +1513,10 @@ namespace vt_darcy
                              	for(unsigned int j=0; j<q[side].size();++j){
                              		h[i]+=q[side][j]*Q_side[side][i][j];
                              		}
+                            	for(unsigned int j=0; j<q[side].size();++j){
+                                            					q[side][j]-=h[i]*Q_side[side][i][j];
+                                            				}
+
 
                   }
 
@@ -1491,24 +1531,24 @@ namespace vt_darcy
 //    						MPI_DOUBLE,
 //    						MPI_SUM,
 //    						mpi_communicator);
-
-
+//
+//
 //                	h=h_buffer;
-                	for (unsigned int side = 0; side < n_faces_per_cell; ++side)
-                		if (neighbors[side] >= 0)
-                			for(unsigned int i=0; i<=k_counter; ++i)
-                				for(unsigned int j=0; j<q[side].size();++j){
-                					q[side][j]-=h[i]*Q_side[side][i][j];
-                				}//end first loop for arnolod algorithm
+//                	for (unsigned int side = 0; side < n_faces_per_cell; ++side)
+//                		if (neighbors[side] >= 0)
+//                			for(unsigned int i=0; i<=k_counter; ++i)
+//                				for(unsigned int j=0; j<q[side].size();++j){
+//                					q[side][j]-=h[i]*Q_side[side][i][j];
+//                				}//end first loop for arnolod algorithm
                 	double h_dummy = 0;
 
                 	//calculating h(k+1)=norm(q) as summation over side,subdomains norm_squared(q[side])
                 	for (unsigned int side = 0; side < n_faces_per_cell; ++side)
                 	            		if (neighbors[side] >= 0)
                 	            			h_dummy+=vect_norm(q[side])*vect_norm(q[side]);
-//                	double h_k_buffer=0;
-////                	if(k_counter==1 | k_counter==2 | k_counter==3)
-////                		std::cout<<"h_dummy value is: "<<h_dummy<<"\n";
+                	double h_k_buffer=0;
+//                	if(k_counter==1 | k_counter==2 | k_counter==3)
+//                		std::cout<<"h_dummy value is: "<<h_dummy<<"\n";
 //                	MPI_Allreduce(&h_dummy,
 //                            			&h_k_buffer,
 //                						1,
@@ -1590,19 +1630,34 @@ namespace vt_darcy
           //updating X(lambda) to get the final lambda value before solving the final star problem
           for (unsigned int side = 0; side < n_faces_per_cell; ++side)
                   if (neighbors[side] >= 0)
-                      for (unsigned int i = 0; i < interface_data[side].size(); ++i)
+                      for (unsigned int i = 0; i < lambda[side].size(); ++i)
+                      {
+                    	  lambda[side][i]=0.0;
                          for(unsigned int j=0; j<=k_counter; ++j)
                           lambda[side][i] += Q_side[side][j][i]*y[j];
+                      }
+
+//          {
+//                        	                   				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//                        	                   				   {
+//                        	                   				    std::ofstream int_st_output("lambda.txt");
+//                        	                   				    for(int dummy_j=0; dummy_j<lambda[1].size();dummy_j++)
+//                        	                   				    int_st_output<<lambda[1][dummy_j]<<"\n";
+//                        	                   				   }
+//          }
+//          pcout<<"interface_dofs_size[1] is : "<<interface_dofs[1].size()<<"\n";
           //we can replace lambda here and just add interface_data(skip one step below)
 
 
           if (mortar_flag)
                  {
-                     interface_data = lambda;
+//                     interface_data = lambda;
                      for (unsigned int side=0;side<n_faces_per_cell;++side)
-                         for (unsigned int i=0;i<interface_dofs[side].size();++i)
-                             interface_fe_function_mortar[interface_dofs[side][i]] = interface_data[side][i];
+                    	 if (neighbors[side] >= 0)
+                    		 for (unsigned int i=0;i<lambda[side].size();++i)
+                    			 interface_fe_function_mortar[interface_dofs[side][i]] = lambda[side][i];
                      //Edit 14 Done:  change dof_handler and interface_fe_function to _st counterpart.
+                     constraints.clear();
                      project_mortar(P_coarse2fine,
                                     dof_handler_mortar,
                                     interface_fe_function_mortar,
@@ -1612,6 +1667,21 @@ namespace vt_darcy
                                     dof_handler_st,
                                     interface_fe_function_st);
 //                     interface_fe_function.block(2) = 0;
+
+//                     {
+//                                   	                   				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//                                   	                   				   {
+//                                   	                   				    std::ofstream int_st_output("interface_st.txt");
+//                                   	                   				    for(int dummy_j=0; dummy_j<interface_fe_function_st.size();dummy_j++)
+//                                   	                   				    int_st_output<<interface_fe_function_st[dummy_j]<<"\n";
+//                                   	                   				   }
+//                                   	                   			 if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
+//                                   	                   			     {
+//                                   	                   				   std::ofstream int_st_output("interface_mortar.txt");
+//                                   	                   			       for(int dummy_j=0; dummy_j<interface_fe_function_mortar.size();dummy_j++)
+//                                   	                   			       int_st_output<<interface_fe_function_mortar[dummy_j]<<"\n";
+//                                   	                   			     }
+//                     }
 
                  }
                  else
@@ -2320,6 +2390,18 @@ namespace vt_darcy
                 }
 
             }
+//            { //Outputting grid.
+//              GridOut       grid_out;
+//              std::ofstream output_mortar("grid_mortar-" + Utilities::to_string(this_mpi,2)+ std::to_string(refinement_index) + ".vtk");
+//              grid_out.write_vtk(triangulation_mortar, output_mortar);
+//
+//              std::ofstream output_triangulation("grid_subdomain-" + Utilities::to_string(this_mpi,2) +std::to_string(refinement_index) + ".vtk");
+//              grid_out.write_vtk(triangulation, output_triangulation);
+//
+//              std::ofstream output_st("grid_st-" + Utilities::to_string(this_mpi,2) + std::to_string(refinement_index) + ".vtk");
+//              grid_out.write_vtk(triangulation_st, output_st);
+//            }
+
 //            pcout<<"\n \n grid diameter is : "<<GridTools::minimal_cell_diameter(triangulation)<<"\n \n ";
             pcout << "Making grid and DOFs...\n";
             make_grid_and_dofs();
@@ -2359,31 +2441,44 @@ namespace vt_darcy
             {
 				get_interface_dofs();
 				get_interface_dofs_st();
+
             }
 
-                        pcout<<"rached here 1 \n";
-////            /************************************************************************************************************/
-////            pcout<<"rached here 1 \n";
-////                        get_interface_dofs_st();
-//                        if(refinement_index==2 && this_mpi==1){
-////                        	get_interface_dofs_st();
-//                        		 std::vector<Point<3>> support_points(dof_handler_st.n_dofs());
-//                        		 MappingQGeneric<3> mapping_generic(1);
-//                        		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_st,support_points);
-//
-//                        		 std::ofstream output_into_file("output_data.txt");
+
+//            /************************************************************************************************************/
+//            pcout<<"rached here 1 \n";
+//                        get_interface_dofs_st();
+                        if( this_mpi==0){
+                        	            FE_FaceQ<dim+1> fe_face_2(1);
+                        	            DoFHandler<dim+1> fe_face_dof_handler(triangulation_mortar);
+                        	            fe_face_dof_handler.distribute_dofs(fe_face_2);
+                        	            DoFRenumbering::component_wise(fe_face_dof_handler);
+                        		 std::vector<Point<3>> support_points(fe_face_dof_handler.n_dofs());
+                        		 MappingQGeneric<3> mapping_generic(1);
+                        		 DoFTools::map_dofs_to_support_points(mapping_generic,fe_face_dof_handler,support_points);
+                        		 std::ofstream output_into_file("interface_dof_mortar.txt");
 //                        		 for(int time_level_it=0; time_level_it<prm.num_time_steps; time_level_it++)
 //                        		 {
 //                        			 output_into_file<<"time level= "<<time_level_it<<". \n";
-//                        			 int dum_size = interface_dofs_subd[2].size();
-//									 for(int i=0; i<interface_dofs_subd[2].size(); i++){
-//										 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[2][dum_size*time_level_it+i]][0]<<" , "<<support_points[interface_dofs_st[2][dum_size*time_level_it+i]][1]<<" , "<<support_points[interface_dofs_st[2][dum_size*time_level_it+i]][2]<<") \n";
-////										 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[time_level_it][2][i]][0]<<" , "<<support_points[interface_dofs_st[time_level_it][2][i]][1]<<" , "<<support_points[interface_dofs_st[time_level_it][2][i]][2]<<") \n";
+//                        			 int dum_size = interface_dofs_subd[1].size();
+//									 for(int i=0; i<interface_dofs_subd[1].size(); i++){
+//										 output_into_file<<i<<" : ("<<support_points[interface_dofs_st[1][dum_size*time_level_it+i]][0]<<" , "<<support_points[interface_dofs_st[1][dum_size*time_level_it+i]][1]<<" , "<<support_points[interface_dofs_st[1][dum_size*time_level_it+i]][2]<<") \n";
 //									 }
 //                        		 }
-//                        		 output_into_file.close();
-//                        	}
-////            /************************************************************************************************************/
+
+//                        		     int dum_size = interface_dofs[1].size();
+//                        			for(int i=0; i<interface_dofs[1].size(); i++){
+//                        				            pcout<<"rached here 3 \n";
+//                        			output_into_file<<i<<" : ("<<support_points[interface_dofs[1][i]][0]<<" , "<<support_points[interface_dofs[1][i]][1]<<" , "<<support_points[interface_dofs[1][i]][2]<<") \n";
+//                        			}
+                        		 for(int i =0 ; i<interface_dofs[1].size();i++)
+                        			 pcout<<interface_dofs[1][i]<<"\n";
+                        			for(int i =0; i<support_points.size();i++)
+                        				output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<" , "<<support_points[i][2]<<") \n";
+
+                        		 output_into_file.close();
+                        	}
+//            /************************************************************************************************************/
 //
 //            /************************************************************************************************************/
 //            //feface_q just to check the suport points match with the 3d case.
