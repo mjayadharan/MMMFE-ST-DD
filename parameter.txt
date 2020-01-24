@@ -1,9 +1,9 @@
 c0 1.0
 alpha 1.0
 num_refinement 2
-final_time 0.001
+final_time 0.01
 tolerence 1.e-11
 max_iteration 500
-mesh_pattern_sub_d0 2 2 4
-mesh_pattern_sub_d1 2 2 4
-mesh_pattern_mortar 1 1 1
+mesh_pattern_sub_d0 2 2 20
+mesh_pattern_sub_d1 2 2 19
+mesh_pattern_mortar 1 1 6

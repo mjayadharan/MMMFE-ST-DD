@@ -503,7 +503,6 @@ namespace vt_darcy
 
         constraints.close ();
         constraints.distribute (out_vec);
-//        constraints.clear();
     }
 
     //VT Time-space mesh related utilities:
