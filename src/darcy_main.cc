@@ -104,11 +104,13 @@ int main (int argc, char *argv[])
 //        no_mortar.run (num_refinement, mesh_m2d, mesh_m3d, tolerence, max_itr);
 
      //DarcyDD with mortar
-        DarcyVTProblem<2> lin_mortar(0,bparam,1,1);
+        DarcyVTProblem<2> constant_mortar(0,bparam,1,0);
+//        DarcyVTProblem<2> lin_mortar(0,bparam,1,1);
 //        DarcyVTProblem<2> quad_mortar(1,bparam,1,2);
 //        DarcyVTProblem<2> cubic_mortar(1,bparam,1,3);
 
-        lin_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,4);
+        constant_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,4);
+//        lin_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,4);
 //        quad_mortar.run(num_refinement,mesh_m2d,mesh_m3d,tolerence,max_itr,5);
 //        cubic_mortar.run(num_refinement,mesh_m2d,mesh_m3d,tolerence,max_itr,6);
 

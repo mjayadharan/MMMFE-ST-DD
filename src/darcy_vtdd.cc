@@ -753,7 +753,7 @@ namespace vt_darcy
 			  prm.time=0.0;
 
 
-//			  std::ofstream star_solution_output("star_solution.txt");
+//			  std::ofstream star_solution_output("solution_bar_collection.txt");
 //
 //			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
 //				  for(int dummy_i=0;dummy_i<prm.num_time_steps;dummy_i++)
@@ -1137,6 +1137,35 @@ namespace vt_darcy
               interface_fe_function_mortar.reinit(solution_bar_mortar);
               interface_fe_function_mortar=0;
               project_mortar<dim>(P_fine2coarse, dof_handler_st, solution_bar_st, quad_project, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
+
+//              { // debuggig bracket.
+//
+//            	  std::ofstream star_solution_output_3("solution_bar.txt");
+//
+//      			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==1){
+//      					  for(int dummy_j=0; dummy_j<solution_bar_st.size();dummy_j++)
+//      						  star_solution_output_3<<solution_bar_st[dummy_j]<<"\n";}
+//
+//              			  std::ofstream star_solution_output("solution_bar_mortar.txt");
+//
+//              			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==1){
+//              					  for(int dummy_j=0; dummy_j<solution_bar_mortar.size();dummy_j++)
+//              						  star_solution_output<<solution_bar_mortar[dummy_j]<<"\n";
+//              			  solution_bar_st=0;
+//                          project_mortar<dim>(P_coarse2fine, dof_handler_mortar, solution_bar_mortar, quad_project, constraints, neighbors, dof_handler_st, solution_bar_st);
+//
+//                          std::ofstream star_solution_output_2("solution_bar_st_after.txt");
+//
+//              			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==1){
+//              					  for(int dummy_j=0; dummy_j<solution_bar_st.size();dummy_j++)
+//              						  star_solution_output_2<<solution_bar_st[dummy_j]<<"\n";}
+//              			  }
+//
+//
+//              } //end of debugging bracket.
+
+
+
           }
 //          else if (mortar_flag == 2)
 //          {

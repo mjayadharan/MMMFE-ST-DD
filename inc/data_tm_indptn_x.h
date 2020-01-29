@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------------
  * Functions representing RHS, physical parameters, boundary conditions and
- * the true solution. file_name_tag: data_const.h gives p(x) = 7.
+ * the true solution. file_name_tag: data_tm_indptn_x.h
  * ---------------------------------------------------------------------
  *
  * Author: Eldar Khattatov, University of Pittsburgh, 2018
@@ -136,7 +136,7 @@ namespace vt_darcy
       {
         case 2:
 //          return exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
-        	return 7.0; //p(x)=70.
+        	return p[0]; //p(x)=x
         default:
         Assert(false, ExcMessage("The BC data for dim != 2 is not provided"));
       }
@@ -176,9 +176,9 @@ namespace vt_darcy
 //                values(1) = 3.141592653589793*exp(t*t_scale)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
 //                values(2) = exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
 
-            	  values(0) = 0 ;
+            	  values(0) = -1 ;
             	  values(1) = 0 ;
-            	  values(2) = 7.0  ;
+            	  values(2) = p[0]  ;
 
                 break;
             case 3:
@@ -292,7 +292,7 @@ namespace vt_darcy
 //              values(2) = (cos(y*M_PI)*sin(x*M_PI)+1.0E1);
 
 //              values(2) = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
-              values(2) = 7.0 ;
+              values(2) = p[0] ;
           break;
           case 3:
 
