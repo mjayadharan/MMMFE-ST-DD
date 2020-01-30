@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------------
  * Functions representing RHS, physical parameters, boundary conditions and
- * the true solution. file_name_tag: data_const.h gives p(x) = 7.
+ * the true solution.
  * ---------------------------------------------------------------------
  *
  * Author: Eldar Khattatov, University of Pittsburgh, 2018
@@ -15,6 +15,7 @@
 namespace vt_darcy
 {
     using namespace dealii;
+
 
 
 
@@ -46,7 +47,6 @@ namespace vt_darcy
 
         const double x = points[p][0];
         const double y = points[p][1];
-
 
         switch (dim)
         {
@@ -103,9 +103,7 @@ namespace vt_darcy
       {
         case 2:
 //          return c0*t_scale*exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)-exp(t*t_scale)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0)+(3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793)*2.0;
-//        	return c0*t_scale*exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]) + exp(t*t_scale)*5.0*sin(p[0])*sin(2.0*p[1]);
-//        	return c0*exp(t)*(p[0]*p[1]); //time dependent x_y
-        	return 0;
+        	return c0*t_scale*exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]) + exp(t*t_scale)*5.0*sin(p[0])*sin(2.0*p[1]);
         default:
         Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
       }
@@ -135,7 +133,7 @@ namespace vt_darcy
       {
         case 2:
 //          return exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
-        	return 7.0; //p(x)=70.
+        	return exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
         default:
         Assert(false, ExcMessage("The BC data for dim != 2 is not provided"));
       }
@@ -175,9 +173,10 @@ namespace vt_darcy
 //                values(1) = 3.141592653589793*exp(t*t_scale)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
 //                values(2) = exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
 
-            	  values(0) = 0 ;
-            	  values(1) = 0 ;
-            	  values(2) = 7.0  ;
+            	  values(0) = -exp(t*t_scale)*cos(p[0])*sin(2.0*p[1]) ;
+            	  values(1) = -exp(t*t_scale)*2.0*sin(p[0])*cos(2.0*p[1]) ;
+            	  values(2) = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
+
 
                 break;
             case 3:
@@ -227,24 +226,18 @@ namespace vt_darcy
         {
         case 2:
 
-//
+
 //            grads[0][0] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
 //            grads[0][1] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
 //
 //            grads[1][0] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
 //            grads[1][1] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
 
-//        	 grads[0][0] = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);;
-//        	 grads[0][1] = -exp(t*t_scale)*2.0*cos(p[0])*cos(2*p[1]);
-//
-//        	 grads[1][0] = -exp(t*t_scale)*2.0*cos(p[0])*cos(2.0*p[1]);
-//        	 grads[1][1] = exp(t*t_scale)*4.0*sin(p[0])*sin(2.0*p[1]);\
+        	 grads[0][0] = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);;
+        	 grads[0][1] = -exp(t*t_scale)*2.0*cos(p[0])*cos(2*p[1]);
 
-       	 grads[0][0] = 0;
-       	 grads[0][1] = 0;
-
-       	 grads[1][0] = 0;
-       	 grads[1][1] = 0;
+        	 grads[1][0] = -exp(t*t_scale)*2.0*cos(p[0])*cos(2.0*p[1]);
+        	 grads[1][1] = exp(t*t_scale)*4.0*sin(p[0])*sin(2.0*p[1]);
 
             break;
         case 3:
@@ -290,8 +283,7 @@ namespace vt_darcy
               values(1) = 0;
 //              values(2) = (cos(y*M_PI)*sin(x*M_PI)+1.0E1);
 
-//              values(2) = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
-              values(2) = 7.0 ;
+              values(2) = exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
           break;
           case 3:
 

@@ -804,13 +804,13 @@ namespace vt_darcy
 				//transferring solution to st mesh.
 				if(mortar_flag){
 					solution_bar_collection[time_level]= solution_bar;
-					subdom_to_st_distribute(solution_bar_st, solution_bar, time_level);
+					subdom_to_st_distribute(solution_bar_st, solution_bar, time_level,prm.time_step);
 					solution_bar=0;
 				}
 				break; //break for case 0
 
 			case 1: //solving star problem at time_level and carrying solution to st mesh boundary multiple times during local_gmres.
-				st_to_subdom_distribute(interface_fe_function_st, interface_fe_function_subdom, time_level);
+				st_to_subdom_distribute(interface_fe_function_st, interface_fe_function_subdom, time_level,prm.time_step);
 				assemble_rhs_star();
 				solve_star();
 //				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==0)
@@ -833,7 +833,7 @@ namespace vt_darcy
 				interface_fe_function_subdom=0;
 				old_solution = solution_star;
 
-				subdom_to_st_distribute(solution_star_st, solution_star, time_level);
+				subdom_to_st_distribute(solution_star_st, solution_star, time_level,prm.time_step);
 
 				solution_star=0;
 
@@ -841,7 +841,7 @@ namespace vt_darcy
 				break; //break for case 1
 
 			case 2: //solving star problem final time after gmres converges: also compute error and output result corresponding to time_level.
-				st_to_subdom_distribute(interface_fe_function_st, interface_fe_function_subdom, time_level);
+				st_to_subdom_distribute(interface_fe_function_st, interface_fe_function_subdom, time_level,prm.time_step);
 				assemble_rhs_star();
 				solve_star();
 				interface_fe_function_subdom=0;
@@ -952,13 +952,13 @@ namespace vt_darcy
     template<int dim>
     void DarcyVTProblem<dim>::st_to_subdom_distribute (BlockVector<double> &vector_st,
     												   BlockVector<double> &vector_subdom,
-													   unsigned int &time_level)
+													   unsigned int &time_level, double scale_factor)
     {
         for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
               if (neighbors[side] >= 0){
             	  int interface_dofs_side_size = interface_dofs_subd[side].size();
             	  for(int i=0; i<interface_dofs_side_size; i++)
-            		  vector_subdom[ interface_dofs_subd[side][i]] = vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]];
+            		  vector_subdom[ interface_dofs_subd[side][i]] =(1/scale_factor)* vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]];
               }
 
     }
@@ -967,13 +967,13 @@ namespace vt_darcy
     template<int dim>
     void DarcyVTProblem<dim>::subdom_to_st_distribute (BlockVector<double> &vector_st,
     												   BlockVector<double> &vector_subdom,
-													   unsigned int &time_level)
+													   unsigned int &time_level, double scale_factor)
     {
         for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
             if (neighbors[side] >= 0){
                	  int interface_dofs_side_size = interface_dofs_subd[side].size();
                	  for(int i=0; i<interface_dofs_side_size; i++)
-               		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= vector_subdom[ interface_dofs_subd[side][i]];
+               		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= scale_factor*vector_subdom[ interface_dofs_subd[side][i]];
                  }
 
     }
@@ -1141,128 +1141,144 @@ namespace vt_darcy
               interface_fe_function_mortar=0;
               project_mortar<dim>(P_fine2coarse, dof_handler_st, solution_bar_st, quad_project, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
 
-              { // debuggig bracket.
-
-            	  std::ofstream star_solution_output_3("solution_bar_st.txt");
-
-      			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0){
-      					  for(int dummy_j=0; dummy_j<solution_bar_st.size();dummy_j++)
-      						  star_solution_output_3<<solution_bar_st[dummy_j]<<"\n";}
-
-              			  std::ofstream star_solution_output("solution_bar_mortar.txt");
-
-              			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0){
-              					  for(int dummy_j=0; dummy_j<solution_bar_mortar.size();dummy_j++)
-              						  star_solution_output<<solution_bar_mortar[dummy_j]<<"\n";
-//              			  solution_bar_st=0;
-//                          project_mortar<dim>(P_coarse2fine, dof_handler_mortar, solution_bar_mortar, quad_project, constraints, neighbors, dof_handler_st, solution_bar_st);
+//              { // debuggig bracket.
 //
-//                          std::ofstream star_solution_output_2("solution_bar_st_after.txt");
+//            	  std::ofstream star_solution_output_3("solution_bar_st.txt");
+//      			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==0){
+//      					  for(int dummy_j=0; dummy_j<solution_bar_st.size();dummy_j++)
+//      					  {
+//      						  star_solution_output_3<<solution_bar_st[dummy_j]<<"\n";
+//
+//      					  }
+//      			  }
+//
+//              			  std::ofstream star_solution_output("solution_bar_mortar.txt");
 //
 //              			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==1){
-//              					  for(int dummy_j=0; dummy_j<solution_bar_st.size();dummy_j++)
-//              						  star_solution_output_2<<solution_bar_st[dummy_j]<<"\n";}
-              			  }
-
-
-              } //end of debugging bracket.
+//              					  for(int dummy_j=0; dummy_j<solution_bar_mortar.size();dummy_j++)
+//              						  star_solution_output<<solution_bar_mortar[dummy_j]<<"\n";
+////              			  solution_bar_st=0;
+////                          project_mortar<dim>(P_coarse2fine, dof_handler_mortar, solution_bar_mortar, quad_project, constraints, neighbors, dof_handler_st, solution_bar_st);
+////
+////                          std::ofstream star_solution_output_2("solution_bar_st_after.txt");
+////
+////              			  if(Utilities::MPI::this_mpi_process(mpi_communicator)==1){
+////              					  for(int dummy_j=0; dummy_j<solution_bar_st.size();dummy_j++)
+////              						  star_solution_output_2<<solution_bar_st[dummy_j]<<"\n";}
+//              			  }
+//
+//
+//              } //end of debugging bracket.
 
 
 
           }
-          if(Utilities::MPI::this_mpi_process(mpi_communicator)==0){ //start of debugging
-
-                 	 {// subdomain part
-                      QGauss<dim-1> face_quadrature_formula(1);
-                      FEFaceValues<dim> fe_face_values (fe, face_quadrature_formula,
-                                                        update_values    | update_normal_vectors |
-                                                        update_quadrature_points  | update_JxW_values);
-                      const unsigned int dofs_per_cell   = fe.dofs_per_cell;
-                      const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
-         //             std::vector<double>         boundary_values_flow (n_face_q_points);
-                      std::vector<Tensor<1, dim>> boundary_values_flow(n_face_q_points);
-                      const FEValuesExtractors::Vector velocity (0);
-                      typename DoFHandler<dim>::active_cell_iterator
-                              cell = dof_handler.begin_active(),
-                              endc = dof_handler.end();
-                      std::ofstream temp1("values_subdomain.txt");
-                      for (; cell!=endc; ++cell)
-                      {
-                      for (unsigned int face_no=0;
-                           face_no<GeometryInfo<dim>::faces_per_cell;
-                           ++face_no)
-                          if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() != 0) // pressure part of the boundary
-                          {
-                         	 temp1<<"cell= "<<cell<<" face= "<<face_no<<"\n";
-                              fe_face_values.reinit (cell, face_no);
 
 
-                              fe_face_values[velocity].get_function_values (solution_bar_collection[1], boundary_values_flow);
-
-                              fe_face_values[velocity].get_function_values (solution_bar_collection[0], boundary_values_flow);
-                              for (unsigned int q=0; q<n_face_q_points; ++q){
-                             	 temp1<<q<<" : "<<fe_face_values.normal_vector(q)*boundary_values_flow[q]<<"\n";
-
-                              }
-         //                         for (unsigned int i=0; i<dofs_per_cell; ++i)
-         //                         {
-         ////                             local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
-         ////                                                        fe_face_values.normal_vector(q) *
-         ////                                                        boundary_values_flow[q] *
-         ////                                                        fe_face_values.JxW(q));
-         //
-         //                         }
-                          }
-                      }
-                 	 } // end of subdomain part
-
-                 	 {// st part
-                 	              QGauss<dim> face_quadrature_formula(1);
-                 	              FEFaceValues<dim+1> fe_face_values (fe_st, face_quadrature_formula,
-                 	                                                update_values    | update_normal_vectors |
-                 	                                                update_quadrature_points  | update_JxW_values);
-                 	              const unsigned int dofs_per_cell   = fe_st.dofs_per_cell;
-                 	              const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
-                 	 //             std::vector<double>         boundary_values_flow (n_face_q_points);
-                 	              std::vector<Tensor<1, dim+1>> boundary_values_flow(n_face_q_points);
-                 	              const FEValuesExtractors::Vector velocity (0);
-                 	              typename DoFHandler<dim+1>::active_cell_iterator
-                 	                      cell = dof_handler_st.begin_active(),
-                 	                      endc = dof_handler_st.end();
-                 	              std::ofstream temp1("values_st.txt");
-                 	              for (; cell!=endc; ++cell)
-                 	              {
-                 	              for (unsigned int face_no=0;
-                 	                   face_no<GeometryInfo<dim+1>::faces_per_cell;
-                 	                   ++face_no)
-                 	                  if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() != 0) // pressure part of the boundary
-                 	                  {
-                 	                 	 temp1<<"cell= "<<cell<<" face= "<<face_no<<"\n";
-                 	                      fe_face_values.reinit (cell, face_no);
-
-                 	                      fe_face_values[velocity].get_function_values (solution_bar_st, boundary_values_flow);
-                 	                      for (unsigned int q=0; q<n_face_q_points; ++q){
-                 	                     	 temp1<<q<<" : "<<boundary_values_flow[q][0]<<"\n";
-
-                 	                      }
-
-                 	                  }
-                 	              }
-                 	         	 } // end of st part
-         //
-         //         Vector<double> solution_from_subdom(2);
-         //         Point<2> point_in_2d ={0.249,0.49};
-         //         VectorTools::point_value(dof_handler,solution_bar_collection[0],point_in_2d,solution_from_subdom);
-         //         pcout<<"\n\n subdom value is: "<<solution_from_subdom[0]<<" , "<<solution_from_subdom[1]<< "\n";
-         //
-         //         Vector<double> solution_from_st(3);
-         //         Point<3> point_in_3d ={0.249,0.49,0.001};
-         //         VectorTools::point_value(dof_handler_st,solution_bar_st,point_in_3d,solution_from_st);
-         //         pcout<<"st value is: "<<solution_from_st[0]<<" , "<<solution_from_st[1]<<" , "<<solution_from_st[2]<< "\n\n\n";
-
-
-
-                  } // end of debugging.
+//          if(Utilities::MPI::this_mpi_process(mpi_communicator)==0){ //start of debugging
+//
+//        	  BlockVector<double> solution_bar_reduced;
+//        	  solution_bar_reduced.reinit(solution_bar);
+//        	  solution_bar_reduced = 0;
+//        	  for(int side=0; side<4; side++)
+//        		  for(int i=0; i<interface_dofs_subd[side].size();i++)
+//        			  solution_bar_reduced[interface_dofs_subd[side][i]] = solution_bar_collection[0][interface_dofs_subd[side][i]];
+//
+//
+//                 	 {// subdomain part
+//                      QGauss<dim-1> face_quadrature_formula(3);
+//                      FEFaceValues<dim> fe_face_values (fe, face_quadrature_formula,
+//                                                        update_values    | update_normal_vectors |
+//                                                        update_quadrature_points  | update_JxW_values);
+//                      const unsigned int dofs_per_cell   = fe.dofs_per_cell;
+//                      const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
+//         //             std::vector<double>         boundary_values_flow (n_face_q_points);
+//                      std::vector<Tensor<1, dim>> boundary_values_flow(n_face_q_points);
+//                      const FEValuesExtractors::Vector velocity (0);
+//                      typename DoFHandler<dim>::active_cell_iterator
+//                              cell = dof_handler.begin_active(),
+//                              endc = dof_handler.end();
+//                      std::ofstream temp1("values_subdomain.txt");
+//                      for (; cell!=endc; ++cell)
+//                      {
+//                      for (unsigned int face_no=0;
+//                           face_no<GeometryInfo<dim>::faces_per_cell;
+//                           ++face_no)
+//                          if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() != 0) // pressure part of the boundary
+//                          {
+//                         	 temp1<<"cell= "<<cell<<" face= "<<face_no<<"\n";
+//                              fe_face_values.reinit (cell, face_no);
+//
+//
+////                              fe_face_values[velocity].get_function_values (solution_bar_collection[1], boundary_values_flow);
+//                              fe_face_values[velocity].get_function_values (solution_bar_reduced, boundary_values_flow);
+//
+//
+//
+//                              for (unsigned int q=0; q<n_face_q_points; ++q){
+//                             	 temp1<<q<<" : "<<fe_face_values.normal_vector(q)*boundary_values_flow[q]<<"\n";
+//
+//                              }
+//         //                         for (unsigned int i=0; i<dofs_per_cell; ++i)
+//         //                         {
+//         ////                             local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
+//         ////                                                        fe_face_values.normal_vector(q) *
+//         ////                                                        boundary_values_flow[q] *
+//         ////                                                        fe_face_values.JxW(q));
+//         //
+//         //                         }
+//                          }
+//                      }
+//                 	 } // end of subdomain part
+//
+//                 	 {// st part
+//                 	              QGauss<dim> face_quadrature_formula(1);
+//                 	              FEFaceValues<dim+1> fe_face_values (fe_st, face_quadrature_formula,
+//                 	                                                update_values    | update_normal_vectors |
+//                 	                                                update_quadrature_points  | update_JxW_values);
+//                 	              const unsigned int dofs_per_cell   = fe_st.dofs_per_cell;
+//                 	              const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
+//                 	 //             std::vector<double>         boundary_values_flow (n_face_q_points);
+//                 	              std::vector<Tensor<1, dim+1>> boundary_values_flow(n_face_q_points);
+//                 	              const FEValuesExtractors::Vector velocity (0);
+//                 	              typename DoFHandler<dim+1>::active_cell_iterator
+//                 	                      cell = dof_handler_st.begin_active(),
+//                 	                      endc = dof_handler_st.end();
+//                 	              std::ofstream temp1("values_st.txt");
+//                 	              for (; cell!=endc; ++cell)
+//                 	              {
+//                 	              for (unsigned int face_no=0;
+//                 	                   face_no<GeometryInfo<dim+1>::faces_per_cell;
+//                 	                   ++face_no)
+//                 	                  if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() != 0) // pressure part of the boundary
+//                 	                  {
+//                 	                 	 temp1<<"cell= "<<cell<<" face= "<<face_no<<"\n";
+//                 	                      fe_face_values.reinit (cell, face_no);
+//
+//                 	                      fe_face_values[velocity].get_function_values (solution_bar_st, boundary_values_flow);
+//                 	                      for (unsigned int q=0; q<n_face_q_points; ++q){
+//                 	                     	 temp1<<q<<" : "<<boundary_values_flow[q][0]<<"\n";
+//
+//                 	                      }
+//
+//                 	                  }
+//                 	              }
+//                 	         	 } // end of st part
+//
+//         //
+//         //         Vector<double> solution_from_subdom(2);
+//         //         Point<2> point_in_2d ={0.249,0.49};
+//         //         VectorTools::point_value(dof_handler,solution_bar_collection[0],point_in_2d,solution_from_subdom);
+//         //         pcout<<"\n\n subdom value is: "<<solution_from_subdom[0]<<" , "<<solution_from_subdom[1]<< "\n";
+//         //
+//         //         Vector<double> solution_from_st(3);
+//         //         Point<3> point_in_3d ={0.249,0.49,0.001};
+//         //         VectorTools::point_value(dof_handler_st,solution_bar_st,point_in_3d,solution_from_st);
+//         //         pcout<<"st value is: "<<solution_from_st[0]<<" , "<<solution_from_st[1]<<" , "<<solution_from_st[2]<< "\n\n\n";
+//
+//
+//
+//                  } // end of debugging.
 //          else if (mortar_flag == 2)
 //          {
 //              interface_fe_function_mortar.reinit(solution_bar_mortar);
