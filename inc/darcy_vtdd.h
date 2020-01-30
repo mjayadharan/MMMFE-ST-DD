@@ -143,9 +143,9 @@ namespace vt_darcy
         double vect_norm(std::vector<double> v);
         //distribute solution vectors between 2-d space and 3-d space-time subdomain mesh.
         void st_to_subdom_distribute (BlockVector<double> &vector_st,
-        							  BlockVector<double> &vector_subdom, unsigned int &time_level);
+        							  BlockVector<double> &vector_subdom, unsigned int &time_level, double scale_factor);
         void subdom_to_st_distribute (BlockVector<double> &vector_st,
-               						  BlockVector<double> &vector_subdom, unsigned int &time_level);
+               						  BlockVector<double> &vector_subdom, unsigned int &time_level, double scale_factor);
 
         unsigned int       gmres_iteration;
         // Number of subdomains in the computational domain
