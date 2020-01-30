@@ -19,7 +19,6 @@ namespace vt_darcy
 
 
 
-
     const double t_scale = 1; //time scaling to adjust the evolution of velocity and pressure with time.
 
     // Inverse of permeability tensor
