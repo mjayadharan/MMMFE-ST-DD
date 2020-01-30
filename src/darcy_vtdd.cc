@@ -1196,11 +1196,10 @@ namespace vt_darcy
                          	 temp1<<"cell= "<<cell<<" face= "<<face_no<<"\n";
                               fe_face_values.reinit (cell, face_no);
 
-<<<<<<< HEAD
+
                               fe_face_values[velocity].get_function_values (solution_bar_collection[1], boundary_values_flow);
-=======
+
                               fe_face_values[velocity].get_function_values (solution_bar_collection[0], boundary_values_flow);
->>>>>>> 744f854fa26e11130f3b21bd2a623507a01e6ac1
                               for (unsigned int q=0; q<n_face_q_points; ++q){
                              	 temp1<<q<<" : "<<fe_face_values.normal_vector(q)*boundary_values_flow[q]<<"\n";
 
