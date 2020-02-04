@@ -31,7 +31,7 @@ int main (int argc, char *argv[])
 
         //declaring mesh refinement structure for space-time mortar
         std::vector<int> zeros_vector(3,0);
-        std::vector<std::vector<int>> mesh_m3d(3,zeros_vector);
+        std::vector<std::vector<int>> mesh_m3d(5,zeros_vector);
 
         std::string dummy_string; //for getting rid of string in the parameter.dat
         {//Reading parameters from parameter.dat file
@@ -57,9 +57,8 @@ int main (int argc, char *argv[])
 				parameter_file>>dummy_string>>mesh_m3d[0][0]>>mesh_m3d[0][1]>>mesh_m3d[0][2];
 				parameter_file>>dummy_string>>mesh_m3d[1][0]>>mesh_m3d[1][1]>>mesh_m3d[1][2];
 				parameter_file>>dummy_string>>mesh_m3d[2][0]>>mesh_m3d[2][1]>>mesh_m3d[2][2];
-//  	      	parameter_file>>dummy_string>>mesh_m3d[3][0]>>mesh_m3d[3][1]>>mesh_m3d[3][2];
-//	        	parameter_file>>dummy_string>>mesh_m3d[4][0]>>mesh_m3d[4][1]>>mesh_m3d[4][2];
-
+				parameter_file>>dummy_string>>mesh_m3d[3][0]>>mesh_m3d[3][1]>>mesh_m3d[3][2];
+	        	parameter_file>>dummy_string>>mesh_m3d[4][0]>>mesh_m3d[4][1]>>mesh_m3d[4][2];
         	parameter_file.close();
 
         	if(this_mpi!=n_processes-1)

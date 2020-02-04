@@ -2390,18 +2390,15 @@ namespace vt_darcy
                     subdomain_dimensions[d] = 1.0/double(n_domains[d]);
 
                 get_subdomain_coordinates(this_mpi, n_domains, subdomain_dimensions, p1, p2);
-
                 //corners of the space time sub-domain.
                 p1_st = {p1[0],p1[1],0}, p2_st={p2[0],p2[1],prm.final_time};
 
                 if (mortar_flag){
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
-
                     GridGenerator::subdivided_hyper_rectangle(triangulation_st, reps_st_local[this_mpi], p1_st, p2_st);
 
                     GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local[n_processes], p1_st, p2_st);
                     pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
-
                 }
                 else
                 {
@@ -2451,6 +2448,8 @@ namespace vt_darcy
 //            pcout<<"\n \n grid diameter is : "<<GridTools::minimal_cell_diameter(triangulation)<<"\n \n ";
             pcout << "Making grid and DOFs...\n";
             make_grid_and_dofs();
+//            std::cout << "Making grid and DOFs in MPI: "<<this_mpi<<"...\n";
+//            std::cout << "Making grid and DOFs done...\n";
 
 
 //            lambda_guess.resize(GeometryInfo<dim>::faces_per_cell);
