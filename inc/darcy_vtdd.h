@@ -96,7 +96,7 @@ namespace vt_darcy
 
         void run(const unsigned int refine,
         		 const std::vector <std::vector<int>> &reps_st, double tol,
-                 unsigned int maxiter, unsigned int quad_degree = 11);
+                 unsigned int maxiter, unsigned int quad_degree = 5);
 
     private:
         MPI_Comm mpi_communicator;
