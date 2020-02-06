@@ -116,13 +116,14 @@ namespace vt_darcy
 
 
         void solve_star();
-        void solve_timestep(int star_bar_flag, unsigned int time_level); //star_bar_flag == 0:solving bar problem, 1: solving star problem, 3: solving bar problem at end after gmres converges, compute final solution, error and output.
+        void solve_timestep(int star_bar_flag, unsigned int time_level); //star_bar_flag == 0:solving bar problem, 1: solving star problem, 2: solving star problem at end after gmres converges, compute final solution, error and output.
         void solve_darcy_vt(unsigned int maxiter);
 
         void compute_multiscale_basis();
         std::vector<double> compute_interface_error_dh(); //return_vector[0] gives interface_error for elast part and return_vector[1] gives that of flow part.
         double compute_interface_error_l2();
-        void compute_errors(const unsigned int refinement_index);
+        double compute_jump_error(); //return L2 error of jump of pressure across time levels.
+        void compute_errors(const unsigned int refinement_index, unsigned int time_level);
         void output_results(const unsigned int cycle, const unsigned int refine);
 
         void set_current_errors_to_zero();
@@ -222,6 +223,7 @@ namespace vt_darcy
         BlockVector<double> solution;
 
         BlockVector<double> old_solution;
+        BlockVector<double> old_solution_for_jump;  //storing old solution to calculate the jump in pressure error.
         BlockVector<double> initialc_solution;
 
         BlockVector<double> system_rhs_bar;
