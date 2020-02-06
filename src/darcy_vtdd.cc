@@ -79,7 +79,9 @@ namespace vt_darcy
             dof_handler (triangulation),
 //			fe_face_q(0),
 			fe_st (FE_RaviartThomas<dim+1>(degree), 1,
-			           FE_Nothing<dim+1>(), 1),
+			           FE_DGQ<dim+1>(degree), 1),
+//			fe_st (FE_RaviartThomas<dim+1>(degree), 1,
+//			           FE_Nothing<dim+1>(), 1),
 			dof_handler_st(triangulation_st),
             fe_mortar (FE_RaviartThomas<dim+1>(mortar_degree), 1,
                        FE_Nothing<dim+1>(), 1),
@@ -2050,22 +2052,23 @@ namespace vt_darcy
       const double p_l2_norm = VectorTools::compute_global_error(triangulation,
     		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_norms,
 																  VectorTools::L2_norm);
-      old_solution_for_jump.sadd(-1,solution);
-      VectorTools::integrate_difference (dof_handler, old_solution_for_jump, zero_function,
-                                         cellwise_norms, quadrature,
-                                         VectorTools::L2_norm,
-                                         &pressure_mask);
-      const double p_l2_jump = VectorTools::compute_global_error(triangulation,
-    		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_norms,
-																  VectorTools::L2_norm);
+//      old_solution_for_jump.sadd(-1,solution);
+//      VectorTools::integrate_difference (dof_handler, old_solution_for_jump, zero_function,
+//                                         cellwise_errors, quadrature,
+//                                         VectorTools::L2_norm,
+//                                         &pressure_mask);
+//      const double p_l2_jump = VectorTools::compute_global_error(triangulation,
+//    		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_errors,
+//																  VectorTools::L2_norm);
 
       // L2 in time error
       err.l2_l2_errors[1] += p_l2_error*p_l2_error;
       err.l2_l2_norms[1] += p_l2_norm*p_l2_norm;
 
        if (time_level!=0)  //computing pressure jump error.
-    	   err.linf_l2_errors[1]+= p_l2_jump;
-//    	   err.linf_l2_errors[1] += compute_jump_error();
+    	    err.linf_l2_errors[1] += compute_jump_error();
+//    	   err.linf_l2_errors[1]+= p_l2_jump*p_l2_jump;
+
 
 //      // Pressure error and norm at midcells
 //      VectorTools::integrate_difference (dof_handler, solution, exact_solution,
