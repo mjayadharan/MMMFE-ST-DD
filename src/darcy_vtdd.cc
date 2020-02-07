@@ -2552,7 +2552,6 @@ namespace vt_darcy
 
 //                        pcout<<"rached here 1 \n";
 ////            /************************************************************************************************************/
-////            pcout<<"rached here 1 \n";
 ////                        get_interface_dofs_st();
 //                        if(refinement_index==2 && this_mpi==1){
 ////                        	get_interface_dofs_st();
@@ -2574,9 +2573,9 @@ namespace vt_darcy
 //                        	}
 ////            /************************************************************************************************************/
 //
-//            /************************************************************************************************************/
-//            //feface_q just to check the suport points match with the 3d case.
-//            if(refinement_index==1){
+            /************************************************************************************************************/
+            //feface_q just to check the suport points match with the 3d case.
+            if(refinement_index==1){
 //            Triangulation<dim> triangulation_face_dummy;
 //            std::vector<std::vector<unsigned int>> mesh_reps_2(reps);
 //            for(int dum_i=0; dum_i<mesh_reps_2.size();dum_i++){
@@ -2585,36 +2584,25 @@ namespace vt_darcy
 //               }
 //            GridGenerator::subdivided_hyper_rectangle(triangulation_face_dummy, mesh_reps_2[this_mpi], p1, p2);
 //            FE_FaceQ<dim> fe_face_2(0);
-////            FESystem<dim> fe_face_2(FE_FaceQ<dim>(0), 1,
-////			                FE_Nothing<dim>(degree), 1);
-//            DoFHandler<dim> fe_face_dof_handler(triangulation_face_dummy);
-//            fe_face_dof_handler.distribute_dofs(fe_face_2);
-//            DoFRenumbering::component_wise(fe_face_dof_handler);
-//                        	if(this_mpi==1){
-//                        		 std::vector<Point<dim>> support_points(fe_face_dof_handler.n_dofs());
-//                        		 MappingQGeneric<dim> mapping_generic(1);
-//                        		 DoFTools::map_dofs_to_support_points(mapping_generic,fe_face_dof_handler,support_points);
-//                        		 std::ofstream output_into_file("output_data_2.txt");
-//                        		 for(int i=0; i<interface_dofs_subd[2].size(); i++){
-//                        			 output_into_file<<i<<" : ("<<support_points[interface_dofs_subd[2][i]][0]<<" , "<<support_points[interface_dofs_subd[2][i]][1]<<") \n";
-//                        		 }
-//                        		 output_into_file.close();
-//                        	}
-//            }
-//            //end of feface_q just to check the suport points match with the 3d case.
-//            /************************************************************************************************************/
- //Edit Done: start cleaning up from here on:
-//            for(unsigned int i=0; i<prm.num_time_steps; i++)
-//            {
-//              prm.time += prm.time_step;
-//
-//              solve_timestep (maxiter);
-//              compute_errors(refinement_index);
-//              old_solution = solution;
-//              output_results (refinement_index, refine);
-//              max_cg_iteration=0;
-//
-//            }
+//            FESystem<dim> fe_face_2(FE_FaceQ<dim>(0), 1,
+//			                FE_Nothing<dim>(degree), 1);
+            	FE_DGQ<dim> fe_dgq_2d(0);
+            DoFHandler<dim> dof_handler_2d(triangulation_st);
+            dof_handler_2d.distribute_dofs(fe_dgq_2d);
+            DoFRenumbering::component_wise(dof_handler_2d);
+                        	if(this_mpi==1){
+                        		 std::vector<Point<dim>> support_points(dof_handler_2d.n_dofs());
+                        		 MappingQGeneric<dim> mapping_generic(1);
+                        		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_2d,support_points);
+                        		 std::ofstream output_into_file("zdgq_2.txt");
+                        		 for(int i=0; i<support_points.size(); i++){
+                        			 output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<") \n";
+                        		 }
+                        		 output_into_file.close();
+                        	}
+            }
+            //end of feface_q just to check the suport points match with the 3d case.
+            /************************************************************************************************************/
 
             solve_darcy_vt(maxiter);
             max_cg_iteration=0;
