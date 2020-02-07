@@ -147,6 +147,9 @@ namespace vt_darcy
         							  BlockVector<double> &vector_subdom, unsigned int &time_level, double scale_factor);
         void subdom_to_st_distribute (BlockVector<double> &vector_st,
                						  BlockVector<double> &vector_subdom, unsigned int &time_level, double scale_factor);
+        //distribute local to global solution(now only the pressure part).
+        void final_solution_transfer (BlockVector<double> &solution_st,
+               						  BlockVector<double> &solution_subdom, unsigned int &time_level, double scale_factor);
 
         unsigned int       gmres_iteration;
         // Number of subdomains in the computational domain
@@ -189,6 +192,9 @@ namespace vt_darcy
         unsigned long n_flux;
         unsigned long n_pressure;
 
+        unsigned long n_flux_st;
+        unsigned long n_pressure_st;
+
         // Subdomain coordinates (assuming logically rectangular blocks)
         Point <dim> p1;
         Point <dim> p2;
@@ -221,6 +227,7 @@ namespace vt_darcy
         BlockVector<double> solution_bar;
         BlockVector<double> solution_star;
         BlockVector<double> solution;
+        BlockVector<double> solution_st; //for the 3d space-time solution
 
         BlockVector<double> old_solution;
         BlockVector<double> old_solution_for_jump;  //storing old solution to calculate the jump in pressure error.

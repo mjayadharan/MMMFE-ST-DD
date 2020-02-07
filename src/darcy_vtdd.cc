@@ -173,6 +173,7 @@ namespace vt_darcy
         n_p = dofs_per_component[dim];
 
         n_flux = n_z;
+        n_pressure = n_p;
 
         BlockDynamicSparsityPattern dsp(2, 2);
         dsp.block(0, 0).reinit (n_z, n_z);
@@ -224,8 +225,8 @@ namespace vt_darcy
 			            n_z_mortar = dofs_per_component_mortar[0]; //For RT mortar space
 			            n_p_mortar = dofs_per_component_mortar[dim+1];
 
-			            n_flux = n_z_mortar;
-			            n_pressure = n_p_mortar;
+//			            n_flux = n_z_mortar;
+//			            n_pressure = n_p_mortar;
 
 			            solution_bar_mortar.reinit(2);
 			            solution_bar_mortar.block(0).reinit (n_z_mortar);
@@ -242,22 +243,26 @@ namespace vt_darcy
 						//Space-time part.
 			            std::vector<types::global_dof_index> dofs_per_component_st (dim+1 + 1);
 			            DoFTools::count_dofs_per_component (dof_handler_st, dofs_per_component_st);
-			            unsigned int  n_z_st=0, n_p_st=0;
 
-			            n_z_st = dofs_per_component_st[0]; //For RT mortar space
-			            n_p_st= dofs_per_component_st[dim+1];
+			            n_flux_st = dofs_per_component_st[0]; //For RT mortar space
+			            n_pressure_st= dofs_per_component_st[dim+1];
+
 
 			            solution_bar_st.reinit(2);
-			            solution_bar_st.block(0).reinit (n_z_st);
-			            solution_bar_st.block(1).reinit (n_p_st);
+			            solution_bar_st.block(0).reinit (n_flux_st);
+			            solution_bar_st.block(1).reinit (n_pressure_st);
 			            solution_bar_st.collect_sizes ();
 			            solution_bar_st=0;
 
 			            solution_star_st.reinit(2);
-			            solution_star_st.block(0).reinit (n_z_st);
-			            solution_star_st.block(1).reinit (n_p_st);
+			            solution_star_st.block(0).reinit (n_flux_st);
+			            solution_star_st.block(1).reinit (n_pressure_st);
 			            solution_star_st.collect_sizes ();
 			            solution_star_st=0;
+
+			            solution_st.reinit(solution_bar_st);
+			            solution_st.collect_sizes();
+			            solution_st =0;
 
 			            solution_bar_collection.resize(prm.num_time_steps,solution_bar);
 			        }
@@ -274,7 +279,11 @@ namespace vt_darcy
         old_solution_for_jump.reinit(solution);
         initialc_solution=0;
 
-        pcout << "N flux dofs: " << n_flux << std::endl;
+        pcout << "N flux subdom dofs: " << n_flux << std::endl;
+        pcout << "N pressure subdom dofs: " << n_pressure << std::endl;
+
+        pcout << "N flux space-time dofs: " << n_flux_st << std::endl;
+        pcout << "N pressure space-time dofs: " << n_pressure_st << std::endl;
     }
 
 
@@ -852,7 +861,7 @@ namespace vt_darcy
 				solution=0;
 				solution.sadd(1.0,solution_star);
 				solution.sadd(1.0,solution_bar_collection[time_level]);
-
+				final_solution_transfer(solution_st, solution, time_level, prm.time_step);
 
 
 //				//------------------------------------------
@@ -978,6 +987,28 @@ namespace vt_darcy
                	  for(int i=0; i<interface_dofs_side_size; i++)
                		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= scale_factor*vector_subdom[ interface_dofs_subd[side][i]];
                  }
+
+    }
+
+    // // transfering solution from 2d to space-time 3d mesh
+    template<int dim>
+    void DarcyVTProblem<dim>::final_solution_transfer (BlockVector<double> &solution_st,
+    												   BlockVector<double> &solution_subdom,
+													   unsigned int &time_level, double scale_factor)
+    {
+    	assert(n_pressure_st== prm.num_time_steps*n_pressure);
+    	for(unsigned int i=0; i<n_pressure; i++)
+    	{
+    		solution_st.block(1)[(time_level*n_pressure) + i]= solution_subdom.block(1)[i];
+    	}
+
+
+//        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
+//            if (neighbors[side] >= 0){
+//               	  int interface_dofs_side_size = interface_dofs_subd[side].size();
+//               	  for(int i=0; i<interface_dofs_side_size; i++)
+//               		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= scale_factor*vector_subdom[ interface_dofs_subd[side][i]];
+//                 }
 
     }
 
@@ -2267,6 +2298,7 @@ namespace vt_darcy
 	          solution_names.push_back ("u1");
 	          solution_names.push_back ("u2");
 	          solution_names.push_back ("p");
+
 	          break;
 
 	        case 3:
@@ -2314,6 +2346,53 @@ namespace vt_darcy
 //	              }
 
 	     /* end of commenting out for disabling vtu outputs*/
+
+
+	       if(std::fabs(prm.time-prm.final_time)<1.0e-12){ //outputting the 3d space-time solution:
+		      std::vector<std::string> solution_names_st;
+		      switch(dim)
+		      {
+		      	case 2:
+		          solution_names_st.push_back ("u1");
+		          solution_names_st.push_back ("u2");
+		          solution_names_st.push_back ("u3");
+		          solution_names_st.push_back ("p");
+		          break;
+
+		        default:
+		        Assert(false, ExcNotImplemented());
+		      }
+
+
+		      // Components interpretation of the flow solution (vector - scalar)
+		      std::vector<DataComponentInterpretation::DataComponentInterpretation>
+		      data_component_interpretation_st (dim+1,
+		                      DataComponentInterpretation::component_is_part_of_vector);
+		      data_component_interpretation_st.push_back(DataComponentInterpretation::component_is_scalar);
+
+		      DataOut<dim+1> data_out_2;
+		      data_out_2.attach_dof_handler (dof_handler_st);
+		      data_out_2.add_data_vector (solution_st, solution_names_st,
+		                                DataOut<dim+1>::type_dof_data,
+		                                data_component_interpretation_st);
+
+		      data_out_2.build_patches ();
+		      std::ofstream output_st ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(this_mpi,4) +".vtu");
+		      data_out_2.write_vtu (output_st);
+		      	      //following lines create a file which paraview can use to link the subdomain results
+		      	            if (this_mpi == 0)
+		      	              {
+		      	                std::vector<std::string> filenames_st;
+		      	                for (unsigned int i=0;
+		      	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+		      	                     ++i)
+		      	                  filenames_st.push_back ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
+
+		      	                std::ofstream master_output_st (("st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
+		      	                data_out_2.write_pvtu_record (master_output_st, filenames_st);
+		      	              }
+//
+	      }  //end of outputting 3d space-time solution.
 
 
 	      double total_time = prm.time_step * prm.num_time_steps;
@@ -2573,36 +2652,57 @@ namespace vt_darcy
 //                        	}
 ////            /************************************************************************************************************/
 //
-            /************************************************************************************************************/
-            //feface_q just to check the suport points match with the 3d case.
-            if(refinement_index==1){
-//            Triangulation<dim> triangulation_face_dummy;
-//            std::vector<std::vector<unsigned int>> mesh_reps_2(reps);
-//            for(int dum_i=0; dum_i<mesh_reps_2.size();dum_i++){
-//               mesh_reps_2[dum_i][0]=2*mesh_reps_2[dum_i][0];
-//               mesh_reps_2[dum_i][1]=2*mesh_reps_2[dum_i][1];
-//               }
-//            GridGenerator::subdivided_hyper_rectangle(triangulation_face_dummy, mesh_reps_2[this_mpi], p1, p2);
-//            FE_FaceQ<dim> fe_face_2(0);
-//            FESystem<dim> fe_face_2(FE_FaceQ<dim>(0), 1,
-//			                FE_Nothing<dim>(degree), 1);
-            	FE_DGQ<dim> fe_dgq_2d(0);
-            DoFHandler<dim> dof_handler_2d(triangulation_st);
-            dof_handler_2d.distribute_dofs(fe_dgq_2d);
-            DoFRenumbering::component_wise(dof_handler_2d);
-                        	if(this_mpi==1){
-                        		 std::vector<Point<dim>> support_points(dof_handler_2d.n_dofs());
-                        		 MappingQGeneric<dim> mapping_generic(1);
-                        		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_2d,support_points);
-                        		 std::ofstream output_into_file("zdgq_2.txt");
-                        		 for(int i=0; i<support_points.size(); i++){
-                        			 output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<") \n";
-                        		 }
-                        		 output_into_file.close();
-                        	}
-            }
-            //end of feface_q just to check the suport points match with the 3d case.
-            /************************************************************************************************************/
+//            /************************************************************************************************************/
+//            //feface_q just to check the suport points match with the 3d case.
+//            if(refinement_index==1){
+////            Triangulation<dim> triangulation_face_dummy;
+////            std::vector<std::vector<unsigned int>> mesh_reps_2(reps);
+////            for(int dum_i=0; dum_i<mesh_reps_2.size();dum_i++){
+////               mesh_reps_2[dum_i][0]=2*mesh_reps_2[dum_i][0];
+////               mesh_reps_2[dum_i][1]=2*mesh_reps_2[dum_i][1];
+////               }
+////            GridGenerator::subdivided_hyper_rectangle(triangulation_face_dummy, mesh_reps_2[this_mpi], p1, p2);
+////            FE_FaceQ<dim> fe_face_2(0);
+////            FESystem<dim> fe_face_2(FE_FaceQ<dim>(0), 1,
+////			                FE_Nothing<dim>(degree), 1);
+//            	//************2d dgq begin
+//            	FE_DGQ<dim> fe_dgq_2d(0);
+//            DoFHandler<dim> dof_handler_2d(triangulation);
+//            dof_handler_2d.distribute_dofs(fe_dgq_2d);
+//            DoFRenumbering::component_wise(dof_handler_2d);
+//                        	if(this_mpi==1){
+//                        		 std::vector<Point<dim>> support_points(dof_handler_2d.n_dofs());
+//                        		 MappingQGeneric<dim> mapping_generic(1);
+//                        		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_2d,support_points);
+//                        		 std::ofstream output_into_file("zdgq_2.txt");
+//                        		 for(int i=0; i<support_points.size(); i++){
+//                        			 output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<") \n";
+//                        		 }
+//                        		 output_into_file.close();
+//                        	}
+//
+//                        	//************2d dgq end
+//
+//                        	//************3d dgq begin
+//                        	FE_DGQ<dim+1> fe_dgq_3d(0);
+//                        DoFHandler<dim+1> dof_handler_3d(triangulation_st);
+//                        dof_handler_3d.distribute_dofs(fe_dgq_3d);
+//                        DoFRenumbering::component_wise(dof_handler_3d);
+//                                    	if(this_mpi==1){
+//                                    		 std::vector<Point<dim+1>> support_points(dof_handler_3d.n_dofs());
+//                                    		 MappingQGeneric<dim+1> mapping_generic(1);
+//                                    		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_3d,support_points);
+//                                    		 std::ofstream output_into_file("zdgq_3.txt");
+//                                    		 for(int i=0; i<support_points.size(); i++){
+//                                    			 output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<" , "<<support_points[i][2]<<") \n";
+//                                    		 }
+//                                    		 output_into_file.close();
+//                                    	}
+//                                    	//************3d dgq end
+//
+//            }
+//            //end of feface_q just to check the suport points match with the 3d case.
+//            /************************************************************************************************************/
 
             solve_darcy_vt(maxiter);
             max_cg_iteration=0;
