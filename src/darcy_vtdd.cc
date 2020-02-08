@@ -384,6 +384,7 @@ namespace vt_darcy
 
         interface_dofs.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
 
+
         std::vector<types::global_dof_index> local_face_dof_indices;
 
 //        typename DoFHandler<dim>::active_cell_iterator cell, endc;
@@ -432,6 +433,7 @@ namespace vt_darcy
         	//a nd getting interace dofs for mortar grid in case of mortar.
 
 			interface_dofs_subd.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+	        face_dofs_subdom.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
 
 			std::vector<types::global_dof_index> local_face_dof_indices;
 
@@ -447,14 +449,27 @@ namespace vt_darcy
 				for (unsigned int face_n=0;
 					 face_n<GeometryInfo<dim>::faces_per_cell;
 					 ++face_n)
+				{
+
+				//start of getting face dofs.
+					cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
+
+					for (auto el : local_face_dof_indices)
+							face_dofs_subdom[face_n].push_back(el);
+
+				//end of getting face dofs
+
+					//start of getting interface dofs.
 					if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
 					{
-						cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
+//						cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
 
 						for (auto el : local_face_dof_indices)
 								interface_dofs_subd[cell->face(face_n)->boundary_id()-1].push_back(el);
 					}
+				//end of getting interface dofs
 			 }
+			}
 			}// end of getting subdomain interface dofs in mortar case: used for space-time mortar.
     }
 
@@ -466,6 +481,7 @@ namespace vt_darcy
 //        assert(interface_dofs_subd.size()!=0);
         unsigned int n_faces = GeometryInfo<dim>::faces_per_cell;
         interface_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+        face_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
 //        /***********************************************************/
 //        //taking care of different time levels.
 ////        interface_dofs_st.resize(prm.num_time_steps,interface_dofs_subd);
@@ -489,9 +505,26 @@ namespace vt_darcy
         for (;cell!=endc;++cell)
         {
             for (unsigned int face_n=0; face_n<n_faces; ++face_n)
+            {
+            	//start of getting face dofs
+                        cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
+                        for (auto el : local_face_dof_indices){
+                                face_dofs_st[face_n].push_back(el);
+    //                    	interface_dofs_st[time_step_level[face_n]][cell->face(face_n)->boundary_id()-1][counter_per_side[face_n]] = el;
+    //                    	counter_per_side[face_n]+=1;
+    //                    	if(counter_per_side[face_n]==dofs_count_per_side[face_n])
+    //                    	{
+    //                    		counter_per_side[face_n]=0;
+    //                    		time_step_level[face_n]+=1;
+    //                    	}
+
+                        }
+                    //end of getting face dofs
+
+            	//start of getting interface dofs
                 if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
                 {
-                    cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
+//                    cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
                     for (auto el : local_face_dof_indices){
                             interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
 //                    	interface_dofs_st[time_step_level[face_n]][cell->face(face_n)->boundary_id()-1][counter_per_side[face_n]] = el;
@@ -503,7 +536,8 @@ namespace vt_darcy
 //                    	}
 
                     }
-                }
+                } //end of getting interface dofs
+            }
         }
     }
 
@@ -2450,6 +2484,8 @@ namespace vt_darcy
         interface_dofs.clear();
         interface_dofs_st.clear();
         interface_dofs_subd.clear();
+        face_dofs_subdom.clear();
+        face_dofs_st.clear();
         interface_fe_function_subdom = 0;
         interface_fe_function_st=0;
 

@@ -1,6 +1,6 @@
 c0 1.0
 alpha 1.0
-num_refinement 3
+num_refinement 2
 final_time 0.5
 tolerence 1.e-8
 max_iteration 500
