@@ -423,6 +423,7 @@ namespace vt_darcy
                     {
                         cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
                         for (auto el : local_face_dof_indices)
+
                                 interface_dofs[cell->face(face_n)->boundary_id()-1].push_back(el);
                     }
              }
@@ -453,10 +454,12 @@ namespace vt_darcy
 
 				//start of getting face dofs.
 					cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
-
+//					pcout<<"face no: "<<face_n<<"\n";
 					for (auto el : local_face_dof_indices)
-							face_dofs_subdom[face_n].push_back(el);
-
+					{
+//						pcout<<el<<"\n";
+						face_dofs_subdom[face_n].push_back(el);
+					}
 				//end of getting face dofs
 
 					//start of getting interface dofs.
@@ -1030,19 +1033,20 @@ namespace vt_darcy
     												   BlockVector<double> &solution_subdom,
 													   unsigned int &time_level, double scale_factor)
     {
+    	//transferring pressure solution.
     	assert(n_pressure_st== prm.num_time_steps*n_pressure);
     	for(unsigned int i=0; i<n_pressure; i++)
     	{
     		solution_st.block(1)[(time_level*n_pressure) + i]= solution_subdom.block(1)[i];
     	}
 
-
-//        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
-//            if (neighbors[side] >= 0){
-//               	  int interface_dofs_side_size = interface_dofs_subd[side].size();
-//               	  for(int i=0; i<interface_dofs_side_size; i++)
-//               		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= scale_factor*vector_subdom[ interface_dofs_subd[side][i]];
-//                 }
+    	//transferring velocity solution.
+        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
+        {
+               	  int face_dofs_side_size = face_dofs_subdom[side].size();
+               	  for(int i=0; i<face_dofs_side_size; i++)
+               		solution_st[ face_dofs_st[side][face_dofs_side_size*time_level +i]]= scale_factor*solution_subdom[ face_dofs_subdom[side][i]];
+        }
 
     }
 
@@ -2553,6 +2557,8 @@ namespace vt_darcy
             interface_dofs.clear();
             interface_dofs_st.clear();
             interface_dofs_subd.clear();
+            face_dofs_subdom.clear();
+            face_dofs_st.clear();
 
             if (refinement_index == 0)
             {
@@ -2665,10 +2671,10 @@ namespace vt_darcy
 				get_interface_dofs_st();
             }
 
-//                        pcout<<"rached here 1 \n";
+//                        pcout<<"reached here 1 \n";
 ////            /************************************************************************************************************/
 ////                        get_interface_dofs_st();
-//                        if(refinement_index==2 && this_mpi==1){
+//                        if(refinement_index==1 && this_mpi==1){
 ////                        	get_interface_dofs_st();
 //                        		 std::vector<Point<3>> support_points(dof_handler_st.n_dofs());
 //                        		 MappingQGeneric<3> mapping_generic(1);
@@ -2698,27 +2704,71 @@ namespace vt_darcy
 ////               mesh_reps_2[dum_i][1]=2*mesh_reps_2[dum_i][1];
 ////               }
 ////            GridGenerator::subdivided_hyper_rectangle(triangulation_face_dummy, mesh_reps_2[this_mpi], p1, p2);
-////            FE_FaceQ<dim> fe_face_2(0);
+//            	//************2d fe_face_q begin
+//            FE_FaceQ<dim> fe_face_2(0);
 ////            FESystem<dim> fe_face_2(FE_FaceQ<dim>(0), 1,
 ////			                FE_Nothing<dim>(degree), 1);
-//            	//************2d dgq begin
-//            	FE_DGQ<dim> fe_dgq_2d(0);
+//
+////            	FE_DGQ<dim> fe_dgq_2d(0);
 //            DoFHandler<dim> dof_handler_2d(triangulation);
-//            dof_handler_2d.distribute_dofs(fe_dgq_2d);
+////            dof_handler_2d.distribute_dofs(fe_dgq_2d);
+//            dof_handler_2d.distribute_dofs(fe_face_2);
 //            DoFRenumbering::component_wise(dof_handler_2d);
-//                        	if(this_mpi==1){
+//                        	if(this_mpi==0){
 //                        		 std::vector<Point<dim>> support_points(dof_handler_2d.n_dofs());
 //                        		 MappingQGeneric<dim> mapping_generic(1);
 //                        		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_2d,support_points);
-//                        		 std::ofstream output_into_file("zdgq_2.txt");
-//                        		 for(int i=0; i<support_points.size(); i++){
-//                        			 output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<") \n";
-//                        		 }
+//                        		 std::ofstream output_into_file("zfe_face_2.txt");
+//                        		 for(int side=0; side<4; side++)
+//                        		 { output_into_file<<"side: "<<side<<"\n";
+////                        		 pcout<<"side: "<<side<<"\n";
+//                        			 for(unsigned int i=0; i<face_dofs_subdom[side].size();i++)
+////                        				 for(unsigned int i=0; i<support_points.size(); i++)
+//                        				 {
+////                        				 pcout<<face_dofs_subdom[side][i]<<"\n";
+////                        					 output_into_file<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<") \n";
+////                        				 output_into_file<<i<<" : ("<<support_points[face_dofs_subdom[side][i]][0]<<" , "<<support_points[face_dofs_subdom[side][i]][1]<<") \n";
+//                        				 output_into_file<<i<<" : ("<<support_points[face_dofs_subdom[side][i]][0]<<" , "<<support_points[face_dofs_subdom[side][i]][1]<<") \n";
+//
+//                        				 }
+//
+//                        	}
 //                        		 output_into_file.close();
 //                        	}
 //
-//                        	//************2d dgq end
+//                        	//************2d fe_faceq end
 //
+//                        	//************3d fe_face_q begin
+//                                    FE_FaceQ<dim+1> fe_face_3(0);
+//                        //            FESystem<dim> fe_face_2(FE_FaceQ<dim>(0), 1,
+//                        //			                FE_Nothing<dim>(degree), 1);
+//
+//                        //            	FE_DGQ<dim> fe_dgq_2d(0);
+//                                    DoFHandler<dim+1> dof_handler_3d(triangulation_st);
+//                        //            dof_handler_2d.distribute_dofs(fe_dgq_2d);
+//                                    dof_handler_3d.distribute_dofs(fe_face_3);
+//                                    DoFRenumbering::component_wise(dof_handler_3d);
+//                                                	if(this_mpi==0){
+//                                                		 std::vector<Point<dim+1>> support_points(dof_handler_3d.n_dofs());
+//                                                		 MappingQGeneric<dim+1> mapping_generic(1);
+//                                                		 DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_3d,support_points);
+//                                                		 std::ofstream output_into_file_2("zfe_face_3.txt");
+//                                                		 for(int side=0; side<4; side++)
+//                                                		 { output_into_file_2<<"side: "<<side<<"\n";
+//                                                			 for(unsigned int i=0; i<face_dofs_st[side].size();i++)
+////                                                				 for(unsigned int i=0; i<support_points.size(); i++)
+//                                                				 {
+////                                                					 output_into_file_2<<i<<" : ("<<support_points[i][0]<<" , "<<support_points[i][1]<<" , "<<support_points[i][2]<<") \n";
+//
+//                                                					 output_into_file_2<<i<<" : ("<<support_points[face_dofs_st[side][i]][0]<<" , "<<support_points[face_dofs_st[side][i]][1]<<" , "<<support_points[face_dofs_st[side][i]][2]<<") \n";
+//                                                				 }
+//                                                	}
+//                                                		 output_into_file_2.close();
+//                                                	}
+//
+//                                                	//************3d fe_faceq end
+
+
 //                        	//************3d dgq begin
 //                        	FE_DGQ<dim+1> fe_dgq_3d(0);
 //                        DoFHandler<dim+1> dof_handler_3d(triangulation_st);
@@ -2735,10 +2785,10 @@ namespace vt_darcy
 //                                    		 output_into_file.close();
 //                                    	}
 //                                    	//************3d dgq end
-//
+
 //            }
-//            //end of feface_q just to check the suport points match with the 3d case.
-//            /************************************************************************************************************/
+            //end of feface_q just to check the suport points match with the 3d case.
+            /************************************************************************************************************/
 
             solve_darcy_vt(maxiter);
             max_cg_iteration=0;

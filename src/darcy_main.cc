@@ -109,7 +109,7 @@ int main (int argc, char *argv[])
 //        DarcyVTProblem<2> cubic_mortar(1,bparam,1,3);
 
 //        constant_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,4);
-        lin_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,4);
+        lin_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,3);
 //        quad_mortar.run(num_refinement,mesh_m2d,mesh_m3d,tolerence,max_itr,5);
 //        cubic_mortar.run(num_refinement,mesh_m2d,mesh_m3d,tolerence,max_itr,6);
 
