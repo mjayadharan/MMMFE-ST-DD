@@ -1205,13 +1205,15 @@ namespace vt_darcy
 
 
 
-
+          std::cout<<"interface_dofs at side= "<<interface_dofs[1].size()<<" at "<<this_mpi<<"\n";
           if (mortar_flag == 1)
           {
         	  //Edit Done 5: change dof_handler to dof_handler_vt and solution_bar to solution_bar_vr, quad to quad_mortar(2d faces).
               interface_fe_function_mortar.reinit(solution_bar_mortar);
               interface_fe_function_mortar=0;
+              std::cout<<"reached top of first projection \n";
               project_mortar<dim>(P_fine2coarse, dof_handler_st, solution_bar_st, quad_project, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
+              std::cout<<"reached end of first projection \n";
 
 //              { // debuggig bracket.
 //
@@ -1424,13 +1426,15 @@ namespace vt_darcy
 //									  - get_normal_direction(side) *solution_star[interface_dofs[side][i]] ;
 
 
+                std::cout<<"reached top of r mpi projection \n";
 
-                MPI_Send(&r[side][0],
+                MPI_Bsend(&r[side][0],
                          r[side].size(),
                          MPI_DOUBLE,
                          neighbors[side],
                          this_mpi,
                          mpi_communicator);
+                std::cout<<"reached middle of r mpi projection \n";
                 MPI_Recv(&r_receive_buffer[0],
                          r_receive_buffer.size(),
                          MPI_DOUBLE,
@@ -1438,6 +1442,8 @@ namespace vt_darcy
                          neighbors[side],
                          mpi_communicator,
                          &mpi_status);
+
+                std::cout<<"reached endof r mpi projection \n";
 
                 for (unsigned int i = 0; i < interface_dofs[side].size(); ++i)
                   {
@@ -1456,12 +1462,14 @@ namespace vt_darcy
         	  if (neighbors[side] >= 0)
         		  r_norm+=r_norm_side[side]*r_norm_side[side];
           double r_norm_buffer =0;
+//          pcout<<"reached top of r mpi all reduce\n";
           MPI_Allreduce(&r_norm,
         		  &r_norm_buffer,
     			  1,
     			  MPI_DOUBLE,
     			  MPI_SUM,
                   mpi_communicator);
+//          pcout<<"reached end of r mpi all reduce\n";
           r_norm = sqrt(r_norm_buffer);
           //end -----------of calclatig r-norm------------------
 
@@ -1527,6 +1535,7 @@ namespace vt_darcy
 
                   //Edit 10 Done: change dof_handler to dof_handler_vt and interface_fe_function to interface_fe_function_vt.
 //                  pcout<<"\n reached before starting of projection 1\n";
+//                  pcout<<"reached top of second projection \n";
                   project_mortar(P_coarse2fine, dof_handler_mortar,
                                  interface_fe_function_mortar,
                                  quad_project,
@@ -1534,6 +1543,8 @@ namespace vt_darcy
                                  neighbors,
                                  dof_handler_st,
                                  interface_fe_function_st);
+//                  pcout<<"reached end of second projection \n";
+
 
 //                  				 if(Utilities::MPI::this_mpi_process(mpi_communicator)==1)
 //                  				    {
@@ -1564,6 +1575,8 @@ namespace vt_darcy
                   prm.time=0.0;
         		  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
         			  {
+//                      pcout<<"reached top of time_level 1\n";
+
         				  prm.time +=prm.time_step;
         				  solve_timestep(1,time_level);
 
