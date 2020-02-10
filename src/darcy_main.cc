@@ -91,7 +91,7 @@ int main (int argc, char *argv[])
 
         //Solving the problem.
         DarcyVTProblem<2> problem_2d(space_degree,bparam,1,mortar_degree);
-        problem_2d.run(num_refinement,mesh_m3d,tolerence,max_iteration,mortar_degree+2);
+        problem_2d.run(num_refinement,mesh_m3d,tolerence,max_iteration,mortar_degree+1);
 
 //        // Time space mortar mesh parameters   (non-matching checkerboard in space-time)
 //        std::vector<std::vector<unsigned int>> mesh_m3d(3);

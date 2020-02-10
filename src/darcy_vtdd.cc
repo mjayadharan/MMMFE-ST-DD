@@ -2604,15 +2604,25 @@ namespace vt_darcy
                 {
 //                    triangulation.refine_global(1);
                 	triangulation.clear();
-                    for(unsigned int dum_i=0; dum_i<reps_local.size();dum_i++){
-                       reps_local[dum_i][0]*=2;
-                       reps_local[dum_i][1]*=2;
-//                       if(dum_i!=reps_local.size()-1)
-                       if(mortar_degree==1)
-                    	   reps_local[dum_i][2]*=2;
-                       else if(refinement_index!=0 & refinement_index%2==0)
-                    	   reps_local[dum_i][2]*=2;
-                       }
+                    for(unsigned int dum_i=0; dum_i<reps_local.size()-1;dum_i++){ //refining space meshes.
+                        	reps_local[dum_i][0]*=2;
+                        	reps_local[dum_i][1]*=2;
+                        	reps_local[dum_i][2]*=2;
+                    }
+                    //refining mortar mesh
+                    if(mortar_degree==1)
+                    {
+                    	reps_local[reps_local.size()-1][0]*=2;
+                    	reps_local[reps_local.size()-1][1]*=2;
+                    	reps_local[reps_local.size()-1][2]*=2;
+                    }
+                    else if(refinement_index!=0 && refinement_index%2==0) //refining mortr mesh only every other time to get H=sqrt(h)
+                    {
+                    	reps_local[reps_local.size()-1][0]*=2;
+                    	reps_local[reps_local.size()-1][1]*=2;
+                    	reps_local[reps_local.size()-1][2]*=2;
+
+                    }
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
 
                 	triangulation_st.clear();
