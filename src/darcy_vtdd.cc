@@ -295,7 +295,7 @@ namespace vt_darcy
         system_matrix = 0;
         //system_rhs_bar = 0;
 
-        QGauss<dim>   quadrature_formula(degree+3);
+        QGauss<dim>   quadrature_formula(degree+2);
         //QGauss<dim-1> face_quadrature_formula(qdegree);
 
         FEValues<dim> fe_values (fe, quadrature_formula,
@@ -555,7 +555,7 @@ namespace vt_darcy
 //      TimerOutput::Scope t(computing_timer, "Assemble RHS bar");
       system_rhs_bar = 0;
 
-      QGauss<dim>   quadrature_formula(degree+3);
+      QGauss<dim>   quadrature_formula(degree+2);
       QGauss<dim-1> face_quadrature_formula(qdegree);
 
 
@@ -669,7 +669,7 @@ namespace vt_darcy
 //                                         update_values | update_normal_vectors |
 //                                         update_quadrature_points |
 //        								update_JxW_values);
-        QGauss<dim>   quadrature_formula(degree+3);
+        QGauss<dim>   quadrature_formula(degree+2);
         QGauss<dim-1> face_quadrature_formula(qdegree);
 
         FEValues<dim> fe_values (fe, quadrature_formula,
@@ -2608,6 +2608,9 @@ namespace vt_darcy
                        reps_local[dum_i][0]*=2;
                        reps_local[dum_i][1]*=2;
 //                       if(dum_i!=reps_local.size()-1)
+                       if(mortar_degree==1)
+                    	   reps_local[dum_i][2]*=2;
+                       else if(refinement_index!=0 & refinement_index%2==0)
                     	   reps_local[dum_i][2]*=2;
                        }
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);

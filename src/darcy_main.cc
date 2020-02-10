@@ -27,7 +27,7 @@ int main (int argc, char *argv[])
         //declaring parameter variables .
         double c_0, alpha, final_time, tolerence;
 
-        int num_refinement, max_iteration;
+        int space_degree, mortar_degree, num_refinement, max_iteration;
 
         //declaring mesh refinement structure for space-time mortar
         std::vector<int> zeros_vector(3,0);
@@ -50,6 +50,8 @@ int main (int argc, char *argv[])
 				assert(parameter_file.is_open());
 				parameter_file>>dummy_string>>c_0;
 				parameter_file>>dummy_string>>alpha;
+				parameter_file>>dummy_string>>space_degree;
+				parameter_file>>dummy_string>>mortar_degree;
 				parameter_file>>dummy_string>>num_refinement;
 				parameter_file>>dummy_string>>final_time;
 				parameter_file>>dummy_string>>tolerence;
@@ -87,6 +89,10 @@ int main (int argc, char *argv[])
 
         BiotParameters bparam (1.0,1,final_time,c_0,alpha);
 
+        //Solving the problem.
+        DarcyVTProblem<2> problem_2d(space_degree,bparam,1,mortar_degree);
+        problem_2d.run(num_refinement,mesh_m3d,tolerence,max_iteration,mortar_degree+2);
+
 //        // Time space mortar mesh parameters   (non-matching checkerboard in space-time)
 //        std::vector<std::vector<unsigned int>> mesh_m3d(3);
 //        mesh_m3d[0] = {2,2,10*bparam.num_time_steps}; //number of cells in each direction: in the order of x,y,time. for domain 1.
@@ -104,13 +110,13 @@ int main (int argc, char *argv[])
 
      //DarcyDD with mortar
 //        DarcyVTProblem<2> constant_mortar(0,bparam,1,0);
-        DarcyVTProblem<2> lin_mortar(0,bparam,1,1);
-//        DarcyVTProblem<2> quad_mortar(1,bparam,1,2);
+//        DarcyVTProblem<2> lin_mortar(0,bparam,1,1);
+//        DarcyVTProblem<2> quad_mortar(0,bparam,1,2);
 //        DarcyVTProblem<2> cubic_mortar(1,bparam,1,3);
 
 //        constant_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,4);
-        lin_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,3);
-//        quad_mortar.run(num_refinement,mesh_m2d,mesh_m3d,tolerence,max_itr,5);
+//        lin_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,3);
+//        quad_mortar.run(num_refinement,mesh_m3d,tolerence,max_iteration,4);
 //        cubic_mortar.run(num_refinement,mesh_m2d,mesh_m3d,tolerence,max_itr,6);
 
     }
