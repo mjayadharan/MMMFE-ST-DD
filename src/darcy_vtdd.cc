@@ -1205,15 +1205,15 @@ namespace vt_darcy
 
 
 
-          std::cout<<"interface_dofs at side= "<<interface_dofs[1].size()<<" at "<<this_mpi<<"\n";
+//          std::cout<<"interface_dofs at side= "<<interface_dofs[1].size()<<" at "<<this_mpi<<"\n";
           if (mortar_flag == 1)
           {
         	  //Edit Done 5: change dof_handler to dof_handler_vt and solution_bar to solution_bar_vr, quad to quad_mortar(2d faces).
               interface_fe_function_mortar.reinit(solution_bar_mortar);
               interface_fe_function_mortar=0;
-              std::cout<<"reached top of first projection \n";
+//              std::cout<<"reached top of first projection \n";
               project_mortar<dim>(P_fine2coarse, dof_handler_st, solution_bar_st, quad_project, constraints, neighbors, dof_handler_mortar, solution_bar_mortar);
-              std::cout<<"reached end of first projection \n";
+//              std::cout<<"reached end of first projection \n";
 
 //              { // debuggig bracket.
 //
@@ -1426,24 +1426,43 @@ namespace vt_darcy
 //									  - get_normal_direction(side) *solution_star[interface_dofs[side][i]] ;
 
 
-                std::cout<<"reached top of r mpi projection \n";
+//                std::cout<<"reached top of r mpi projection \n";
 
-                MPI_Bsend(&r[side][0],
-                         r[side].size(),
-                         MPI_DOUBLE,
-                         neighbors[side],
-                         this_mpi,
-                         mpi_communicator);
-                std::cout<<"reached middle of r mpi projection \n";
-                MPI_Recv(&r_receive_buffer[0],
-                         r_receive_buffer.size(),
-                         MPI_DOUBLE,
-                         neighbors[side],
-                         neighbors[side],
-                         mpi_communicator,
-                         &mpi_status);
+//                MPI_Send(&r[side][0],
+//                         r[side].size(),
+//                         MPI_DOUBLE,
+//                         neighbors[side],
+//                         this_mpi,
+//                         mpi_communicator);
+//
+//                std::cout<<"reached middle of r mpi projection \n";
+//
+//                MPI_Recv(&r_receive_buffer[0],
+//                         r_receive_buffer.size(),
+//                         MPI_DOUBLE,
+//                         neighbors[side],
+//                         neighbors[side],
+//                         mpi_communicator,
+//                         &mpi_status);
 
-                std::cout<<"reached endof r mpi projection \n";
+                  MPI_Sendrecv(&r[side][0],
+                           r[side].size(),
+                           MPI_DOUBLE,
+                           neighbors[side],
+                           this_mpi,
+
+						   &r_receive_buffer[0],
+						   r_receive_buffer.size(),
+						   MPI_DOUBLE,
+						   neighbors[side],
+						   neighbors[side],
+						   mpi_communicator,
+						   &mpi_status);
+
+
+
+
+//                std::cout<<"reached endof r mpi projection \n";
 
                 for (unsigned int i = 0; i < interface_dofs[side].size(); ++i)
                   {
@@ -1575,7 +1594,7 @@ namespace vt_darcy
                   prm.time=0.0;
         		  for(unsigned int time_level=0; time_level<prm.num_time_steps; time_level++)
         			  {
-//                      pcout<<"reached top of time_level 1\n";
+//                      pcout<<"reached top of solve_time_step 0 1\n";
 
         				  prm.time +=prm.time_step;
         				  solve_timestep(1,time_level);
@@ -1662,19 +1681,31 @@ namespace vt_darcy
                     else
                         for (unsigned int i=0; i<interface_dofs[side].size(); ++i)
                             interface_data_send[side][i] = get_normal_direction(side) * solution_star[interface_dofs[side][i]];
-                    MPI_Send(&interface_data_send[side][0],
-                             interface_dofs[side].size(),
+//                    MPI_Send(&interface_data_send[side][0],
+//                             interface_dofs[side].size(),
+//                             MPI_DOUBLE,
+//                             neighbors[side],
+//                             this_mpi,
+//                             mpi_communicator);
+//                    MPI_Recv(&interface_data_receive[side][0],
+//                             interface_dofs[side].size(),
+//                             MPI_DOUBLE,
+//                             neighbors[side],
+//                             neighbors[side],
+//                             mpi_communicator,
+//                             &mpi_status);
+                    MPI_Sendrecv(&interface_data_send[side][0],
+                            interface_dofs[side].size(),
                              MPI_DOUBLE,
                              neighbors[side],
                              this_mpi,
-                             mpi_communicator);
-                    MPI_Recv(&interface_data_receive[side][0],
-                             interface_dofs[side].size(),
-                             MPI_DOUBLE,
-                             neighbors[side],
-                             neighbors[side],
-                             mpi_communicator,
-                             &mpi_status);
+							 &interface_data_receive[side][0],
+							 interface_dofs[side].size(),
+							 MPI_DOUBLE,
+							 neighbors[side],
+							 neighbors[side],
+							 mpi_communicator,
+							 &mpi_status);
 
 
                     // Compute Ap and with it compute alpha
@@ -1701,12 +1732,14 @@ namespace vt_darcy
               //Arnoldi Algorithm continued
                     //combining summing h[i] over all subdomains
                     std::vector<double> h_buffer(k_counter+2,0);
+//                    std::cout<<"reached top of mpi reduce 2 \n";
                 	MPI_Allreduce(&h[0],
                 			&h_buffer[0],
     						k_counter+2,
     						MPI_DOUBLE,
     						MPI_SUM,
     						mpi_communicator);
+//                    std::cout<<"reached end of mpi reduce 2 \n";
 
 
                 	h=h_buffer;
@@ -2150,6 +2183,12 @@ namespace vt_darcy
        if (time_level!=0)  //computing pressure jump error.
     	    err.linf_l2_errors[1] += compute_jump_error();
 //    	   err.linf_l2_errors[1]+= p_l2_jump*p_l2_jump;
+       if(std::fabs(prm.time-prm.final_time) < 1.0e-12)//adding L2 error at final step.
+
+       {
+    	    err.linf_l2_errors[1]+= p_l2_error*p_l2_error;
+    	    err.linf_l2_norms[1] += p_l2_norm*p_l2_norm;
+       }
 
 
 //      // Pressure error and norm at midcells
@@ -2261,7 +2300,7 @@ namespace vt_darcy
                                    err.velocity_stress_l2_div_norms[0],
                                    err.l2_l2_norms[1],
                                    err.pressure_disp_l2_midcell_norms[0],
-                                   0,
+                                   err.linf_l2_norms[1],
 								   l_int_norm_darcy,
 								   err.l2_l2_norms[2]};
 
@@ -2311,20 +2350,20 @@ namespace vt_darcy
 //        recv_buf_den[2]=1.0;
 //        recv_buf_den[0]=1.0;
         for (unsigned int i=0; i<7; ++i)
-          if (i != 4   ){
+          if (i != 4  ){
             recv_buf_num[i] = sqrt(recv_buf_num[i])/sqrt(recv_buf_den[i]);
 //        	  recv_buf_num[i]+=send_buf_num[i];
           }
         convergence_table.add_value("cycle", refinement_index);
         convergence_table.add_value("# GMRES", max_cg_iteration);
         convergence_table.add_value("Velocity,L2-L2", recv_buf_num[0]);
-        convergence_table.add_value("Pressure,L8-L2", sqrt(recv_buf_num[4]));
+        convergence_table.add_value("Pressure,DG", sqrt(recv_buf_num[4]));
         convergence_table.add_value("Pressure,L2-L2", recv_buf_num[2]);
 
         if (mortar_flag)
         {
         	convergence_table.add_value("Lambda,Darcy_L2", recv_buf_num[6]);
-          convergence_table.add_value("Lambda,Darcy", recv_buf_num[5]);
+//          convergence_table.add_value("Lambda,Darcy", recv_buf_num[5]);
 
         }
       }
@@ -2449,21 +2488,21 @@ namespace vt_darcy
 	      double total_time = prm.time_step * prm.num_time_steps;
 	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12){
 	        convergence_table.set_precision("Velocity,L2-L2", 3);
-	        convergence_table.set_precision("Pressure,L8-L2", 3);
+	        convergence_table.set_precision("Pressure,DG", 3);
 	        convergence_table.set_precision("Pressure,L2-L2", 3);
 
 	        convergence_table.set_scientific("Velocity,L2-L2", true);
-	        convergence_table.set_scientific("Pressure,L8-L2", true);
+	        convergence_table.set_scientific("Pressure,DG", true);
 	        convergence_table.set_scientific("Pressure,L2-L2", true);
 
 	        convergence_table.set_tex_caption("# GMRES", "\\# gmres");
 	        convergence_table.set_tex_caption("Velocity,L2-L2", "$ \\|z - z_h\\|_{L^{2}(L^2)} $");
-	        convergence_table.set_tex_caption("Pressure,L8-L2", "$ \\|p - p_h\\|_{L^{\\infty}(L^2)} $");
+	        convergence_table.set_tex_caption("Pressure,DG", "$ \\|p - p_h\\|_{DG} $");
 	        convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^{2}(L^2)} $");
 
 	        convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
 	        convergence_table.evaluate_convergence_rates("Velocity,L2-L2", ConvergenceTable::reduction_rate_log2);
-	        convergence_table.evaluate_convergence_rates("Pressure,L8-L2", ConvergenceTable::reduction_rate_log2);
+	        convergence_table.evaluate_convergence_rates("Pressure,DG", ConvergenceTable::reduction_rate_log2);
 	        convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
 
 
@@ -2474,10 +2513,10 @@ namespace vt_darcy
 	          convergence_table.set_tex_caption("Lambda,Darcy_L2", "$ \\|p - \\lambda_p_H\\|_{L^{2}(L^2)} $");
 	          convergence_table.evaluate_convergence_rates("Lambda,Darcy_L2", ConvergenceTable::reduction_rate_log2);
 
-	          convergence_table.set_precision("Lambda,Darcy", 3);
-	       	  convergence_table.set_scientific("Lambda,Darcy", true);
-	       	  convergence_table.set_tex_caption("Lambda,Darcy", "$ \\|p - \\lambda_p_H\\|_{d_H} $");
-	       	  convergence_table.evaluate_convergence_rates("Lambda,Darcy", ConvergenceTable::reduction_rate_log2);
+//	          convergence_table.set_precision("Lambda,Darcy", 3);
+//	       	  convergence_table.set_scientific("Lambda,Darcy", true);
+//	       	  convergence_table.set_tex_caption("Lambda,Darcy", "$ \\|p - \\lambda_p_H\\|_{d_H} $");
+//	       	  convergence_table.evaluate_convergence_rates("Lambda,Darcy", ConvergenceTable::reduction_rate_log2);
 	        }
 
 	        std::ofstream error_table_file("error" + std::to_string(Utilities::MPI::n_mpi_processes(mpi_communicator)) + "domains.tex");
@@ -2537,11 +2576,7 @@ namespace vt_darcy
 
         Assert(reps_st[0].size() == dim+1, ExcDimensionMismatch(reps_st[0].size(), dim));
 
-        //finding the num_time_steps and time_step_size using final_time and number of time steps required.
-        prm.num_time_steps = reps_st[this_mpi][2];
-        prm.time_step = prm.final_time/double(prm.num_time_steps);
-        pcout<<"Final time= "<<prm.final_time<<"\n";
-        pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
+
 
         std::vector<std::vector<unsigned int>> reps_local(reps_st.size()), reps_st_local(reps_st.size()); //local copy of mesh partition information.
         for(int i=0; i<reps_st_local.size(); i++)
@@ -2575,6 +2610,12 @@ namespace vt_darcy
 
             if (refinement_index == 0)
             {
+                //finding the num_time_steps and time_step_size using final_time and number of time steps required.
+                prm.num_time_steps = reps_st_local[this_mpi][2];
+                prm.time_step = prm.final_time/double(prm.num_time_steps);
+                pcout<<"Final time= "<<prm.final_time<<"\n";
+                pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
+
                 // Partitioning into subdomains (simple bricks)
                 find_divisors<dim>(n_processes, n_domains);
 
@@ -2611,43 +2652,47 @@ namespace vt_darcy
             }
             else
             {
+
                 if (mortar_flag == 0)
                     triangulation.refine_global(1);
                 else  //(if there is mortar flag)
                 {
 //                    triangulation.refine_global(1);
                 	triangulation.clear();
-                    for(unsigned int dum_i=0; dum_i<reps_local.size()-1;dum_i++){ //refining space meshes.
-                        	reps_local[dum_i][0]*=2;
-                        	reps_local[dum_i][1]*=2;
-                        	reps_local[dum_i][2]*=2;
+                	triangulation_st.clear();
+                	triangulation_mortar.clear();
+                    for(unsigned int dum_i=0; dum_i<reps_st_local.size()-1;dum_i++){ //refining space-time meshes.
+                        	reps_st_local[dum_i][0]*=2;
+                        	reps_st_local[dum_i][1]*=2;
+                        	reps_st_local[dum_i][2]*=2;
                     }
                     //refining mortar mesh
                     if(mortar_degree==1)
                     {
-                    	reps_local[reps_local.size()-1][0]*=2;
-                    	reps_local[reps_local.size()-1][1]*=2;
-                    	reps_local[reps_local.size()-1][2]*=2;
+                    	reps_st_local[reps_st_local.size()-1][0]*=2;
+                    	reps_st_local[reps_st_local.size()-1][1]*=2;
+                    	reps_st_local[reps_st_local.size()-1][2]*=2;
                     }
-                    else if(refinement_index!=0 && refinement_index%2==0) //refining mortr mesh only every other time to get H=sqrt(h)
+                    else if(refinement_index!=0 && refinement_index%2==0) //refining mortar mesh only every other time to get H=sqrt(h)
                     {
-                    	reps_local[reps_local.size()-1][0]*=2;
-                    	reps_local[reps_local.size()-1][1]*=2;
-                    	reps_local[reps_local.size()-1][2]*=2;
+                    	reps_st_local[reps_st_local.size()-1][0]*=2;
+                    	reps_st_local[reps_st_local.size()-1][1]*=2;
+                    	reps_st_local[reps_st_local.size()-1][2]*=2;
 
                     }
+                    for(unsigned int dum_i=0; dum_i<reps_local.size();dum_i++){ //refining space  meshes.
+                    	reps_local[dum_i][0]= reps_st_local[dum_i][0];
+                    	reps_local[dum_i][1]= reps_st_local[dum_i][1];
+                    }
+
+                    //finding the num_time_steps and time_step_size using final_time and number of time steps required.
+                    prm.num_time_steps = reps_st_local[this_mpi][2];
+                    prm.time_step = prm.final_time/double(prm.num_time_steps);
+                    pcout<<"Final time= "<<prm.final_time<<"\n";
+                    pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
+
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
-
-                	triangulation_st.clear();
-                    for(unsigned int dum_i=0; dum_i<reps_st_local.size();dum_i++){
-                       reps_st_local[dum_i][0]*=2;
-                       reps_st_local[dum_i][1]*=2;
-//                       if(dum_i!=reps_st_local.size()-1)
-                    	   reps_st_local[dum_i][2]*=2;
-                       }
                     GridGenerator::subdivided_hyper_rectangle(triangulation_st, reps_st_local[this_mpi], p1_st, p2_st);
-
-                	triangulation_mortar.clear();
                     GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local[n_processes], p1_st, p2_st);
                     pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
 
@@ -2825,11 +2870,11 @@ namespace vt_darcy
             computing_timer.print_summary();
             computing_timer.reset();
 
-//            //finding the num_time_steps and time_step_size using final_time and number of time steps required.
-            prm.num_time_steps *=2;
-            prm.time_step = prm.final_time/double(prm.num_time_steps);
-//            pcout<<"Final time= "<<prm.final_time<<"\n";
-            pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
+////            //finding the num_time_steps and time_step_size using final_time and number of time steps required.
+//            prm.num_time_steps *=2;
+//            prm.time_step = prm.final_time/double(prm.num_time_steps);
+////            pcout<<"Final time= "<<prm.final_time<<"\n";
+//            pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
         }
 
         reset_mortars();
