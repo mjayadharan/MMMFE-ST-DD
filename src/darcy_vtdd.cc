@@ -277,7 +277,13 @@ namespace vt_darcy
         old_solution.reinit(solution);
         initialc_solution.reinit(solution);
         old_solution_for_jump.reinit(solution);
+        pressure_projection.reinit(solution);
+        old_pressure_projection.reinit(solution);
+
         initialc_solution=0;
+        old_solution_for_jump=0;
+        pressure_projection=0;
+        old_pressure_projection=0;
 
         pcout << "N flux subdom dofs: " << n_flux << std::endl;
         pcout << "N pressure subdom dofs: " << n_pressure << std::endl;
@@ -2128,6 +2134,12 @@ namespace vt_darcy
       ExactSolution<dim> exact_solution;
       exact_solution.set_time(prm.time);
 
+      PressureBoundaryValues<dim> pressure_function; //to calculate the projectin of exact projection on to piecewise constants.
+      pressure_function.set_time(prm.time + (prm.time_step*0.5));
+      std::vector<Point<dim>> pressure_support_points(n_pressure);
+      std::vector<double> projected_pressure_values(n_pressure);
+//      Vector<double> projected_pressure_values(n_pressure);
+
       // Vectors to temporarily store cellwise errros
       Vector<double> cellwise_errors (triangulation.n_active_cells());
       Vector<double> cellwise_norms (triangulation.n_active_cells());
@@ -2167,28 +2179,53 @@ namespace vt_darcy
       const double p_l2_norm = VectorTools::compute_global_error(triangulation,
     		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_norms,
 																  VectorTools::L2_norm);
-//      old_solution_for_jump.sadd(-1,solution);
-//      VectorTools::integrate_difference (dof_handler, old_solution_for_jump, zero_function,
-//                                         cellwise_errors, quadrature,
-//                                         VectorTools::L2_norm,
-//                                         &pressure_mask);
-//      const double p_l2_jump = VectorTools::compute_global_error(triangulation,
-//    		  	  	  	  	  	  	  	  	  	  	  	  	  	  cellwise_errors,
-//																  VectorTools::L2_norm);
-
       // L2 in time error
-      err.l2_l2_errors[1] += p_l2_error*p_l2_error;
-      err.l2_l2_norms[1] += p_l2_norm*p_l2_norm;
+      err.l2_l2_errors[1] += prm.time_step*p_l2_error*p_l2_error;
+      err.l2_l2_norms[1] += prm.time_step*p_l2_norm*p_l2_norm;
 
-       if (time_level!=0)  //computing pressure jump error.
-    	    err.linf_l2_errors[1] += compute_jump_error();
-//    	   err.linf_l2_errors[1]+= p_l2_jump*p_l2_jump;
+      //calculating the error in DG norm (jumps L2 and final time L2)
+       FE_DGQ<dim> fe_dgq_2d(0);
+       DoFHandler<dim> dof_handler_2d(triangulation);
+       dof_handler_2d.distribute_dofs(fe_dgq_2d);
+       MappingQGeneric<dim> mapping_generic(1);
+       DoFTools::map_dofs_to_support_points(mapping_generic,dof_handler_2d,pressure_support_points);
+//       pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
+       pressure_function.value_list(pressure_support_points, projected_pressure_values);
+       for(unsigned int dum_i=0; dum_i<n_pressure; dum_i++)
+    	   pressure_projection.block(1)[dum_i]= projected_pressure_values[dum_i];
+       dof_handler_2d.clear();
+
+       if(time_level!=0) //calculating the jump error
+		   {
+           for(unsigned int dum_i=0; dum_i<n_pressure; dum_i++)
+        	   old_solution_for_jump.block(1)[dum_i]+= pressure_projection.block(1)[dum_i]-solution.block(1)[dum_i]
+											           -old_pressure_projection.block(1)[dum_i];
+//		   old_solution_for_jump.sadd(-1,solution);
+//		   old_solution_for_jump.sadd(1,pressure_projection);
+//		   old_solution_for_jump.sadd(-1,old_pressure_projection);
+
+
+
+
+		  VectorTools::integrate_difference (dof_handler, old_solution_for_jump, zero_function,
+											 cellwise_errors, quadrature,
+											 VectorTools::L2_norm,
+											 &pressure_mask);
+		  const double p_l2_jump = VectorTools::compute_global_error(triangulation,
+																	  cellwise_errors,
+																	  VectorTools::L2_norm);
+
+	//    	    err.linf_l2_errors[1] += compute_jump_error();
+			   err.linf_l2_errors[1]+= p_l2_jump*p_l2_jump;
+		   }
        if(std::fabs(prm.time-prm.final_time) < 1.0e-12)//adding L2 error at final step.
 
        {
     	    err.linf_l2_errors[1]+= p_l2_error*p_l2_error;
     	    err.linf_l2_norms[1] += p_l2_norm*p_l2_norm;
        }
+       old_pressure_projection = pressure_projection;
+       //end of caluclating the erro in DG norm
 
 
 //      // Pressure error and norm at midcells
@@ -2350,14 +2387,14 @@ namespace vt_darcy
 //        recv_buf_den[2]=1.0;
 //        recv_buf_den[0]=1.0;
         for (unsigned int i=0; i<7; ++i)
-          if (i != 4  ){
+          if (i != 10  ){
             recv_buf_num[i] = sqrt(recv_buf_num[i])/sqrt(recv_buf_den[i]);
 //        	  recv_buf_num[i]+=send_buf_num[i];
           }
         convergence_table.add_value("cycle", refinement_index);
         convergence_table.add_value("# GMRES", max_cg_iteration);
         convergence_table.add_value("Velocity,L2-L2", recv_buf_num[0]);
-        convergence_table.add_value("Pressure,DG", sqrt(recv_buf_num[4]));
+        convergence_table.add_value("Pressure,DG", recv_buf_num[4]);
         convergence_table.add_value("Pressure,L2-L2", recv_buf_num[2]);
 
         if (mortar_flag)

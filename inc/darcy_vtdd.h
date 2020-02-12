@@ -235,6 +235,9 @@ namespace vt_darcy
         BlockVector<double> old_solution_for_jump;  //storing old solution to calculate the jump in pressure error.
         BlockVector<double> initialc_solution;
 
+        BlockVector<double> pressure_projection; //projection of exact pressure to piecewise constant space.
+        BlockVector<double> old_pressure_projection; //pressure_projection from previous time step.
+
         BlockVector<double> system_rhs_bar;
         BlockVector<double> system_rhs_star;
 //        BlockVector<double> interface_fe_function; //need to decide whether to keep this.
