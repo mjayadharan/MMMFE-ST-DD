@@ -2418,110 +2418,113 @@ namespace vt_darcy
 	        /* From here disabling for longer runs:
 	         */
 
-	      std::vector<std::string> solution_names;
-	      switch(dim)
-	      {
-	        case 2:
-	          solution_names.push_back ("u1");
-	          solution_names.push_back ("u2");
-	          solution_names.push_back ("p");
+	        if(cycle==total_refinements-1)
+			 {
+			  std::vector<std::string> solution_names;
+			  switch(dim)
+			  {
+				case 2:
+				  solution_names.push_back ("u1");
+				  solution_names.push_back ("u2");
+				  solution_names.push_back ("p");
 
-	          break;
+				  break;
 
-	        case 3:
-	          solution_names.push_back ("u1");
-	          solution_names.push_back ("u2");
-	          solution_names.push_back ("u3");
-	          solution_names.push_back ("p");
-	          break;
+				case 3:
+				  solution_names.push_back ("u1");
+				  solution_names.push_back ("u2");
+				  solution_names.push_back ("u3");
+				  solution_names.push_back ("p");
+				  break;
 
-	        default:
-	        Assert(false, ExcNotImplemented());
-	      }
-
-
-	      // Components interpretation of the flow solution (vector - scalar)
-	      std::vector<DataComponentInterpretation::DataComponentInterpretation>
-	      data_component_interpretation (dim,
-	                      DataComponentInterpretation::component_is_part_of_vector);
-	      data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
-
-	      DataOut<dim> data_out;
-	      data_out.attach_dof_handler (dof_handler);
-	      data_out.add_data_vector (solution, solution_names,
-	                                DataOut<dim>::type_dof_data,
-	                                data_component_interpretation);
-
-	      data_out.build_patches ();
+				default:
+				Assert(false, ExcNotImplemented());
+			  }
 
 
-	      int tmp = prm.time/prm.time_step;
-	      std::ofstream output ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
-	      data_out.write_vtu (output);
-//	      //following lines create a file which paraview can use to link the subdomain results
-//	            if (this_mpi == 0)
-//	              {
-//	                std::vector<std::string> filenames;
-//	                for (unsigned int i=0;
-//	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
-//	                     ++i)
-//	                  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+//			  // Components interpretation of the flow solution (vector - scalar)
+//			  std::vector<DataComponentInterpretation::DataComponentInterpretation>
+//			  data_component_interpretation (dim,
+//							  DataComponentInterpretation::component_is_part_of_vector);
+//			  data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
 //
-//	                std::ofstream master_output (("solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
-//	                                              ".pvtu").c_str());
-//	                data_out.write_pvtu_record (master_output, filenames);
-//	              }
-
-	     /* end of commenting out for disabling vtu outputs*/
-
-
-	       if(std::fabs(prm.time-prm.final_time)<1.0e-12){ //outputting the 3d space-time solution:
-		      std::vector<std::string> solution_names_st;
-		      switch(dim)
-		      {
-		      	case 2:
-		          solution_names_st.push_back ("u1");
-		          solution_names_st.push_back ("u2");
-		          solution_names_st.push_back ("u3");
-		          solution_names_st.push_back ("p");
-		          break;
-
-		        default:
-		        Assert(false, ExcNotImplemented());
-		      }
-
-
-		      // Components interpretation of the flow solution (vector - scalar)
-		      std::vector<DataComponentInterpretation::DataComponentInterpretation>
-		      data_component_interpretation_st (dim+1,
-		                      DataComponentInterpretation::component_is_part_of_vector);
-		      data_component_interpretation_st.push_back(DataComponentInterpretation::component_is_scalar);
-
-		      DataOut<dim+1> data_out_2;
-		      data_out_2.attach_dof_handler (dof_handler_st);
-		      data_out_2.add_data_vector (solution_st, solution_names_st,
-		                                DataOut<dim+1>::type_dof_data,
-		                                data_component_interpretation_st);
-
-		      data_out_2.build_patches ();
-		      std::ofstream output_st ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(this_mpi,4) +".vtu");
-		      data_out_2.write_vtu (output_st);
-		      	      //following lines create a file which paraview can use to link the subdomain results
-		      	            if (this_mpi == 0)
-		      	              {
-		      	                std::vector<std::string> filenames_st;
-		      	                for (unsigned int i=0;
-		      	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
-		      	                     ++i)
-		      	                  filenames_st.push_back ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
-
-		      	                std::ofstream master_output_st (("st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
-		      	                data_out_2.write_pvtu_record (master_output_st, filenames_st);
-		      	              }
+//			  DataOut<dim> data_out;
+//			  data_out.attach_dof_handler (dof_handler);
+//			  data_out.add_data_vector (solution, solution_names,
+//										DataOut<dim>::type_dof_data,
+//										data_component_interpretation);
 //
-	      }  //end of outputting 3d space-time solution.
+//			  data_out.build_patches ();
+//
+//
+//			  int tmp = prm.time/prm.time_step;
+//			  std::ofstream output ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
+//			  data_out.write_vtu (output);
+	//	      //following lines create a file which paraview can use to link the subdomain results
+	//	            if (this_mpi == 0)
+	//	              {
+	//	                std::vector<std::string> filenames;
+	//	                for (unsigned int i=0;
+	//	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+	//	                     ++i)
+	//	                  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+	//
+	//	                std::ofstream master_output (("solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
+	//	                                              ".pvtu").c_str());
+	//	                data_out.write_pvtu_record (master_output, filenames);
+	//	              }
+
+			 /* end of commenting out for disabling vtu outputs*/
 
 
+			   if(std::fabs(prm.time-prm.final_time)<1.0e-12){ //outputting the 3d space-time solution:
+				  std::vector<std::string> solution_names_st;
+				  switch(dim)
+				  {
+					case 2:
+					  solution_names_st.push_back ("u1");
+					  solution_names_st.push_back ("u2");
+					  solution_names_st.push_back ("u3");
+					  solution_names_st.push_back ("p");
+					  break;
+
+					default:
+					Assert(false, ExcNotImplemented());
+				  }
+
+
+				  // Components interpretation of the flow solution (vector - scalar)
+				  std::vector<DataComponentInterpretation::DataComponentInterpretation>
+				  data_component_interpretation_st (dim+1,
+								  DataComponentInterpretation::component_is_part_of_vector);
+				  data_component_interpretation_st.push_back(DataComponentInterpretation::component_is_scalar);
+
+				  DataOut<dim+1> data_out_2;
+				  data_out_2.attach_dof_handler (dof_handler_st);
+				  data_out_2.add_data_vector (solution_st, solution_names_st,
+											DataOut<dim+1>::type_dof_data,
+											data_component_interpretation_st);
+
+				  data_out_2.build_patches ();
+				  std::ofstream output_st ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(this_mpi,4) +".vtu");
+				  data_out_2.write_vtu (output_st);
+						  //following lines create a file which paraview can use to link the subdomain results
+								if (this_mpi == 0)
+								  {
+									std::vector<std::string> filenames_st;
+									for (unsigned int i=0;
+										 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+										 ++i)
+									  filenames_st.push_back ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
+
+									std::ofstream master_output_st (("st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
+									data_out_2.write_pvtu_record (master_output_st, filenames_st);
+								  }
+	//
+			  }  //end of outputting 3d space-time solution.
+
+
+	        }//end of outputting plots at the final refinement.
 	      double total_time = prm.time_step * prm.num_time_steps;
 	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12){
 	        convergence_table.set_precision("Velocity,L2-L2", 3);
