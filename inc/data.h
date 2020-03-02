@@ -105,9 +105,9 @@ namespace vt_darcy
 //          return c0*t_scale*exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)-exp(t*t_scale)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0)+(3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793)*2.0;
 //        	return c0*t_scale*exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]) + exp(t*t_scale)*5.0*sin(p[0])*sin(2.0*p[1]);
 //        	return 8*cos(8*t)*sin(3*x)*sin(4*y)+sin(8*t)*25*sin(3*x)*sin(4*y);
-//        	return 8*cos(8*t)*sin(11*x)*cos(11*y)+sin(8*t)*242*sin(11*x)*cos(11*y);
-        	return 8*cos(8*t)*(sin(11*x)*cos(11*y)+sin(13*y)*cos(13*x))
-        			+sin(8*t)*(242*sin(11*x)*cos(11*y)+338*sin(13*y)*cos(13*x));
+        	return 8*cos(8*t)*sin(11*x)*cos(11*y-(3.1415/4))+sin(8*t)*242*sin(11*x)*cos(11*y-(3.1415/4));
+//        	return 8*cos(8*t)*(sin(11*x)*cos(11*y)+sin(13*y)*cos(13*x))
+//        			+sin(8*t)*(242*sin(11*x)*cos(11*y)+(3.1415/4)38*sin(13*y)*cos(13*x));
         default:
         Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
       }
@@ -142,11 +142,11 @@ namespace vt_darcy
 //          return exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
 //        	return exp(t*t_scale)*sin(x)*sin(2.0*y);
 //        	return sin(8*t)*sin(3*x)*sin(4*y);
-//        	return sin(8*t)*sin(11*x)*cos(11*y);
-        	return sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x) );
+        	return sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));
+//        	return sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x) );
         case 3:
-//        	return sin(8*z)*sin(3*x)*sin(4.0*y);
-        	return sin(8*z) * ( sin(11*x)*cos(11*y)+sin(13*y)*cos(13*x) );
+        	return sin(8*z)*sin(11*x)*cos(11*y-(3.1415/4));
+//        	return sin(8*z) * ( sin(11*x)*cos(11*y)+sin(13*y)*cos(13*x) );
         default:
         Assert(false, ExcMessage("The BC data for dim != 2 is not provided"));
       }
@@ -186,12 +186,12 @@ namespace vt_darcy
 //                values(1) = 3.141592653589793*exp(t*t_scale)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
 //                values(2) = exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
 
-//            	  values(0) = -sin(8*t)*3*cos(3*x)*sin(4*y) ;
-//            	  values(1) = -sin(8*t)*4*sin(3*x)*cos(4*y) ;
-//            	  values(2) = sin(8*t)*sin(3*x)*sin(4*y);
-          	  values(0) = sin(8*t)*( -11*cos(11*x)*cos(11*y) + 13*sin(13*x)*sin(13*y) ) ;
-          	  values(1) = sin(8*t)*( 11*sin(11*x)*sin(11*y) - 13*cos(13*x)*cos(13*y) );
-          	  values(2) = sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x));
+            	  values(0) = -sin(8*t)*11*cos(11*x)*cos(11*y-(3.1415/4)) ;
+            	  values(1) =  sin(8*t)*11*sin(11*x)*sin(11*y-(3.1415/4)) ;
+            	  values(2) = sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));
+//          	  values(0) = sin(8*t)*( -11*cos(11*x)*cos(11*y) + 13*sin(13*x)*sin(13*y) ) ;
+//          	  values(1) = sin(8*t)*( 11*sin(11*x)*sin(11*y) - 13*cos(13*x)*cos(13*y) );
+//          	  values(2) = sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x));
 
 
                 break;
@@ -305,8 +305,8 @@ namespace vt_darcy
               values(1) = 0;
 //              values(2) = (cos(y*M_PI)*sin(x*M_PI)+1.0E1);
 
-//              values(2) = sin(8*t)*sin(3*x)*sin(4*y);
-              values(2) = sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x));
+              values(2) = sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));;
+//              values(2) = sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x));
           break;
           case 3:
 

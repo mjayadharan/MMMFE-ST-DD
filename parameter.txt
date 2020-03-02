@@ -2,7 +2,7 @@ c0 1.0
 alpha 1.0
 space_degree 0
 mortar_degree 1
-num_refinement 4
+num_refinement 5
 final_time 0.5
 tolerence 1.e-6
 max_iteration 500
