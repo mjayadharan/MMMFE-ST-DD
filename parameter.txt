@@ -1,7 +1,7 @@
 c0 1.0
 alpha 1.0
 space_degree 0
-mortar_degree 1
+mortar_degree 2
 num_refinement 5
 final_time 0.5
 tolerence 1.e-6
