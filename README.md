@@ -41,7 +41,7 @@ without recompiling the program.
 4)Mortar mesh configuration: 
   mesh_pattern_sub_d0 3 2 5 means the initial mesh for subdomain0 in refinement cycle 0 has 3 partitions in x ,2 partitions     in the y direction, and 5 partiions in the time(z) direction. Partition in the time direction is used to calculate the       Delta_t   required for backward euler time-stepping by using final_time = Delta_t * number of partitions in time(z)           direction.
 
-Further improvments.
+Further improvements.
 ---------------------
 1)The bottle neck in the simulation is where we do the projection across the interface from mortar to subdomain space-time mesh and vice-versa. This is mainly due to the inefficiency of the built in FEFieldFunction() from deal.ii which is very inefficient in finding the quadrature points around a general point for FE in a different mesh.  This could be sped up significantly by reimplementing the project_boundary_value subroutine in projector.h where we could also save the inner product between basis functions from FE spaces coming from different meshes( in this case, the space-time mesh in subdomain and in the mortar) and use this in the remaining projections in the iteration.
 
