@@ -187,7 +187,6 @@ namespace vt_darcy
         std::vector <std::vector<unsigned int>> interface_dofs_st; //for 3d space-tiem subdomain mesh.
         std::vector <std::vector<unsigned int>> face_dofs_st; //RT0 3d dofs living on the faces of a cell: for transfering solution to space-time mesh.
         std::vector <std::vector<unsigned int>> face_dofs_subdom; // //RT0 2d dofs living on the faces of a cell: for transfering solution to space-time mesh.
-//        std::vector<std::vector <std::vector<unsigned int>>> interface_dofs_st; //for 3d space-tiem subdomain mesh. first component corresponds to time_level.
 
 
 
@@ -243,9 +242,6 @@ namespace vt_darcy
 //        BlockVector<double> interface_fe_function; //need to decide whether to keep this.
         BlockVector<double> interface_fe_function_subdom;
 
-
-//        std::vector<std::vector<double>> lambda_guess;
-//        std::vector<std::vector<double>> Alambda_guess;
 
         // Mortar data structures
         BlockVector<double> interface_fe_function_mortar;
