@@ -1,9 +1,11 @@
 /* ---------------------------------------------------------------------
  * Functions representing RHS, physical parameters, boundary conditions and
- * the true solution.
+ * the true solution for the space-time DD for time-dependent parabolic equations.
+ * All conditions and RHS are derived using p(x,y,t)= sin(8t)sin(11x)cos(11y-pi/4)
+ * and permeability tensor K = I_2x2.
  * ---------------------------------------------------------------------
  *
- * Author: Eldar Khattatov, University of Pittsburgh, 2018
+ * Author: Manu Jayadharan, Eldar Khattatov, University of Pittsburgh, 2020
  */
 
 #ifndef ELASTICITY_MFEDD_DATA_H
@@ -90,24 +92,16 @@ namespace vt_darcy
     template <int dim>
     double RightHandSidePressure<dim>::value (const Point<dim>  &p,
                                       const unsigned int /*component*/) const
-//									  ,const double c0,
-//									  const double alpha) const
+
     {
       const double x = p[0];
       const double y = p[1];
       double t = FunctionTime<double>::get_time();
-//      double c0=0.0001;
-//      double alpha=1.0;
 
       switch (dim)
       {
         case 2:
-//          return c0*t_scale*exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1)-exp(t*t_scale)*(y*-2.0+pow(x-1.0,4.0)*pow(y-1.0,2.0)*3.0+x*sin(x*y)*sin(x)+2.0)+(3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793)*2.0;
-//        	return c0*t_scale*exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]) + exp(t*t_scale)*5.0*sin(p[0])*sin(2.0*p[1]);
-//        	return 8*cos(8*t)*sin(3*x)*sin(4*y)+sin(8*t)*25*sin(3*x)*sin(4*y);
         	return 8*cos(8*t)*sin(11*x)*cos(11*y-(3.1415/4))+sin(8*t)*242*sin(11*x)*cos(11*y-(3.1415/4));
-//        	return 8*cos(8*t)*(sin(11*x)*cos(11*y)+sin(13*y)*cos(13*x))
-//        			+sin(8*t)*(242*sin(11*x)*cos(11*y)+(3.1415/4)38*sin(13*y)*cos(13*x));
         default:
         Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
       }
@@ -139,14 +133,10 @@ namespace vt_darcy
       switch (dim)
       {
         case 2:
-//          return exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
-//        	return exp(t*t_scale)*sin(x)*sin(2.0*y);
-//        	return sin(8*t)*sin(3*x)*sin(4*y);
+
         	return sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));
-//        	return sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x) );
         case 3:
         	return sin(8*z)*sin(11*x)*cos(11*y-(3.1415/4));
-//        	return sin(8*z) * ( sin(11*x)*cos(11*y)+sin(13*y)*cos(13*x) );
         default:
         Assert(false, ExcMessage("The BC data for dim != 2 is not provided"));
       }
@@ -182,37 +172,12 @@ namespace vt_darcy
         switch (dim)
         {
             case 2:
-//                values(0) = -3.141592653589793*exp(t*t_scale)*cos(x*3.141592653589793)*cos(y*3.141592653589793);
-//                values(1) = 3.141592653589793*exp(t*t_scale)*sin(x*3.141592653589793)*sin(y*3.141592653589793);
-//                values(2) = exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
-
             	  values(0) = -sin(8*t)*11*cos(11*x)*cos(11*y-(3.1415/4)) ;
             	  values(1) =  sin(8*t)*11*sin(11*x)*sin(11*y-(3.1415/4)) ;
             	  values(2) = sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));
-//          	  values(0) = sin(8*t)*( -11*cos(11*x)*cos(11*y) + 13*sin(13*x)*sin(13*y) ) ;
-//          	  values(1) = sin(8*t)*( 11*sin(11*x)*sin(11*y) - 13*cos(13*x)*cos(13*y) );
-//          	  values(2) = sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x));
-
-
                 break;
             case 3:
-//                values(0) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))-mu*exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/5.0);
-//                values(1) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
-//                values(2) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
-//                values(3) = mu*(exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*-2.0;
-//                values(4) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
-//                values(5) = 0;
-//                values(6) = mu*(exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0))*2.0;
-//                values(7) = 0;
-//                values(8) = lmbda*((exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0-exp(x)*sin(M_PI*y)*sin(M_PI*z)*(1.0/1.0E1))+mu*(exp(x)-1.0)*(cos(M_PI/12.0)-1.0)*2.0;
-//
-//                values(9) = -sin(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1);
-//                values(10) = -(exp(x)-1.0)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0);
-//                values(11) = (exp(x)-1.0)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0);
-//
-//                values(12) = sin(M_PI/12.0)*(exp(x)-1.0);
-//                values(13) = exp(x)*(-z+cos(M_PI/12.0)*(z-1.0/2.0)+sin(M_PI/12.0)*(y-1.0/2.0)+1.0/2.0)*(-1.0/2.0)-M_PI*cos(M_PI*z)*sin(M_PI*y)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
-//                values(14) = exp(x)*(y-cos(M_PI/12.0)*(y-1.0/2.0)+sin(M_PI/12.0)*(z-1.0/2.0)-1.0/2.0)*(-1.0/2.0)+M_PI*cos(M_PI*y)*sin(M_PI*z)*(exp(x)*(1.0/1.0E1)-1.0/1.0E1)*(1.0/2.0);
+
                 break;
             default:
                 Assert(false, ExcNotImplemented());
@@ -243,17 +208,6 @@ namespace vt_darcy
         case 2:
 
 
-//            grads[0][0] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
-//            grads[0][1] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
-//
-//            grads[1][0] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(x*3.141592653589793)*sin(y*3.141592653589793);
-//            grads[1][1] = (3.141592653589793*3.141592653589793)*exp(t*t_scale)*cos(y*3.141592653589793)*sin(x*3.141592653589793);
-
-//        	 grads[0][0] = sin(8*t)*9*sin(3*x)*sin(4*y);
-//        	 grads[0][1] = -sin(8*t)*12.0*cos(3*x)*cos(4*y);
-//
-//        	 grads[1][0] = -sin(8*t)*12.0*cos(3*x)*cos(4*y);
-//        	 grads[1][1] = sin(8*t)*16*sin(3*x)*sin(4*y);
 
         	 grads[0][0] = sin(8*t)*36*sin(11*x)*cos(11*y);
            	 grads[0][1] = -sin(8*t)*36.0*cos(6*x)*cos(6*y);
@@ -303,10 +257,8 @@ namespace vt_darcy
           case 2:
               values(0) = 0;
               values(1) = 0;
-//              values(2) = (cos(y*M_PI)*sin(x*M_PI)+1.0E1);
 
               values(2) = sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));;
-//              values(2) = sin(8*t)*( sin(11*x)*cos(11*y) + sin(13*y)*cos(13*x));
           break;
           case 3:
 
