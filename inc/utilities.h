@@ -470,28 +470,32 @@ namespace vt_darcy
 
     template <int dim>
     void
-    project_mortar (Projector::Projector<dim> &proj,
-                    const DoFHandler<dim>     &dof1,
+    project_mortar (Projector::Projector<dim+1> &proj,
+                    const DoFHandler<dim+1>     &dof1,
                     BlockVector<double>       &in_vec,
-                    const Quadrature<dim-1>   &quad,
+                    const Quadrature<dim>   &quad,
                     ConstraintMatrix          &constraints,
                     const std::vector<int>    &neighbors,
-                    const DoFHandler<dim>     &dof2,
+                    const DoFHandler<dim+1>     &dof2,
                     BlockVector<double>       &out_vec)
     {
         out_vec = 0;
 
-        Functions::FEFieldFunction<dim, DoFHandler<dim>, BlockVector<double>> fe_interface_data (dof1, in_vec);
+        Functions::FEFieldFunction<dim+1, DoFHandler<dim+1>, BlockVector<double>> fe_interface_data (dof1, in_vec);
         std::map<types::global_dof_index,double> boundary_values_velocity;
 
-        typename FunctionMap<dim>::type boundary_functions_velocity;
+        typename FunctionMap<dim+1>::type boundary_functions_velocity;
 
         constraints.clear ();
 
         for (unsigned int side=0; side<GeometryInfo<dim>::faces_per_cell; ++side)
             if (neighbors[side] >= 0)
                 boundary_functions_velocity[side+1] = &fe_interface_data;
-
+//        VectorTools::project_boundary_values(dof2,
+//                                      boundary_functions_velocity,
+//                                      quad,
+//                                      constraints);
+//
         proj.project_boundary_values (dof2,
                                       boundary_functions_velocity,
                                       quad,
@@ -500,6 +504,44 @@ namespace vt_darcy
         constraints.close ();
         constraints.distribute (out_vec);
     }
+
+    //VT Time-space mesh related utilities:
+
+    //Functions to transfer solution between 2d RT space mesh and 3d space-time mesh.
+
+//    // from space-time subdomain mesh to 2d sub-domain space mesh
+//    template <int dim>
+//    void
+//    st_to_subdom_distribute (BlockVector<double> &vector_st, std::vector <std::vector<unsigned int>> &interface_dofs_st,
+//    						 BlockVector<double> &vector_subdom, std::vector <std::vector<unsigned int>> &interface_dofs_subd,
+//							 unsigned int &time_level,  const std::vector<int> &neighbors)
+//    {
+//        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
+//              if (neighbors[side] >= 0){
+//            	  int interface_dofs_side_size = interface_dofs_subd[side].size();
+//            	  for(int i=0; i<interface_dofs_side_size; i++)
+//            		  vector_subdom[ interface_dofs_subd[side][i]] = vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]];
+//              }
+//
+//    }
+//
+//    // from 2-d subdomain space mesh to 3-d subdomain space-time mesh
+//    template <int dim>
+//    void
+//    subdom_to_st_distribute (BlockVector<double> &vector_st, std::vector <std::vector<unsigned int>> &interface_dofs_st,
+//    						 BlockVector<double> &vector_subdom, std::vector <std::vector<unsigned int>> &interface_dofs_subd,
+//							 unsigned int &time_level,  const std::vector<int> &neighbors)
+//    {
+//        for (unsigned int side = 0; side < GeometryInfo<dim>::faces_per_cell; ++side)
+//            if (neighbors[side] >= 0){
+//          	  int interface_dofs_side_size = interface_dofs_subd[side].size();
+//          	  for(int i=0; i<interface_dofs_side_size; i++)
+//          		vector_st[ interface_dofs_st[side][interface_dofs_side_size*time_level +i]]= vector_subdom[ interface_dofs_subd[side][i]];
+//            }
+//    }
+
+
+
 }
 
 #endif //ELASTICITY_MFEDD_UTILITIES_H

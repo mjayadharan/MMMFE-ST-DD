@@ -30,19 +30,21 @@ namespace vt_darcy
 
     struct BiotParameters
     {
-      BiotParameters(const double dt, const unsigned int nt,
+      BiotParameters(const double dt, const unsigned int nt, const double f_time,
                      const double c = 1.0, const double a = 1.0)
               :
               time(0.0),
               time_step(dt),
+			  final_time(f_time),
               num_time_steps(nt),
               c_0(c),
               alpha(a)
       {}
 
       mutable double time;
-      const double time_step;
-      const unsigned int num_time_steps;
+      double time_step;
+      unsigned int num_time_steps;
+      const double final_time;
       const double c_0;
       const double alpha;
     };
@@ -85,40 +87,43 @@ namespace vt_darcy
     };
 
     // Mixed Biot Domain Decomposition class template
-    template<int dim>
+    template<int dim=2>
     class DarcyVTProblem
     {
     public:
         DarcyVTProblem(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
                            const unsigned int mortar_degree = 0);
 
-        void run(const unsigned int refine, const std::vector <std::vector<unsigned int>> &reps,
-        		 const std::vector <std::vector<unsigned int>> &reps_st, double tol,
-                 unsigned int maxiter, unsigned int quad_degree = 11);
+        void run(const unsigned int refine,
+        		 const std::vector <std::vector<int>> &reps_st, double tol,
+                 unsigned int maxiter, unsigned int quad_degree = 3);
 
     private:
         MPI_Comm mpi_communicator;
         MPI_Status mpi_status;
 
-        Projector::Projector <dim> P_coarse2fine;
-        Projector::Projector <dim> P_fine2coarse;
+        Projector::Projector <dim+1> P_coarse2fine;
+        Projector::Projector <dim+1> P_fine2coarse;
 
         void make_grid_and_dofs();
         void assemble_system();
         void get_interface_dofs();
         void get_interface_dofs_st(); //get inteface dofs from the space time interface.
         void assemble_rhs_bar();
-        void assemble_rhs_star(FEFaceValues<dim> &fe_face_values);
+//        void assemble_rhs_star(FEFaceValues<dim> &fe_face_values);
+        void assemble_rhs_star();
         void solve_bar();
 
 
         void solve_star();
-        void solve_timestep(unsigned int maxiter);
+        void solve_timestep(int star_bar_flag, unsigned int time_level); //star_bar_flag == 0:solving bar problem, 1: solving star problem, 2: solving star problem at end after gmres converges, compute final solution, error and output.
+        void solve_darcy_vt(unsigned int maxiter);
 
         void compute_multiscale_basis();
         std::vector<double> compute_interface_error_dh(); //return_vector[0] gives interface_error for elast part and return_vector[1] gives that of flow part.
         double compute_interface_error_l2();
-        void compute_errors(const unsigned int cycle);
+        double compute_jump_error(); //return L2 error of jump of pressure across time levels.
+        void compute_errors(const unsigned int refinement_index, unsigned int time_level);
         void output_results(const unsigned int cycle, const unsigned int refine);
 
         void set_current_errors_to_zero();
@@ -137,10 +142,14 @@ namespace vt_darcy
         void
         local_gmres(const unsigned int maxiter);
         double vect_norm(std::vector<double> v);
-        //just to test the local_gmres algorithm
-          void
-      	testing_gmres(const unsigned int &maxiter);
-
+        //distribute solution vectors between 2-d space and 3-d space-time subdomain mesh.
+        void st_to_subdom_distribute (BlockVector<double> &vector_st,
+        							  BlockVector<double> &vector_subdom, unsigned int &time_level, double scale_factor);
+        void subdom_to_st_distribute (BlockVector<double> &vector_st,
+               						  BlockVector<double> &vector_subdom, unsigned int &time_level, double scale_factor);
+        //distribute local to global solution(now only the pressure part).
+        void final_solution_transfer (BlockVector<double> &solution_st,
+               						  BlockVector<double> &solution_subdom, unsigned int &time_level, double scale_factor);
 
         unsigned int       gmres_iteration;
         // Number of subdomains in the computational domain
@@ -148,7 +157,7 @@ namespace vt_darcy
 
 
         // Physical parameters
-        const BiotParameters prm;
+         BiotParameters prm;
         BiotErrors err;
 
         double grid_diameter;
@@ -164,6 +173,8 @@ namespace vt_darcy
         unsigned int max_cg_iteration;
         double tolerance;
         unsigned int qdegree;
+        unsigned int refinement_index;
+        unsigned int total_refinements;
 
 
         // Neighbors and interface information
@@ -172,16 +183,28 @@ namespace vt_darcy
         std::vector<unsigned int> faces_on_interface_mortar;
         std::vector<unsigned int> faces_on_interface_st;
         std::vector <std::vector<unsigned int>> interface_dofs; //dofs on the mortar space time interface.
-        std::vector <std::vector<unsigned int>> interface_dofs_st; //subdomain space time subdomain.
+        std::vector <std::vector<unsigned int>> interface_dofs_subd; //dofs on 2d-subdomain interface.
+        std::vector <std::vector<unsigned int>> interface_dofs_st; //for 3d space-tiem subdomain mesh.
+        std::vector <std::vector<unsigned int>> face_dofs_st; //RT0 3d dofs living on the faces of a cell: for transfering solution to space-time mesh.
+        std::vector <std::vector<unsigned int>> face_dofs_subdom; // //RT0 2d dofs living on the faces of a cell: for transfering solution to space-time mesh.
+//        std::vector<std::vector <std::vector<unsigned int>>> interface_dofs_st; //for 3d space-tiem subdomain mesh. first component corresponds to time_level.
 
 
 
         unsigned long n_flux;
         unsigned long n_pressure;
 
+        unsigned long n_flux_st;
+        unsigned long n_pressure_st;
+
         // Subdomain coordinates (assuming logically rectangular blocks)
         Point <dim> p1;
         Point <dim> p2;
+
+        //  space-time grid diagonal coordinates (assuming logically rectangular blocks)
+         Point <dim+1> p1_st;
+         Point <dim+1> p2_st;
+
 
         // Fine triangulation
         Triangulation <dim> triangulation;
@@ -189,14 +212,14 @@ namespace vt_darcy
         DoFHandler <dim> dof_handler;
 
         //3d Space time triangulation for subdomain.
-        Triangulation<3> triangulation_st;
-        FE_FaceQ<3> fe_face_q;
-        DoFHandler<3> dof_handler_st;
+        Triangulation<dim+1> triangulation_st;
+        FESystem<dim+1> fe_st;
+        DoFHandler<dim+1> dof_handler_st;
 
         // Mortar triangulation
-        Triangulation <dim> triangulation_mortar;
-        FESystem <dim> fe_mortar;
-        DoFHandler <dim> dof_handler_mortar;
+        Triangulation <dim+1> triangulation_mortar;
+        FESystem <dim+1> fe_mortar;
+        DoFHandler <dim+1> dof_handler_mortar;
 
         // Star and bar problem data structures
         BlockSparsityPattern sparsity_pattern;
@@ -206,23 +229,35 @@ namespace vt_darcy
         BlockVector<double> solution_bar;
         BlockVector<double> solution_star;
         BlockVector<double> solution;
+        BlockVector<double> solution_st; //for the 3d space-time solution
 
         BlockVector<double> old_solution;
+        BlockVector<double> old_solution_for_jump;  //storing old solution to calculate the jump in pressure error.
+        BlockVector<double> initialc_solution;
+
+        BlockVector<double> pressure_projection; //projection of exact pressure to piecewise constant space.
+        BlockVector<double> old_pressure_projection; //pressure_projection from previous time step.
 
         BlockVector<double> system_rhs_bar;
-
         BlockVector<double> system_rhs_star;
+//        BlockVector<double> interface_fe_function; //need to decide whether to keep this.
+        BlockVector<double> interface_fe_function_subdom;
 
-        BlockVector<double> interface_fe_function;
 
-        std::vector<std::vector<double>> lambda_guess;
-        std::vector<std::vector<double>> Alambda_guess;
+//        std::vector<std::vector<double>> lambda_guess;
+//        std::vector<std::vector<double>> Alambda_guess;
 
         // Mortar data structures
         BlockVector<double> interface_fe_function_mortar;
         BlockVector<double> solution_bar_mortar;
         BlockVector<double> solution_star_mortar;
         std::vector <BlockVector<double>> multiscale_basis;
+
+        // 3d Space-time data structures
+        BlockVector<double> interface_fe_function_st;
+        BlockVector<double> solution_bar_st;
+        BlockVector<double> solution_star_st;
+        std::vector<BlockVector<double>> solution_bar_collection;
 
         // Output extra
         ConditionalOStream pcout;

@@ -2,7 +2,7 @@
 *.vtu
 *.pvtu
 CMakeCache.txt
-BiotDD
+DarcyVT
 .settings/
 CMakeFiles/
 cmake_install.cmake
