@@ -23,7 +23,6 @@ int main (int argc, char *argv[])
 
         MultithreadInfo::set_thread_limit(4);
         Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
-
         //declaring parameter variables .
         double c_0, alpha, final_time, tolerence;
 
@@ -31,7 +30,8 @@ int main (int argc, char *argv[])
 
         //declaring mesh refinement structure for space-time mortar
         std::vector<int> zeros_vector(3,0);
-        std::vector<std::vector<int>> mesh_m3d(5,zeros_vector);
+        std::vector<std::vector<int>> mesh_m3d;
+//        std::vector<std::vector<int>> mesh_m3d(5,zeros_vector);
 
         std::string dummy_string; //for getting rid of string in the parameter.dat
         {//Reading parameters from parameter.dat file
@@ -40,6 +40,9 @@ int main (int argc, char *argv[])
             int mpi_send_bool(0), mpi__rec_bool(0);
         	const unsigned int this_mpi = Utilities::MPI::this_mpi_process(mpi_communicator_1);
         	const unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator_1);
+
+        	mesh_m3d.resize(n_processes+1, zeros_vector);
+
         	if(this_mpi!=0)
         	{
         		  MPI_Recv(&mpi__rec_bool,  1, MPI_INT, this_mpi-1, this_mpi-1, mpi_communicator_1, &mpi_status_1);
@@ -56,12 +59,10 @@ int main (int argc, char *argv[])
 				parameter_file>>dummy_string>>final_time;
 				parameter_file>>dummy_string>>tolerence;
 				parameter_file>>dummy_string>>max_iteration;
-				parameter_file>>dummy_string>>mesh_m3d[0][0]>>mesh_m3d[0][1]>>mesh_m3d[0][2];
-				parameter_file>>dummy_string>>mesh_m3d[1][0]>>mesh_m3d[1][1]>>mesh_m3d[1][2];
-				parameter_file>>dummy_string>>mesh_m3d[2][0]>>mesh_m3d[2][1]>>mesh_m3d[2][2];
-				parameter_file>>dummy_string>>mesh_m3d[3][0]>>mesh_m3d[3][1]>>mesh_m3d[3][2];
-	        	parameter_file>>dummy_string>>mesh_m3d[4][0]>>mesh_m3d[4][1]>>mesh_m3d[4][2];
-        	parameter_file.close();
+				for(unsigned int sub_id=0; sub_id<n_processes+1; sub_id++)
+					parameter_file>>dummy_string>>mesh_m3d[sub_id][0]>>mesh_m3d[sub_id][1]>>mesh_m3d[sub_id][2];
+
+				parameter_file.close();
 
         	if(this_mpi!=n_processes-1)
         	        	{
