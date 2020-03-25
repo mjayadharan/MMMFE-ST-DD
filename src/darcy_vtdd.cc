@@ -762,7 +762,7 @@ namespace vt_darcy
 				if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
 				{
 					solution =solution_bar;
-					compute_errors(refinement_index, time_level);
+					// compute_errors(refinement_index, time_level);
 					output_results(refinement_index,total_refinements);
 				}
 				old_solution = solution_bar;
@@ -801,7 +801,7 @@ namespace vt_darcy
 				solution.sadd(1.0,solution_bar_collection[time_level]);
 				final_solution_transfer(solution_st, solution, time_level, prm.time_step);
 
-				compute_errors(refinement_index, time_level);
+				// compute_errors(refinement_index, time_level);
 				output_results(refinement_index,total_refinements);
 				old_solution_for_jump = solution;
 
@@ -1509,6 +1509,7 @@ namespace vt_darcy
            return error_calculated;
        }
 
+    /*
     // MixedBiotProblemDD::compute_errors
     template <int dim>
     void DarcyVTProblem<dim>::compute_errors (const unsigned int refinement_index, unsigned int time_level)
@@ -1688,6 +1689,7 @@ namespace vt_darcy
       }
     }
 
+    */
 
     // MixedBiotProblemDD::output_results
     template <int dim>

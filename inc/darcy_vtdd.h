@@ -123,7 +123,7 @@ namespace vt_darcy
         std::vector<double> compute_interface_error_dh(); //return_vector[0] gives interface_error for elast part and return_vector[1] gives that of flow part.
         double compute_interface_error_l2();
         double compute_jump_error(); //return L2 error of jump of pressure across time levels.
-        void compute_errors(const unsigned int refinement_index, unsigned int time_level);
+//        void compute_errors(const unsigned int refinement_index, unsigned int time_level);
         void output_results(const unsigned int cycle, const unsigned int refine);
 
         void set_current_errors_to_zero();
