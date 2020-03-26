@@ -4,7 +4,7 @@
  *  - DD & mortar related - mesh subdivision, mortar projection
  * ---------------------------------------------------------------------
  *
- * Author: Eldar Khattatov, University of Pittsburgh, 2016 - 2017
+ * Author: Manu Jayadharan, Eldar Khattatov, University of Pittsburgh, 2016 - 2020
  */
 #ifndef ELASTICITY_MFEDD_UTILITIES_H
 #define ELASTICITY_MFEDD_UTILITIES_H
