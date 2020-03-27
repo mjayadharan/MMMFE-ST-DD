@@ -29,7 +29,12 @@ namespace vt_darcy
     const double pororepo = 0.2, porohost = 0.05; // porosity;
     const double tsource = 1e5, fsource = 1e-5; // source time and intensity
 
-    // utility function
+    // subdomain dimensions (physical sizes)
+    const std::vector<double> sd_sizex{500., 2950., 500};
+    const std::vector<double> sd_sizey{65., 10., 65};
+
+    
+    // utility function: repository geometry
    template <int dim>
    bool isInRepo(const Point<dim> &p)
    {
@@ -41,7 +46,54 @@ namespace vt_darcy
 	   (Ly/sy - Lyr/sy)/2. < y && y < (Ly/sy + Lyr/sy)/2
 	   );
    }
-    
+
+
+   template <int dim>
+       void
+       get_subdomain_dimensions(const unsigned int &this_mpi, const std::vector<unsigned int> &n_doms, std::vector<double> & subdomain_dimensions)
+   {
+	switch (dim)
+       {
+       case 2:
+	   Assert(n_doms[0]==3 && n_doms[1] ==3, ExcNotImplemented());
+	   subdomain_dimensions[0] = sd_sizex[this_mpi % n_doms[0]] / sx;
+	   subdomain_dimensions[1] = sd_sizey[floor(double(this_mpi)/double(n_doms[0]))] / sy;
+	   break;
+       default:
+	   Assert(false, ExcNotImplemented());
+	   break;
+       }
+   }
+
+    template <int dim>
+    void
+    get_subdomain_coordinates (const unsigned int &this_mpi, const std::vector<unsigned int> &n_doms, const std::vector<double> &dims, Point<dim> &p1, Point<dim> &p2)
+    {
+	int isd = this_mpi % n_doms[0];
+	int jsd = floor(double(this_mpi)/double(n_doms[0]));
+	double sumx = 0, sumy = 0;
+
+	switch (dim)
+       {
+       case 2:
+	   Assert(n_doms[0]==3 && n_doms[1] ==3, ExcNotImplemented());
+	   for (int i =0; i<isd; i++) {
+	       sumx += sd_sizex[i] / sx;
+	   }
+	   for (int j=0; j<jsd; j++){
+	       sumy += sd_sizey[j] / sy;
+	   }
+	   p1[0] = sumx;
+	   p1[1] = sumy;
+	   p2[0] = sumx + sd_sizex[isd] / sx;
+	   p2[1] = sumy + sd_sizey[jsd] / sy;
+	   break;
+       default:
+	   Assert(false, ExcNotImplemented());
+	   break;
+       }
+    }
+   
     // Inverse of permeability tensor
     template <int dim>
 	class KInverse : public TensorFunction<2,dim>

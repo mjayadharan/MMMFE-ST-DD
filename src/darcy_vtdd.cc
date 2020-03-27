@@ -1089,7 +1089,6 @@ namespace vt_darcy
 						r[side][i] = get_normal_direction(side) *
 									   solution_bar[interface_dofs[side][i]] ;
 
-
                   MPI_Sendrecv(&r[side][0],
                            r[side].size(),
                            MPI_DOUBLE,
@@ -1103,7 +1102,6 @@ namespace vt_darcy
 						   neighbors[side],
 						   mpi_communicator,
 						   &mpi_status);
-
 
 
 
@@ -1935,19 +1933,26 @@ namespace vt_darcy
                 prm.num_time_steps = reps_st_local[this_mpi][2];
                 prm.time_step = prm.final_time/double(prm.num_time_steps);
                 pcout<<"Final time= "<<prm.final_time<<"\n";
-                pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
+		std::cout<<"SD " << this_mpi << " number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
 
                 // Partitioning into subdomains (simple bricks)
                 find_divisors<dim>(n_processes, n_domains);
 
+/*
                 // Dimensions of the domain (unit hypercube)
                 std::vector<double> subdomain_dimensions(dim);
                 for (unsigned int d=0; d<dim; ++d)
                     subdomain_dimensions[d] = 1.0/double(n_domains[d]);
+*/
 
+		std::vector<double> subdomain_dimensions(dim);
+		get_subdomain_dimensions<dim>(this_mpi, n_domains, subdomain_dimensions);
+		
                 get_subdomain_coordinates(this_mpi, n_domains, subdomain_dimensions, p1, p2);
                 //corners of the space time sub-domain.
                 p1_st = {p1[0],p1[1],0}, p2_st={p2[0],p2[1],prm.final_time};
+		std::cout << "On SD " << this_mpi << " corner 1: " << p1[0] << "  "  << p1[1] <<
+		    "   corner 2 "  << p2[0] << "  "  << p2[1] << std::endl;
 
                 if (mortar_flag){
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
@@ -2002,7 +2007,7 @@ namespace vt_darcy
                     prm.num_time_steps = reps_st_local[this_mpi][2];
                     prm.time_step = prm.final_time/double(prm.num_time_steps);
                     pcout<<"Final time= "<<prm.final_time<<"\n";
-                    pcout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
+		    std::cout<<"number of time_steps for subdomain is: "<<prm.num_time_steps<<"\n";
 
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
                     GridGenerator::subdivided_hyper_rectangle(triangulation_st, reps_st_local[this_mpi], p1_st, p2_st);
@@ -2010,8 +2015,8 @@ namespace vt_darcy
                     pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
 
                 }
-
             }
+
             pcout << "Making grid and DOFs...\n";
             make_grid_and_dofs();
 

@@ -2,12 +2,17 @@ c0 1.0
 alpha 1.0
 space_degree 0
 mortar_degree 1
-num_refinement 4
-final_time 0.5
+num_refinement 1
+final_time 1e6
 tolerence 1.e-6
 max_iteration 500
-mesh_pattern_sub_d0 3 3 3
-mesh_pattern_sub_d1 2 2 2
-mesh_pattern_sub_d2 4 4 4
-mesh_pattern_sub_d3 3 3 3
-mesh_pattern_mortar 1 1 1
+mesh_pattern_sub_d0 6 10 200
+mesh_pattern_sub_d1 80 3 201
+mesh_pattern_sub_d2 6 10 202
+mesh_pattern_sub_d3 6 3 203
+mesh_pattern_sub_d4 40 3 1000
+mesh_pattern_sub_d5 6 3 205
+mesh_pattern_sub_d6 6 10 206
+mesh_pattern_sub_d7 80 3 207
+mesh_pattern_sub_d8 6 10 208
+wmesh_pattern_mortar 1 1 1

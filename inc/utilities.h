@@ -142,6 +142,7 @@ namespace vt_darcy
         }
     }
 
+    /*
     // Compute the lower left and upper right coordinate of a block
     template <int dim>
     void
@@ -170,7 +171,8 @@ namespace vt_darcy
                 break;
         }
     }
-
+    */
+    
     // Find neighboring subdomains
     void
     find_neighbors (const int &dim, const unsigned int &this_mpi, const std::vector<unsigned int> &n_doms, std::vector<int> &neighbors)
