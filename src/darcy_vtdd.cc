@@ -1811,6 +1811,7 @@ namespace vt_darcy
 
 	        }//end of outputting plots at the final refinement.
 	      double total_time = prm.time_step * prm.num_time_steps;
+/*
 	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12){
 	        convergence_table.set_precision("Velocity,L2-L2", 3);
 	        convergence_table.set_precision("Pressure,DG", 3);
@@ -1846,6 +1847,7 @@ namespace vt_darcy
 	        convergence_table.write_text(std::cout);
 	        convergence_table.write_tex(error_table_file);
 	      }
+*/
 	    }
 
 

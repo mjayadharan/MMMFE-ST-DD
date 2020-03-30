@@ -24,15 +24,14 @@ namespace vt_darcy
     const double Lx = 3950, Ly = 140; // real dimension of domain
     const double Lxr = 2950, Lyr = 10; // dimensions of repository
     const double sx = 14, sy = 1; // scaling factor in each direction
-    const double st = 3.1536e7; // scaling in time (# seconds in one year)
+    const double st = 1e4 * 3.1536e7; // scaling in time (# seconds in one year)
     const double Krepo = 2e-9, Khost = 5e-12; // permeability values
     const double pororepo = 0.2, porohost = 0.05; // porosity;
-    const double tsource = 1e5, fsource = 1e-5; // source time and intensity
-
+    const double tsource = 1e5 * 3.1536e7, fsource = 1e-5; // source time and intensity
+    
     // subdomain dimensions (physical sizes)
     const std::vector<double> sd_sizex{500., 2950., 500};
     const std::vector<double> sd_sizey{65., 10., 65};
-
     
     // utility function: repository geometry
    template <int dim>
@@ -123,10 +122,10 @@ namespace vt_darcy
         switch (dim)
         {
 	case 2:
-	    values[p][0][0] = isInRepo(points[p]) ? Krepo / pororepo*(st /sx*sx) : Khost / porohost *(st/sx*sx);
+	    values[p][0][0] = isInRepo(points[p]) ? 1. / (Krepo / pororepo*(st /sx*sx)) : 1. / (Khost / porohost *(st/sx*sx)) ;
             values[p][0][1] = 0.0;
             values[p][1][0] = 0.0;
-            values[p][1][1] = isInRepo(points[p]) ? Krepo / pororepo*(st /sy*sy) : Khost / porohost *(st/sy*sy);
+            values[p][1][1] = isInRepo(points[p]) ? 1. / (Krepo / pororepo*(st /sy*sy)) : 1. / (Khost / porohost *(st/sy*sy)) ;
             break;
           default:
           Assert(false, ExcMessage("The inverse of permeability tensor for dim != 2 is not provided"));
@@ -168,9 +167,9 @@ namespace vt_darcy
       switch (dim)
       {
         case 2:
-	    return (isInRepo(p) && t < tsource) ? fsource *st / pororepo : 0; 
-        default:
-        Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
+	    return (isInRepo(p) && t < tsource / st) ? fsource *st / pororepo : 0; 
+         default:
+	     Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
       }
     }
 
