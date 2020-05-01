@@ -1,9 +1,9 @@
 # MMMFE-VT-Darcy
 Code development for numerical simulations to simulate time-dependent Darcy flow(parabolic PDE) using Multiscale Mortar Mixed Finite Elements(MMMFE) and variable time stepping (VT) for each subdomain. This give rise to a space-time DD technique. The final solution is visualized in a space-time domain. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively.
 
-##Author.
+## Author.
 ----------------------
-Manu Jayadharan, Department of Mathematics at University of Pittsburgh 9/17/2019: manu.jayadharan@gmail.com
+**Manu Jayadharan, Department of Mathematics at University of Pittsburgh 9/17/2019: manu.jayadharan@gmail.com**
 
 
 Template: BiotDD with MMMFE, given at https://github.com/mjayadharan/BiotDD.git
