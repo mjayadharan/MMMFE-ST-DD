@@ -1,34 +1,38 @@
 # MMMFE-VT-Darcy
 Code development for numerical simulations to simulate time-dependent Darcy flow(parabolic PDE) using Multiscale Mortar Mixed Finite Elements(MMMFE) and variable time stepping (VT) for each subdomain. This give rise to a space-time DD technique. The final solution is visualized in a space-time domain. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively.
 
-## Author.
-----------------------
-**Manu Jayadharan, Department of Mathematics at University of Pittsburgh 9/17/2019: manu.jayadharan@gmail.com**
+## Author
+-----------
+*Manu Jayadharan, Department of Mathematics at University of Pittsburgh 9/17/2019*
 
+email: [manu.jayadharan@gmail.com](manu.jayadharan@gmail.com)
 
-Template: BiotDD with MMMFE, given at https://github.com/mjayadharan/BiotDD.git
+[reserach gate link](https://www.researchgate.net/profile/Manu_Jayadharan)
+
+[linkedin profile](https://www.linkedin.com/in/manu-jayadharan/)
+
 --------------------------------------------------------------------
 
-deal.ii 9.1 requirement
+## deal.ii 9.1 requirement
 ---------------------------------------
-Requirements: Need deal.ii with mpi configured to compile and run the simulations. Latest version of dealii can be found at : https://www.dealii.org/download.html .
+Need deal.ii configured with mpi  to compile and run the simulations. Latest version of dealii can be found at : [https://www.dealii.org/download.html](https://www.dealii.org/download.html)
 
-deal.ii installation instruction: Follow readme file to install with -DDEAL_II_WITH_MPI=ON flag to cmake. 
+**deal.ii installation instruction:** Follow readme file to install with -DDEAL_II_WITH_MPI=ON flag to cmake. 
 
 
-Compilation instruction.
+## Compilation instruction.
 -------------------------------------------
-cmake -DDEAL_II_DIR=/path to dealii installation folder/ .
+`cmake -DDEAL_II_DIR=/path to dealii installation folder/ .` (from the main directory)
 
-make release (for faster compilations)
+`make release` *(for faster compilations)*
 
-make debug ( for more careful compilations with warnings)
+`make debug` *( for more careful compilations with warnings)*
 
-mpirun -n 'j' DarcyVT (where j is the number of subdomains(processses))
+`mpirun -n 'j' DarcyVT` *(where j is the number of subdomains(processses))*
 
-Please contact the owner for further instructions.
+**Please contact the author for further instructions.**
 
-Quick start guide for the simulator.
+## Quick start guide for the simulator.
 -------------------------------------
 1)Most of the parameters including number of refinements, mortar_degree, max_number of gmres iterations, final_time, subdomain mesh size
 ratio etc are fed to the executable file DarcyVT using parameter.txt in the main folder. This file can simply be edited 
