@@ -5,7 +5,7 @@ Code development for numerical simulations to simulate time-dependent Darcy flow
 -----------
 *Manu Jayadharan, Department of Mathematics at University of Pittsburgh 9/17/2019*
 
-email: [manu.jayadharan@gmail.com](manu.jayadharan@gmail.com)
+email: [manu.jayadharan@gmail.com](mailto:manu.jayadharan@gmail.com)
 
 [reserachgate link](https://www.researchgate.net/profile/Manu_Jayadharan)
 
@@ -22,13 +22,13 @@ Need deal.ii configured with mpi  to compile and run the simulations. Latest ver
 
 ## Compilation instruction.
 -------------------------------------------
-`cmake -DDEAL_II_DIR=/path to dealii installation folder/ .` (from the main directory)
+`cmake -DDEAL_II_DIR=/path to dealii installation folder/ .` from the main directory
 
-`make release` *(for faster compilations)*
+`make release` for faster compilations
 
-`make debug` *( for more careful compilations with warnings)*
+`make debug` for more careful compilations with warnings
 
-`mpirun -n 'j' DarcyVT` *(where j is the number of subdomains(processses))*
+`mpirun -n 'j' DarcyVT` where j is the number of subdomains(processses)
 
 **Please contact the author for further instructions.**
 
