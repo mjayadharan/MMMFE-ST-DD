@@ -3,7 +3,7 @@ Code development for numerical simulations to simulate time-dependent Darcy flow
 
 ## Author
 -----------
-*Manu Jayadharan, Department of Mathematics at University of Pittsburgh 9/17/2019*
+Manu Jayadharan, Department of Mathematics at University of Pittsburgh 9/17/2019
 
 email: [manu.jayadharan@gmail.com](mailto:manu.jayadharan@gmail.com)
 
