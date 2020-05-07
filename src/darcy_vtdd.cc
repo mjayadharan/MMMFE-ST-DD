@@ -2063,6 +2063,8 @@ namespace vt_darcy
             computing_timer.print_summary();
             computing_timer.reset();
 
+
+
         }
 
         reset_mortars();
