@@ -172,6 +172,9 @@ namespace vt_darcy
 
         n_z = dofs_per_component[0];
         n_p = dofs_per_component[dim];
+        /******printing the #DoFs for the space sub-domains**************/
+        std::cout<<"\n\n"<<"subdomain id: "<<this_mpi<<" ,  #n_z+#n_p= "<<n_z+n_p<<"\n\n";
+        /***end of printing the #DoFs for the space sub-domains**************/
 
         n_flux = n_z;
         n_pressure = n_p;
@@ -226,6 +229,9 @@ namespace vt_darcy
 			            n_z_mortar = dofs_per_component_mortar[0]; //For RT mortar space
 			            n_p_mortar = dofs_per_component_mortar[dim+1];
 
+//			            /******printing the #DoFs for the space sub-domains**************/
+//			            pcout<<"\n\n"<<"Mortar mesh: "<<this_mpi<<" ,  #n_mortar_z+#n_mortar_p= "<<n_z_mortar+n_p_mortar<<"\n\n";
+//			            /***end of printing the #DoFs for the space sub-domains**************/
 
 			            solution_bar_mortar.reinit(2);
 			            solution_bar_mortar.block(0).reinit (n_z_mortar);
@@ -430,6 +436,14 @@ namespace vt_darcy
                     }
              }
         	}
+
+        /******printing the #DoFs for the space-time mortar interface**************/
+        unsigned int mortar_interface_dofs_num =0;
+        for(auto el: interface_dofs)
+        	mortar_interface_dofs_num+= el.size();
+        pcout<<"\n\n"<<"mortar interface #dofs= "<<mortar_interface_dofs_num<<"\n\n";
+        /***end of printing the #DoFs for the space sub-domains**************/
+
         }// end of getting normal/mortar inteface_dofs.
 
         if(mortar_flag){ //getting interace dof normal subdomain part for no-mortar a
@@ -483,7 +497,7 @@ namespace vt_darcy
         pcout<<"inteface_dofs_subd size is : "<<interface_dofs_subd.size()<<"\n";
         unsigned int n_faces = GeometryInfo<dim>::faces_per_cell;
         interface_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
-        face_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());
+        face_dofs_st.resize(GeometryInfo<dim>::faces_per_cell, std::vector<types::global_dof_index> ());;
 
         std::vector<types::global_dof_index> local_face_dof_indices;
         typename DoFHandler<dim+1>::active_cell_iterator cell, endc;
@@ -2013,25 +2027,25 @@ namespace vt_darcy
             pcout << "Making grid and DOFs...\n";
             make_grid_and_dofs();
 
-            pcout << "Projecting the initial conditions...\n";
-            {
-              InitialCondition<dim> ic;
+//            pcout << "Projecting the initial conditions...\n";
+//            {
+//              InitialCondition<dim> ic;
+//
+//              ConstraintMatrix constraints;
+//              constraints.clear();
+//              constraints.close();
+//              VectorTools::project (dof_handler,
+//                                    constraints,
+//                                    QGauss<dim>(degree+5),
+//                                    ic,
+//                                    initialc_solution);
+//
+//              solution = initialc_solution;
+//              output_results(refinement_index,refine);
+//            }
 
-              ConstraintMatrix constraints;
-              constraints.clear();
-              constraints.close();
-              VectorTools::project (dof_handler,
-                                    constraints,
-                                    QGauss<dim>(degree+5),
-                                    ic,
-                                    initialc_solution);
-
-              solution = initialc_solution;
-              output_results(refinement_index,refine);
-            }
-
-            pcout << "Assembling system..." << "\n";
-            	assemble_system ();
+//            pcout << "Assembling system..." << "\n";
+//            	assemble_system ();
 
             if (Utilities::MPI::n_mpi_processes(mpi_communicator) != 1)
             {
@@ -2039,7 +2053,8 @@ namespace vt_darcy
 				get_interface_dofs_st();
             }
 
-            solve_darcy_vt(maxiter);
+
+//            solve_darcy_vt(maxiter);
             max_cg_iteration=0;
 
             set_current_errors_to_zero();
