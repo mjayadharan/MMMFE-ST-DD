@@ -1,5 +1,5 @@
-# MMMFE-VT-Darcy
-Code development for numerical simulations to simulate time-dependent Darcy flow(parabolic PDE) using Multiscale Mortar Mixed Finite Elements(MMMFE) and variable time stepping (VT) for each subdomain. This give rise to a space-time DD technique. The final solution is visualized in a space-time domain. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively.
+# MMMFE-ST-DD
+Code development  to simulate time-dependent difussion problem using Multiscale Mortar Mixed Finite Elements(MMMFE) and variable time step for each subdomain. This give rise to a space-time DD technique allowing non-matching in both space and time. The final solution is visualized in a space-time domain. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively.
 
 ## Author
 -----------
