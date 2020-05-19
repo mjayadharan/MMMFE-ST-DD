@@ -1,7 +1,9 @@
 # MMMFE-ST-DD
 Fluid flow simulator using multiscale space-time domains. 
 
-Code development  to simulate time-dependent difussion problem using Multiscale Mortar Mixed Finite Elements(MMMFE) and variable time step for each subdomain. This give rise to a space-time DD technique allowing non-matching grids for sub-domains in both space and time dimensions. The final solution is visualized in a space-time global domain. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively.
+Code developed to simulate time-dependent diffusion problem using Multiscale Mortar Mixed Finite Elements(MMMFE). Model can be easily adapted to simulate other fluid flow models based on linear PDEs. The novelty of the simulator lies in using multiple subdomains with variable time steps and mesh size for each subdomain. This give rise to a space-time DD technique allowing non-matching grids for sub-domains in both space and time dimensions. Sub-domain solves are done in parallel across different processors using MPI. Computed solutions are outputted and visualized on a global space-time grid in the .vtk and .vtu formats. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively. Theoretical results guaranteeing convergence and stability of the problem along with a priori error estimates are proved and being published.
+
+The simulator is written using deal.ii FE package which is based on C++.
 
 ## Author
 -----------
@@ -15,14 +17,14 @@ email: [manu.jayadharan@gmail.com](mailto:manu.jayadharan@gmail.com)
 
 --------------------------------------------------------------------
 
-## deal.ii 9.1 requirement
+## deal.ii 9.1 requirement (latest at the time)
 ---------------------------------------
 Need deal.ii configured with mpi  to compile and run the simulations. Latest version of dealii can be found at : [https://www.dealii.org/download.html](https://www.dealii.org/download.html)
 
 **deal.ii installation instruction:** Follow readme file to install with -DDEAL_II_WITH_MPI=ON flag to cmake. 
 
 
-## Compilation instruction.
+## Compilation instructions.
 -------------------------------------------
 `cmake -DDEAL_II_DIR=/path to dealii installation folder/ .` from the main directory
 
@@ -49,7 +51,7 @@ without recompiling the program.
 
 Further improvements.
 ---------------------
-1. The bottle neck in the simulation is where we do the projection across the interface from mortar to subdomain space-time mesh and vice-versa. This is mainly due to the inefficiency of the built in FEFieldFunction() from deal.ii which is very inefficient in finding the quadrature points around a general point for FE in a different mesh.  This could be sped up significantly by reimplementing the project_boundary_value subroutine in projector.h where we could also save the inner product between basis functions from FE spaces coming from different meshes( in this case, the space-time mesh in subdomain and in the mortar) and use this in the remaining projections in the iteration.
+1. The bottle neck in the simulation is where we do the projections across the interface from mortar to subdomain space-time mesh and vice-versa. This is mainly due to the inefficiency of the built in FEFieldFunction() from deal.ii which is very inefficient in finding the quadrature points around a general point for FE in a different mesh.  This could be sped up significantly by reimplementing the project_boundary_value subroutine in projector.h where we could also save the inner product between basis functions from FE spaces coming from different meshes( in this case, the space-time mesh in subdomain and in the mortar) and use this in the remaining projections in the iteration.
 
 2. Optimization could be done in terms of storage if we save the FEValue and FEFaceValues objects during the time-stepping iterations. But currently, this is not needed because the calculations are not memory intense yet. 
 
