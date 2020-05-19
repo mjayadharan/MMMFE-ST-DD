@@ -1,4 +1,6 @@
 # MMMFE-ST-DD
+Fluid flow simulator using multiscale space-time domains. 
+
 Code development  to simulate time-dependent difussion problem using Multiscale Mortar Mixed Finite Elements(MMMFE) and variable time step for each subdomain. This give rise to a space-time DD technique allowing non-matching grids for sub-domains in both space and time dimensions. The final solution is visualized in a space-time domain. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively.
 
 ## Author
