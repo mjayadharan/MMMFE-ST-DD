@@ -48,9 +48,10 @@ Need deal.ii configured with mpi  to compile and run the simulations. Latest ver
 ratio etc are fed to the executable file DarcyVT using parameter.txt in the main folder. This file can simply be modified
 without recompiling the program.  
 * Currently parameter.txt is designed to work only for 4 subdomain DD, but could easily be modified to work with a different number of subdomains. Look at darcy_main.cc to see how the parameters are fed to the program and make necessary changes.  
-* If mortar degree==2, then the mortar refinement is done only in every other refinement cycle, this is to maintain H=Csqrt(h) and Delta_T =Csqrt(Delta_t) mesh size relation between the subdomain and MORTAR mesh.  
+* Boundary and initial conditions along with source terms are taken from inc/data.h files. Function classes inside the data file can easily be modifed as required.
+* If mortar degree == 2, then the mortar refinement is done only in every other refinement cycle, this is to maintain H = Csqrt(h) and Delta_T = Csqrt(Delta_t) mesh size relation between the subdomain and MORTAR mesh.  
 * Mortar mesh configuration: 
-  mesh_pattern_sub_d0 3 2 5 means the initial mesh for subdomain0 in refinement cycle 0 has 3 partitions in x ,2 partitions     in the y direction, and 5 partiions in the time(z) direction. Partition in the time direction is used to calculate the       Delta_t   required for backward euler time-stepping by using final_time = Delta_t * number of partitions in time(z)           direction.
+  mesh_pattern_sub_d0 3 2 5 means the initial mesh for subdomain0 in refinement cycle 0 has 3 partitions in x ,2 partitions     in the y direction, and 5 partiions in the time(z) direction. Partition in the time direction is used to calculate the       Delta_t   required for backward euler time-stepping by using final_time = Delta_t*number of partitions in time(z)           direction.
 
 Further improvements.
 ---------------------
