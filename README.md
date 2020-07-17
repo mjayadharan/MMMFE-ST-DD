@@ -4,14 +4,16 @@ Fluid flow simulator using multiscale space-time domains.
 Code developed to simulate time-dependent diffusion problem using Multiscale Mortar Mixed Finite Elements(MMMFE). Model can be easily adapted to simulate other fluid flow models based on linear PDEs. The novelty of the simulator lies in using multiple subdomains with variable time steps and mesh size for each subdomain. This give rise to a space-time DD technique allowing non-matching grids for sub-domains in both space and time dimensions. Sub-domain solves are done in parallel across different processors using MPI. Computed solutions are outputted and visualized on a global space-time grid in the .vtk and .vtu formats. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively. Theoretical results guaranteeing convergence and stability of the problem along with a priori error estimates are proved and being published.
 ![github_space_time_dd](https://user-images.githubusercontent.com/35903705/86996707-51287c00-c17a-11ea-8d9c-584aa2cfc47b.png)
 
-
-The simulator is written using deal.ii FE package which is based on C++.
+### Note:
+- The simulator is written using deal.ii FE package which is based on C++.  
+-  All instructions are with respect to a terminal in linux/mac. Please use the ubuntu sub-system if you are using windows 10. A good installation guide for the linux sub-system can be found [here](https://docs.microsoft.com/en-us/windows/wsl/install-win10).
+- Image/animation processing and visualization can be done using paraview. Installation guide can be found [here.](https://www.paraview.org/Wiki/ParaView:Build_And_Install)
 
 ## Author
 -----------
 Manu Jayadharan, Department of Mathematics at University of Pittsburgh 9/17/2019
 
-email: [manu.jayadharan@gmail.com](mailto:manu.jayadharan@gmail.com)  
+email: [manu.jayadharan@gmail.com](mailto:manu.jayadharan@gmail.com), [manu.jayadharan@pitt.edu](mailto:manu.jayadharan@pitt.edu)  
 [reserachgate link](https://www.researchgate.net/profile/Manu_Jayadharan)  
 [linkedin profile](https://www.linkedin.com/in/manu-jayadharan/)
 
