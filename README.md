@@ -25,13 +25,20 @@ Maintaining branch: *michel_Andra_testcase* .
 [INRIA webpage](https://who.rocq.inria.fr/Michel.Kern/)
 
 
-## deal.ii 9.1 requirement (latest at the time)
+## deal.ii 9.2.0 requirement (latest at the time)
 ---------------------------------------
 Need deal.ii configured with mpi  to compile and run the simulations. Latest version of dealii can be found at : [https://www.dealii.org/download.html](https://www.dealii.org/download.html)
 
-**deal.ii installation instruction:** Follow readme file to install latest version of deal.ii with `-DDEAL_II_WITH_MPI=ON` flag to cmake. 
+**deal.ii installation instruction:** Follow [readme](https://www.dealii.org/9.2.0/readme.html) file to install latest version of deal.ii with `-DDEAL_II_WITH_MPI=ON` flag to cmake.   
+Note that if you have trouble finding the mpi library while building, do the following, manually pass the location of the compiler files to cmake as follows:     
+```
+cmake -DCMAKE_C_COMPILER="</location to/mpicc"\
+              -DCMAKE_CXX_COMPILER="/location to/mpicxx"\
+              -DCMAKE_Fortran_COMPILER="/location to/mpif90"\ <..rest of the arguments to cmake..>
 
-
+```   
+A thread on how to solve this issue can be found [here](https://groups.google.com/forum/#!newtopic/dealii/dealii/y1xS0Fe-k6w).  
+If you still have trouble configuring deal.ii with mpi, please seek help at this dedicated [google group](https://groups.google.com/forum/#!forum/dealii) or contact the author.  
 ## Compilation instructions.
 -------------------------------------------
 `cmake -DDEAL_II_DIR=/path to dealii installation folder/ .` from the main directory
