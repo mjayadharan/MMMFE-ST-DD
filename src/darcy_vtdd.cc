@@ -178,6 +178,12 @@ namespace vt_darcy
         n_flux = n_z;
         n_pressure = n_p;
 
+        //Adding essential Neumann BC
+        {
+        	constraint_bc.clear();
+        }
+        constraint_bc.close();
+
         BlockDynamicSparsityPattern dsp(2, 2);
         dsp.block(0, 0).reinit (n_z, n_z);
         dsp.block(1, 0).reinit (n_p, n_z);
@@ -185,7 +191,7 @@ namespace vt_darcy
         dsp.block(1, 1).reinit (n_p, n_p);
 
 			dsp.collect_sizes ();
-			DoFTools::make_sparsity_pattern (dof_handler, dsp);
+			DoFTools::make_sparsity_pattern (dof_handler, dsp, constraint_bc, false);
 
 			// Initialize system matrix
 			sparsity_pattern.copy_from(dsp);
@@ -197,6 +203,7 @@ namespace vt_darcy
 			solution_bar.block(1).reinit (n_p);
 			solution_bar.collect_sizes ();
 			solution_bar = 0;
+
 
 			// Reinit solution and RHS vectors
 			solution_star.reinit (2);
@@ -210,6 +217,13 @@ namespace vt_darcy
 			system_rhs_bar.block(1).reinit (n_p);
 			system_rhs_bar.collect_sizes ();
 			system_rhs_bar = 0;
+
+			// Required for essential(Neumann bc), used in assemble_system
+			system_rhs_bar_bc.reinit (2);;
+			system_rhs_bar_bc.block(0).reinit (n_z);
+			system_rhs_bar_bc.block(1).reinit (n_p);
+			system_rhs_bar_bc.collect_sizes ();
+			system_rhs_bar_bc = 0;
 
 			system_rhs_star.reinit (2);
 			system_rhs_star.block(0).reinit (n_z);
@@ -300,6 +314,7 @@ namespace vt_darcy
     {
         TimerOutput::Scope t(computing_timer, "Assemble system");
         system_matrix = 0;
+        system_rhs_bar_bc = 0;
 
         QGauss<dim>   quadrature_formula(degree+2);
 
@@ -365,11 +380,14 @@ namespace vt_darcy
             }
 
             cell->get_dof_indices (local_dof_indices);
-            for (unsigned int i=0; i<dofs_per_cell; ++i)
-                for (unsigned int j=0; j<dofs_per_cell; ++j)
-                    system_matrix.add (local_dof_indices[i],
-                                       local_dof_indices[j],
-                                       local_matrix(i,j));
+//            for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                for (unsigned int j=0; j<dofs_per_cell; ++j)
+//                    system_matrix.add (local_dof_indices[i],
+//                                       local_dof_indices[j],
+//                                       local_matrix(i,j));
+            Vector<double> local_rhs(dofs_per_cell);
+            local_rhs = 0;
+            constraint_bc.distribute_local_to_global (local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_bar_bc);
         }
 
         pcout << "  ...factorized..." << "\n";
@@ -623,8 +641,11 @@ namespace vt_darcy
 
 
           cell->get_dof_indices (local_dof_indices);
-          for (unsigned int i=0; i<dofs_per_cell; ++i)
-              system_rhs_bar(local_dof_indices[i]) += local_rhs(i);
+//          for (unsigned int i=0; i<dofs_per_cell; ++i)
+//              system_rhs_bar(local_dof_indices[i]) += local_rhs(i);
+          FullMatrix<double> local_matrix(dofs_per_cell);
+          local_matrix = 0;
+          constraint_bc.distribute_local_to_global(local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_bar);
       }
   }
 
@@ -709,9 +730,11 @@ namespace vt_darcy
                 }
 
             cell->get_dof_indices (local_dof_indices);
-            for (unsigned int i=0; i<dofs_per_cell; ++i)
-                system_rhs_star(local_dof_indices[i]) += local_rhs(i);
-            //
+//            for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                system_rhs_star(local_dof_indices[i]) += local_rhs(i);
+            FullMatrix<double> local_matrix(dofs_per_cell);
+            local_matrix = 0;
+            constraint_bc.distribute_local_to_global(local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_star);
         }
     }
 
@@ -721,9 +744,10 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::solve_bar ()
     {
-
+    	system_rhs_bar.sadd(1.0, system_rhs_bar_bc);
         A_direct.vmult (solution_bar, system_rhs_bar);
 
+        constraint_bc.distribute(solution_bar);
 
     }
 

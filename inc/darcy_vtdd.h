@@ -242,10 +242,13 @@ namespace vt_darcy
         BlockVector<double> old_pressure_projection; //pressure_projection from previous time step.
 
         BlockVector<double> system_rhs_bar;
+        BlockVector<double> system_rhs_bar_bc; //used in assemble_system: required for essential(Neumann bc)
         BlockVector<double> system_rhs_star;
 //        BlockVector<double> interface_fe_function; //need to decide whether to keep this.
         BlockVector<double> interface_fe_function_subdom;
 
+        //Constrain matrix for essential (Neumann) bc
+        ConstraintMatrix constraint_bc;
 
         // Mortar data structures
         BlockVector<double> interface_fe_function_mortar;
