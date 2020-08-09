@@ -403,7 +403,7 @@ namespace vt_darcy
                 for (unsigned int face_n=0;
                      face_n<GeometryInfo<dim>::faces_per_cell;
                      ++face_n)
-                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                     {
                         cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
 
@@ -423,7 +423,7 @@ namespace vt_darcy
                 for (unsigned int face_n=0;
                      face_n<GeometryInfo<dim>::faces_per_cell;
                      ++face_n)
-                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                     {
                         cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
                         for (auto el : local_face_dof_indices)
@@ -466,7 +466,7 @@ namespace vt_darcy
 				//end of getting face dofs
 
 					//start of getting interface dofs.
-					if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+					if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
 					{
 
 						for (auto el : local_face_dof_indices)
@@ -506,7 +506,7 @@ namespace vt_darcy
                     //end of getting face dofs
 
             	//start of getting interface dofs
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     for (auto el : local_face_dof_indices){
                             interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
@@ -604,7 +604,7 @@ namespace vt_darcy
           for (unsigned int face_no=0;
                face_no<GeometryInfo<dim>::faces_per_cell;
                ++face_no)
-              if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() == 0) // pressure part of the boundary
+              if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() > 100) // pressure part of the boundary
               {
                   fe_face_values.reinit (cell, face_no);
 
@@ -692,7 +692,7 @@ namespace vt_darcy
             for (unsigned int face_n=0;
                  face_n<GeometryInfo<dim>::faces_per_cell;
                  ++face_n)
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     fe_face_values.reinit (cell, face_n);
                     fe_face_values[velocity].get_function_values (interface_fe_function_subdom, interface_values_flux);
@@ -1451,7 +1451,7 @@ namespace vt_darcy
             for (unsigned int face_n=0;
                  face_n<GeometryInfo<dim>::faces_per_cell;
                  ++face_n)
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     fe_face_values.reinit (cell, face_n);
                     fe_face_values[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);
