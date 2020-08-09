@@ -46,6 +46,7 @@ int main (int argc, char *argv[])
 
         //boundary condition vector. 'D':Dirichlet, 'N': Neumann
         std::vector<char> bc_con(4,'D');
+        std::vector<float> bc_con_funcs(4,0.0);
         std::vector<char>possible_bc = {'D','N'};
 
         std::string dummy_string; //for getting rid of string in the parameter.dat
@@ -74,10 +75,10 @@ int main (int argc, char *argv[])
 				parameter_file>>dummy_string>>final_time;
 				parameter_file>>dummy_string>>tolerence;
 				parameter_file>>dummy_string>>max_iteration;
-				parameter_file>>dummy_string>>bc_con[0];
-				parameter_file>>dummy_string>>bc_con[1];
-				parameter_file>>dummy_string>>bc_con[2];
-				parameter_file>>dummy_string>>bc_con[3];
+				parameter_file>>dummy_string>>bc_con[0]>>bc_con_funcs[0];
+				parameter_file>>dummy_string>>bc_con[1]>>bc_con_funcs[1];
+				parameter_file>>dummy_string>>bc_con[2]>>bc_con_funcs[2];
+				parameter_file>>dummy_string>>bc_con[3]>>bc_con_funcs[3];
 				for(unsigned int sub_id=0; sub_id<n_processes+1; sub_id++)
 					parameter_file>>dummy_string>>mesh_m3d[sub_id][0]>>mesh_m3d[sub_id][1]>>mesh_m3d[sub_id][2];
 

@@ -60,7 +60,8 @@ namespace vt_darcy
                                                  const BiotParameters &bprm,
                                                  const unsigned int mortar_flag,
                                                  const unsigned int mortar_degree,
-												 std::vector<char> bc_condition_vect)
+												 std::vector<char> bc_condition_vect,
+												 std::vector<float>bc_const_functs)
             :
             mpi_communicator (MPI_COMM_WORLD),
             P_coarse2fine (false),
@@ -68,6 +69,7 @@ namespace vt_darcy
             n_domains(dim,0),
             prm (bprm),
 			bc_condition_vect (bc_condition_vect),
+			bc_const_functs (bc_const_functs),
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
