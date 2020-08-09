@@ -180,13 +180,45 @@ namespace vt_darcy
 
         //Adding essential Neumann BC
         {
+        	constraint_bc.clear();
         	for (int i=0; i<bc_condition_vect.size(); ++i){
         		if (bc_condition_vect[i] == 'D')
         				dir_bc_ids.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
 				else if (bc_condition_vect[i] == 'N')
 					nm_bc_ids.push_back(100+i+1);   // Neumann bc: left: 101, bottom: 102, right: 103, top:104
-        	}
-        	constraint_bc.clear();
+        	} //end of updating bc_ids
+
+            //adding normal flux(velocity.n as an essential bc)
+            typename FunctionMap<dim>::type velocity_bc;
+            std::map<types::global_dof_index,double> boundary_values_velocity;
+
+            ZeroFunction<dim> velocity_bc_func(dim+1);
+            for (int i=0; i<nm_bc_ids.size(); ++i)
+            	velocity_bc[nm_bc_ids[i]] = &velocity_bc_func;
+
+            VectorTools::project_boundary_values (dof_handler,
+                                                  velocity_bc,
+                                                  QGauss<dim-1>(degree+3),
+                                                  boundary_values_velocity);
+
+//            for (auto it=boundary_values_velocity.begin(); it!=boundary_values_velocity.end(); ++it)
+//                if (it->first < n_s+n_u+n_g || it->first>=n_s+n_u+n_g+n_z)
+//                    boundary_values_velocity.erase(it->first);
+
+            typename std::map<types::global_dof_index,double>::const_iterator boundary_value_vel =
+                    boundary_values_velocity.begin();
+            for ( ; boundary_value_vel !=boundary_values_velocity.end(); ++boundary_value_vel)
+            {
+                if (!constraint_bc.is_constrained(boundary_value_vel->first))
+                {
+                    constraint_bc.add_line (boundary_value_vel->first);
+                    constraint_bc.set_inhomogeneity (boundary_value_vel->first,
+                                                   boundary_value_vel->second);
+                }
+            }
+
+            //---------------------------------------------------end of velocity boundary values
+
         }
         constraint_bc.close();
 
