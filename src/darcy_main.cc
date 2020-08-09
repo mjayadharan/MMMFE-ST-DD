@@ -4,7 +4,7 @@
  Template: BiotDD with mortar functionality coauthored by Eldar K.
  * ---------------------------------------------------------------------
  *
- * Author: Manu Jayadharan,  University of Pittsburgh: Fall 2019
+ * Author: Manu Jayadharan,  University of Pittsburgh: 2019-2020
  */
 
 // Utilities, data, etc.
@@ -13,6 +13,17 @@
 #include <string>
 #include <cassert>
 
+//To check parameter entry compatibilities.
+template<typename T>
+	bool is_inside(std::vector<T> vect, T int_el ){
+			/*
+			 * Manu_j
+			 * Simple function to check whether an element of type T is in a vector of type T.
+			 * Will be useful in setting mixed bc.
+			 */
+		bool int_el_found = std::find(vect.begin(), vect.end(), int_el) != vect.end();
+		return int_el_found;
+	}
 
 int main (int argc, char *argv[])
 {
@@ -32,6 +43,10 @@ int main (int argc, char *argv[])
         std::vector<int> zeros_vector(3,0);
         std::vector<std::vector<int>> mesh_m3d;
 //        std::vector<std::vector<int>> mesh_m3d(5,zeros_vector);
+
+        //boundary condition vector. 'D':Dirichlet, 'N': Neumann
+        std::vector<char> bc_con(4,'D');
+        std::vector<char>possible_bc = {'D','N'};
 
         std::string dummy_string; //for getting rid of string in the parameter.dat
         {//Reading parameters from parameter.dat file
@@ -59,6 +74,10 @@ int main (int argc, char *argv[])
 				parameter_file>>dummy_string>>final_time;
 				parameter_file>>dummy_string>>tolerence;
 				parameter_file>>dummy_string>>max_iteration;
+				parameter_file>>dummy_string>>bc_con[0];
+				parameter_file>>dummy_string>>bc_con[1];
+				parameter_file>>dummy_string>>bc_con[2];
+				parameter_file>>dummy_string>>bc_con[3];
 				for(unsigned int sub_id=0; sub_id<n_processes+1; sub_id++)
 					parameter_file>>dummy_string>>mesh_m3d[sub_id][0]>>mesh_m3d[sub_id][1]>>mesh_m3d[sub_id][2];
 
@@ -72,12 +91,16 @@ int main (int argc, char *argv[])
 
         }//end of reading parameter.dat file.
 
-
+        for (auto bc_type:bc_con){
+        	assert(is_inside<char>(possible_bc, bc_type) && "\n\nincompatible boundary condition read "
+        			"from parameter file. Please provide either D or N dependeing on whether "
+        			"Dirichlet or Neumann boundary condition is desired\n");
+        }
 
         BiotParameters bparam (1.0,1,final_time,c_0,alpha);
 
         //Solving the problem.
-        DarcyVTProblem<2> problem_2d(space_degree,bparam,1,mortar_degree);
+        DarcyVTProblem<2> problem_2d(space_degree,bparam,1,mortar_degree, bc_con);
         problem_2d.run(num_refinement,mesh_m3d,tolerence,max_iteration,mortar_degree+1);
 
 

@@ -54,18 +54,20 @@ namespace vt_darcy
 {
     using namespace dealii;
 
-    // MixedElasticityDD class constructor
+    // DarcyVT class constructor
     template <int dim>
     DarcyVTProblem<dim>::DarcyVTProblem (const unsigned int degree,
                                                  const BiotParameters &bprm,
                                                  const unsigned int mortar_flag,
-                                                 const unsigned int mortar_degree)
+                                                 const unsigned int mortar_degree,
+												 std::vector<char> bc_condition_vect)
             :
             mpi_communicator (MPI_COMM_WORLD),
             P_coarse2fine (false),
             P_fine2coarse (false),
             n_domains(dim,0),
-            prm(bprm),
+            prm (bprm),
+			bc_condition_vect (bc_condition_vect),
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
