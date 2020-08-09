@@ -92,7 +92,7 @@ namespace vt_darcy
     {
     public:
         DarcyVTProblem(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
-                           const unsigned int mortar_degree = 0);
+                           const unsigned int mortar_degree = 0, std::vector<char> bc_condition_vect={'D','D','D','D'});
 
         void run(const unsigned int refine,
         		 const std::vector <std::vector<int>> &reps_st, double tol,
@@ -150,6 +150,10 @@ namespace vt_darcy
         //distribute local to global solution(now only the pressure part).
         void final_solution_transfer (BlockVector<double> &solution_st,
                						  BlockVector<double> &solution_subdom, unsigned int &time_level, double scale_factor);
+
+        //Boundary condition vector: D means Dirichlet bc, N means Neumann bc starting from left, bottom, right, top respectively.
+        std::vector<char> bc_condition_vect;  //= {D, D, D, N} = {left, bottom, right} has Dirichlet boundayr condition and
+											//bottom has neumann bc( essential)
 
         unsigned int       gmres_iteration;
         // Number of subdomains in the computational domain

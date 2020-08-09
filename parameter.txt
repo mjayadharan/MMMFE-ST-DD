@@ -6,6 +6,10 @@ num_refinement 4
 final_time 0.5
 tolerence 1.e-6
 max_iteration 500
+left_bc: D
+bottom_bc: D
+right_bc: D
+top_bc: D
 mesh_pattern_sub_d0 3 3 3
 mesh_pattern_sub_d1 2 2 2
 mesh_pattern_sub_d2 4 4 4

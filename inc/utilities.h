@@ -6,8 +6,8 @@
  *
  * Author: Eldar Khattatov, University of Pittsburgh, 2016 - 2017
  */
-#ifndef ELASTICITY_MFEDD_UTILITIES_H
-#define ELASTICITY_MFEDD_UTILITIES_H
+#ifndef SPACE_TIME_UTILITIES_H
+#define SPACE_TIME_UTILITIES_H
 
 #include "projector.h"
 
@@ -505,7 +505,17 @@ namespace vt_darcy
         constraints.distribute (out_vec);
     }
 
+    template<typename T>
+    	bool is_inside(std::vector<T> vect, T int_el ){
+    			/*
+    	    	 * Manu_j
+    	    	 * Simple function to check whether an element of type T is in a vector of type T.
+    	    	 * Will be useful in setting mixed bc.
+    	    	 */
+    		bool int_el_found = std::find(vect.begin(), vect.end(), int_el) != vect.end();
+    		return int_el_found;
+    	}
 
 }
 
-#endif //ELASTICITY_MFEDD_UTILITIES_H
+#endif //SPACE_TIME_UTILITIES_H
