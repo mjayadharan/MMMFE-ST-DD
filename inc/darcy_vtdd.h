@@ -154,7 +154,7 @@ namespace vt_darcy
         //Boundary condition vector: D means Dirichlet bc, N means Neumann bc starting from left, bottom, right, top respectively.
         std::vector<char> bc_condition_vect;  //= {D, D, D, N} = {left, bottom, right} has Dirichlet boundayr condition and
 											//bottom has neumann bc( essential)
-        std::vector<int> dir_bc_id, nm_bc_id;
+        std::vector<int> dir_bc_ids, nm_bc_ids;
 
         unsigned int       gmres_iteration;
         // Number of subdomains in the computational domain

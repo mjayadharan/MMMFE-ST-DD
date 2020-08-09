@@ -182,9 +182,9 @@ namespace vt_darcy
         {
         	for (int i=0; i<bc_condition_vect.size(); ++i){
         		if (bc_condition_vect[i] == 'D')
-        				dir_bc_id.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
+        				dir_bc_ids.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
 				else if (bc_condition_vect[i] == 'N')
-					nm_bc_id.push_back(100+i+1);   // Neumann bc: left: 101, bottom: 102, right: 103, top:104
+					nm_bc_ids.push_back(100+i+1);   // Neumann bc: left: 101, bottom: 102, right: 103, top:104
         	}
         	constraint_bc.clear();
         }
@@ -628,22 +628,29 @@ namespace vt_darcy
           for (unsigned int face_no=0;
                face_no<GeometryInfo<dim>::faces_per_cell;
                ++face_no)
-              if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() > 100) // pressure part of the boundary
+          {
+              if (cell->at_boundary(face_no))
               {
-                  fe_face_values.reinit (cell, face_no);
+            	  bool at_dir_boundary; //to check whether the given boundary is part of Dirichlet bc.
+            	  at_dir_boundary = is_inside<int>(dir_bc_ids, cell->face(face_no)->boundary_id());
+            	  if (at_dir_boundary)// Dirichlet(pressure) part of the boundary.
+				  {
+					  fe_face_values.reinit (cell, face_no);
 
-                  pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
+					  pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
 
-                  for (unsigned int q=0; q<n_face_q_points; ++q)
-                      for (unsigned int i=0; i<dofs_per_cell; ++i)
-                      {
-                          local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
-                                                     fe_face_values.normal_vector(q) *
-                                                     boundary_values_flow[q] *
-                                                     fe_face_values.JxW(q));
+					  for (unsigned int q=0; q<n_face_q_points; ++q)
+						  for (unsigned int i=0; i<dofs_per_cell; ++i)
+						  {
+							  local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
+														 fe_face_values.normal_vector(q) *
+														 boundary_values_flow[q] *
+														 fe_face_values.JxW(q));
 
-                      }
+						  }
+				  }
               }
+          }
 
 
           cell->get_dof_indices (local_dof_indices);
