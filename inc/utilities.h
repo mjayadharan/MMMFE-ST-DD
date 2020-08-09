@@ -330,7 +330,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[3] < 0 )
-                        cell->face(face_number)->set_boundary_id (104);
+                        cell->face(face_number)->set_boundary_id (101);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (4);
@@ -342,7 +342,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[0] < 0 )
-                        cell->face(face_number)->set_boundary_id (101);
+                        cell->face(face_number)->set_boundary_id (102);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (1);
@@ -354,7 +354,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[1] < 0 )
-                        cell->face(face_number)->set_boundary_id (102);
+                        cell->face(face_number)->set_boundary_id (103);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (2);
@@ -366,7 +366,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[2] < 0 )
-                        cell->face(face_number)->set_boundary_id (103);
+                        cell->face(face_number)->set_boundary_id (104);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (3);
@@ -422,7 +422,7 @@ namespace vt_darcy
                     {
                         // If it is outside boundary (no neighbor) or interface
                         if (neighbors[3] < 0 )
-                            cell->face(face_number)->set_boundary_id (104);
+                            cell->face(face_number)->set_boundary_id (101);
                         else
                         {
                             cell->face(face_number)->set_boundary_id (4);
@@ -434,7 +434,7 @@ namespace vt_darcy
                     {
                         // If it is outside boundary (no neighbor) or interface
                         if (neighbors[0] < 0 )
-                            cell->face(face_number)->set_boundary_id (101);
+                            cell->face(face_number)->set_boundary_id (102);
                         else
                         {
                             cell->face(face_number)->set_boundary_id (1);
@@ -446,7 +446,7 @@ namespace vt_darcy
                     {
                         // If it is outside boundary (no neighbor) or interface
                         if (neighbors[1] < 0 )
-                            cell->face(face_number)->set_boundary_id (102);
+                            cell->face(face_number)->set_boundary_id (103);
                         else
                         {
                             cell->face(face_number)->set_boundary_id (2);
@@ -458,7 +458,7 @@ namespace vt_darcy
                     {
                         // If it is outside boundary (no neighbor) or interface
                         if (neighbors[2] < 0 )
-                            cell->face(face_number)->set_boundary_id (103);
+                            cell->face(face_number)->set_boundary_id (104);
                         else
                         {
                             cell->face(face_number)->set_boundary_id (3);

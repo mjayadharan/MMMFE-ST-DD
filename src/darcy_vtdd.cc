@@ -180,6 +180,12 @@ namespace vt_darcy
 
         //Adding essential Neumann BC
         {
+        	for (int i=0; i<bc_condition_vect.size(); ++i){
+        		if (bc_condition_vect[i] == 'D')
+        				dir_bc_id.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
+				else if (bc_condition_vect[i] == 'N')
+					nm_bc_id.push_back(100+i+1);   // Neumann bc: left: 101, bottom: 102, right: 103, top:104
+        	}
         	constraint_bc.clear();
         }
         constraint_bc.close();
