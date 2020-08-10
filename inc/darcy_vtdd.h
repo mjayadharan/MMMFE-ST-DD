@@ -93,11 +93,12 @@ namespace vt_darcy
     public:
         DarcyVTProblem(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
                            const unsigned int mortar_degree = 0, std::vector<char> bc_condition_vect={'D','D','D','D'},
-						   std::vector<double>bc_const_functs={0.,0.,0.,0.}, const bool is_manufact_soln = true);
+						   std::vector<double>bc_const_functs={0.,0.,0.,0.}, const bool is_manufact_soln = true,
+						   const bool need_each_time_step_plot=false);
 
         void run(const unsigned int refine,
         		 const std::vector <std::vector<int>> &reps_st, double tol,
-                 unsigned int maxiter, unsigned int quad_degree = 3);
+                 unsigned int maxiter, unsigned int quad_degree=3);
 
     private:
         MPI_Comm mpi_communicator;
@@ -186,6 +187,8 @@ namespace vt_darcy
 
         //manufactured_sol
         const bool is_manufact_solution;
+        //flag to check whether the computer solution needs plotting at each time step.
+        const bool need_each_time_step_plot;
 
 
         // Neighbors and interface information

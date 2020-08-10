@@ -18,14 +18,14 @@ tolerence: 1.e-6
 
 max_iteration: 500
 
-need_plot_at_each_time_step(bool): 0
+need_plot_at_each_time_step: 0
 
 left_bc: D 0.0
 bottom_bc: D 0.0
 right_bc: D 0.0
 top_bc: D 1.0
 
-is_manu_fact_soln(bool): 1
+is_manu_fact_soln: 1
 
 mesh_pattern_sub_d0: 3 3 3
 mesh_pattern_sub_d1: 2 2 2
