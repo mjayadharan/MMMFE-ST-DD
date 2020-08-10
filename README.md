@@ -82,6 +82,7 @@ Reading from parameter file
 * There are options to use custom mixed bounday conditions.  
 * If the boundary conditions are simple enough (constant Dirichlet or constant Neumann on each part of the boundary), the code enables easy implementation with modification of the parameter file, without the need of recompiling.  
 * Use 'N' for Neumann part of the boundary and 'D' for the Dirichlet part followed by a space and the float type number, which will be used to create a constant boundary condition on the specified part. 
+* For more complicated boundary condition, please use `inc/data.h` to make appropriate changes.
 
 ## Solution plots
 * By default, space-time plots are saved in the _.vtu_ format (Paraview compatible) inside the `space-time-plots` folder. Load the _.pvtu_ to get the global domain view (all the sub-domains pasted together).  
