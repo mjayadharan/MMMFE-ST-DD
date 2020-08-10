@@ -9,7 +9,7 @@ max_iteration: 500
 left_bc: D 0.0
 bottom_bc: D 0.0
 right_bc: D 0.0
-top_bc: D 0.0
+top_bc: D 1.0
 mesh_pattern_sub_d0: 3 3 3
 mesh_pattern_sub_d1: 2 2 2
 mesh_pattern_sub_d2: 4 4 4

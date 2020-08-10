@@ -61,7 +61,7 @@ namespace vt_darcy
                                                  const unsigned int mortar_flag,
                                                  const unsigned int mortar_degree,
 												 std::vector<char> bc_condition_vect,
-												 std::vector<float>bc_const_functs)
+												 std::vector<double>nm_bc_const_functs)
             :
             mpi_communicator (MPI_COMM_WORLD),
             P_coarse2fine (false),
@@ -69,7 +69,7 @@ namespace vt_darcy
             n_domains(dim,0),
             prm (bprm),
 			bc_condition_vect (bc_condition_vect),
-			bc_const_functs (bc_const_functs),
+			nm_bc_const_functs (nm_bc_const_functs),
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
@@ -194,18 +194,32 @@ namespace vt_darcy
             typename FunctionMap<dim>::type velocity_bc;
             std::map<types::global_dof_index,double> boundary_values_velocity;
 
+            //vector of Vectors to determine (velocity,pressure) corresponding to given velocity.n on the four each face.
+            std::vector<double> zero_std_vect(3,0.);
+            Vector<double> zero_dealii_vect(zero_std_vect.begin(), zero_std_vect.end());
+            std::vector<Vector<double>> const_funct_base(4, zero_dealii_vect);
+            const_funct_base[0][0] = -1.0*nm_bc_const_functs[0];
+            const_funct_base[1][1] = -1.0*nm_bc_const_functs[1];
+            const_funct_base[2][0] = 1.0*nm_bc_const_functs[2];
+            const_funct_base[3][1] = 1.0*nm_bc_const_functs[3];
+
+            ConstantFunction<dim> const_fun_left(const_funct_base[0]), const_fun_bottom(const_funct_base[1]);
+            ConstantFunction<dim> const_fun_right(const_funct_base[2]), const_fun_top(const_funct_base[3]);
+            std::vector<ConstantFunction<dim>> velocity_const_funcs(4, const_fun_left);
+            velocity_const_funcs[0] = const_fun_left;
+            velocity_const_funcs[1] = const_fun_bottom;
+            velocity_const_funcs[2] = const_fun_right;
+            velocity_const_funcs[3] = const_fun_top;
+
+            //Feeding the neumann boundary values into the constraint matrix
             ZeroFunction<dim> velocity_bc_func(dim+1);
             for (int i=0; i<nm_bc_ids.size(); ++i)
-            	velocity_bc[nm_bc_ids[i]] = &velocity_bc_func;
+            	velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
 
             VectorTools::project_boundary_values (dof_handler,
                                                   velocity_bc,
                                                   QGauss<dim-1>(degree+3),
                                                   boundary_values_velocity);
-
-//            for (auto it=boundary_values_velocity.begin(); it!=boundary_values_velocity.end(); ++it)
-//                if (it->first < n_s+n_u+n_g || it->first>=n_s+n_u+n_g+n_z)
-//                    boundary_values_velocity.erase(it->first);
 
             typename std::map<types::global_dof_index,double>::const_iterator boundary_value_vel =
                     boundary_values_velocity.begin();
