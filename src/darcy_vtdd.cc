@@ -60,7 +60,8 @@ namespace vt_darcy
                                                  const BiotParameters &bprm,
                                                  const unsigned int mortar_flag,
                                                  const unsigned int mortar_degree,
-												 std::vector<char> bc_condition_vect)
+												 std::vector<char> bc_condition_vect,
+												 std::vector<double>nm_bc_const_functs)
             :
             mpi_communicator (MPI_COMM_WORLD),
             P_coarse2fine (false),
@@ -68,6 +69,7 @@ namespace vt_darcy
             n_domains(dim,0),
             prm (bprm),
 			bc_condition_vect (bc_condition_vect),
+			nm_bc_const_functs (nm_bc_const_functs),
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
@@ -178,6 +180,64 @@ namespace vt_darcy
         n_flux = n_z;
         n_pressure = n_p;
 
+        //Adding essential Neumann BC
+        {
+        	constraint_bc.clear();
+        	for (int i=0; i<bc_condition_vect.size(); ++i){
+        		if (bc_condition_vect[i] == 'D')
+        				dir_bc_ids.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
+				else if (bc_condition_vect[i] == 'N')
+					nm_bc_ids.push_back(100+i+1);   // Neumann bc: left: 101, bottom: 102, right: 103, top:104
+        	} //end of updating bc_ids
+
+            //adding normal flux(velocity.n as an essential bc)
+            typename FunctionMap<dim>::type velocity_bc;
+            std::map<types::global_dof_index,double> boundary_values_velocity;
+
+            //vector of Vectors to determine (velocity,pressure) corresponding to given velocity.n on the four each face.
+            std::vector<double> zero_std_vect(3,0.);
+            Vector<double> zero_dealii_vect(zero_std_vect.begin(), zero_std_vect.end());
+            std::vector<Vector<double>> const_funct_base(4, zero_dealii_vect);
+            const_funct_base[0][0] = -1.0*nm_bc_const_functs[0];
+            const_funct_base[1][1] = -1.0*nm_bc_const_functs[1];
+            const_funct_base[2][0] = 1.0*nm_bc_const_functs[2];
+            const_funct_base[3][1] = 1.0*nm_bc_const_functs[3];
+
+            ConstantFunction<dim> const_fun_left(const_funct_base[0]), const_fun_bottom(const_funct_base[1]);
+            ConstantFunction<dim> const_fun_right(const_funct_base[2]), const_fun_top(const_funct_base[3]);
+            std::vector<ConstantFunction<dim>> velocity_const_funcs(4, const_fun_left);
+            velocity_const_funcs[0] = const_fun_left;
+            velocity_const_funcs[1] = const_fun_bottom;
+            velocity_const_funcs[2] = const_fun_right;
+            velocity_const_funcs[3] = const_fun_top;
+
+            //Feeding the neumann boundary values into the constraint matrix
+            ZeroFunction<dim> velocity_bc_func(dim+1);
+            for (int i=0; i<nm_bc_ids.size(); ++i)
+            	velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
+
+            VectorTools::project_boundary_values (dof_handler,
+                                                  velocity_bc,
+                                                  QGauss<dim-1>(degree+3),
+                                                  boundary_values_velocity);
+
+            typename std::map<types::global_dof_index,double>::const_iterator boundary_value_vel =
+                    boundary_values_velocity.begin();
+            for ( ; boundary_value_vel !=boundary_values_velocity.end(); ++boundary_value_vel)
+            {
+                if (!constraint_bc.is_constrained(boundary_value_vel->first))
+                {
+                    constraint_bc.add_line (boundary_value_vel->first);
+                    constraint_bc.set_inhomogeneity (boundary_value_vel->first,
+                                                   boundary_value_vel->second);
+                }
+            }
+
+            //---------------------------------------------------end of velocity boundary values
+
+        }
+        constraint_bc.close();
+
         BlockDynamicSparsityPattern dsp(2, 2);
         dsp.block(0, 0).reinit (n_z, n_z);
         dsp.block(1, 0).reinit (n_p, n_z);
@@ -185,7 +245,7 @@ namespace vt_darcy
         dsp.block(1, 1).reinit (n_p, n_p);
 
 			dsp.collect_sizes ();
-			DoFTools::make_sparsity_pattern (dof_handler, dsp);
+			DoFTools::make_sparsity_pattern (dof_handler, dsp, constraint_bc, false);
 
 			// Initialize system matrix
 			sparsity_pattern.copy_from(dsp);
@@ -197,6 +257,7 @@ namespace vt_darcy
 			solution_bar.block(1).reinit (n_p);
 			solution_bar.collect_sizes ();
 			solution_bar = 0;
+
 
 			// Reinit solution and RHS vectors
 			solution_star.reinit (2);
@@ -210,6 +271,13 @@ namespace vt_darcy
 			system_rhs_bar.block(1).reinit (n_p);
 			system_rhs_bar.collect_sizes ();
 			system_rhs_bar = 0;
+
+			// Required for essential(Neumann bc), used in assemble_system
+			system_rhs_bar_bc.reinit (2);;
+			system_rhs_bar_bc.block(0).reinit (n_z);
+			system_rhs_bar_bc.block(1).reinit (n_p);
+			system_rhs_bar_bc.collect_sizes ();
+			system_rhs_bar_bc = 0;
 
 			system_rhs_star.reinit (2);
 			system_rhs_star.block(0).reinit (n_z);
@@ -300,6 +368,7 @@ namespace vt_darcy
     {
         TimerOutput::Scope t(computing_timer, "Assemble system");
         system_matrix = 0;
+        system_rhs_bar_bc = 0;
 
         QGauss<dim>   quadrature_formula(degree+2);
 
@@ -365,11 +434,14 @@ namespace vt_darcy
             }
 
             cell->get_dof_indices (local_dof_indices);
-            for (unsigned int i=0; i<dofs_per_cell; ++i)
-                for (unsigned int j=0; j<dofs_per_cell; ++j)
-                    system_matrix.add (local_dof_indices[i],
-                                       local_dof_indices[j],
-                                       local_matrix(i,j));
+//            for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                for (unsigned int j=0; j<dofs_per_cell; ++j)
+//                    system_matrix.add (local_dof_indices[i],
+//                                       local_dof_indices[j],
+//                                       local_matrix(i,j));
+            Vector<double> local_rhs(dofs_per_cell);
+            local_rhs = 0;
+            constraint_bc.distribute_local_to_global (local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_bar_bc);
         }
 
         pcout << "  ...factorized..." << "\n";
@@ -403,7 +475,7 @@ namespace vt_darcy
                 for (unsigned int face_n=0;
                      face_n<GeometryInfo<dim>::faces_per_cell;
                      ++face_n)
-                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                     {
                         cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
 
@@ -423,7 +495,7 @@ namespace vt_darcy
                 for (unsigned int face_n=0;
                      face_n<GeometryInfo<dim>::faces_per_cell;
                      ++face_n)
-                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                     {
                         cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
                         for (auto el : local_face_dof_indices)
@@ -466,7 +538,7 @@ namespace vt_darcy
 				//end of getting face dofs
 
 					//start of getting interface dofs.
-					if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+					if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
 					{
 
 						for (auto el : local_face_dof_indices)
@@ -506,7 +578,7 @@ namespace vt_darcy
                     //end of getting face dofs
 
             	//start of getting interface dofs
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     for (auto el : local_face_dof_indices){
                             interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
@@ -604,27 +676,37 @@ namespace vt_darcy
           for (unsigned int face_no=0;
                face_no<GeometryInfo<dim>::faces_per_cell;
                ++face_no)
-              if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() == 0) // pressure part of the boundary
+          {
+              if (cell->at_boundary(face_no))
               {
-                  fe_face_values.reinit (cell, face_no);
+            	  bool at_dir_boundary; //to check whether the given boundary is part of Dirichlet bc.
+            	  at_dir_boundary = is_inside<int>(dir_bc_ids, cell->face(face_no)->boundary_id());
+            	  if (at_dir_boundary)// Dirichlet(pressure) part of the boundary.
+				  {
+					  fe_face_values.reinit (cell, face_no);
 
-                  pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
+					  pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
 
-                  for (unsigned int q=0; q<n_face_q_points; ++q)
-                      for (unsigned int i=0; i<dofs_per_cell; ++i)
-                      {
-                          local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
-                                                     fe_face_values.normal_vector(q) *
-                                                     boundary_values_flow[q] *
-                                                     fe_face_values.JxW(q));
+					  for (unsigned int q=0; q<n_face_q_points; ++q)
+						  for (unsigned int i=0; i<dofs_per_cell; ++i)
+						  {
+							  local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
+														 fe_face_values.normal_vector(q) *
+														 boundary_values_flow[q] *
+														 fe_face_values.JxW(q));
 
-                      }
+						  }
+				  }
               }
+          }
 
 
           cell->get_dof_indices (local_dof_indices);
-          for (unsigned int i=0; i<dofs_per_cell; ++i)
-              system_rhs_bar(local_dof_indices[i]) += local_rhs(i);
+//          for (unsigned int i=0; i<dofs_per_cell; ++i)
+//              system_rhs_bar(local_dof_indices[i]) += local_rhs(i);
+          FullMatrix<double> local_matrix(dofs_per_cell);
+          local_matrix = 0;
+          constraint_bc.distribute_local_to_global(local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_bar);
       }
   }
 
@@ -692,7 +774,7 @@ namespace vt_darcy
             for (unsigned int face_n=0;
                  face_n<GeometryInfo<dim>::faces_per_cell;
                  ++face_n)
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     fe_face_values.reinit (cell, face_n);
                     fe_face_values[velocity].get_function_values (interface_fe_function_subdom, interface_values_flux);
@@ -709,9 +791,11 @@ namespace vt_darcy
                 }
 
             cell->get_dof_indices (local_dof_indices);
-            for (unsigned int i=0; i<dofs_per_cell; ++i)
-                system_rhs_star(local_dof_indices[i]) += local_rhs(i);
-            //
+//            for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                system_rhs_star(local_dof_indices[i]) += local_rhs(i);
+            FullMatrix<double> local_matrix(dofs_per_cell);
+            local_matrix = 0;
+            constraint_bc.distribute_local_to_global(local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_star);
         }
     }
 
@@ -721,9 +805,10 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::solve_bar ()
     {
-
+    	system_rhs_bar.sadd(1.0, system_rhs_bar_bc);
         A_direct.vmult (solution_bar, system_rhs_bar);
 
+        constraint_bc.distribute(solution_bar);
 
     }
 
@@ -1451,7 +1536,7 @@ namespace vt_darcy
             for (unsigned int face_n=0;
                  face_n<GeometryInfo<dim>::faces_per_cell;
                  ++face_n)
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     fe_face_values.reinit (cell, face_n);
                     fe_face_values[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);

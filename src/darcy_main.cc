@@ -46,9 +46,11 @@ int main (int argc, char *argv[])
 
         //boundary condition vector. 'D':Dirichlet, 'N': Neumann
         std::vector<char> bc_con(4,'D');
+        std::vector<double> nm_bc_con_funcs(4,0.0);
         std::vector<char>possible_bc = {'D','N'};
 
         std::string dummy_string; //for getting rid of string in the parameter.dat
+//        std::vector<double> nm_bc_catch(4, 0.0); //for catching the constant functions corresponding to neumann bc.
         {//Reading parameters from parameter.dat file
             MPI_Comm mpi_communicator_1(MPI_COMM_WORLD);
             MPI_Status mpi_status_1;
@@ -74,10 +76,10 @@ int main (int argc, char *argv[])
 				parameter_file>>dummy_string>>final_time;
 				parameter_file>>dummy_string>>tolerence;
 				parameter_file>>dummy_string>>max_iteration;
-				parameter_file>>dummy_string>>bc_con[0];
-				parameter_file>>dummy_string>>bc_con[1];
-				parameter_file>>dummy_string>>bc_con[2];
-				parameter_file>>dummy_string>>bc_con[3];
+				parameter_file>>dummy_string>>bc_con[0]>>nm_bc_con_funcs[0];
+				parameter_file>>dummy_string>>bc_con[1]>>nm_bc_con_funcs[1];
+				parameter_file>>dummy_string>>bc_con[2]>>nm_bc_con_funcs[2];
+				parameter_file>>dummy_string>>bc_con[3]>>nm_bc_con_funcs[3];
 				for(unsigned int sub_id=0; sub_id<n_processes+1; sub_id++)
 					parameter_file>>dummy_string>>mesh_m3d[sub_id][0]>>mesh_m3d[sub_id][1]>>mesh_m3d[sub_id][2];
 
@@ -97,10 +99,16 @@ int main (int argc, char *argv[])
         			"Dirichlet or Neumann boundary condition is desired\n");
         }
 
+//        //Getttng rid of constant function input corresponding to dirichlet bc
+//        //(since this is a natural bc and hence  not required).
+//        for (int i=0; i<4; ++i)
+//        	if (bc_con[i] == 'N')
+//        			nm_bc_con_funcs.push_back(nm_bc_catch[i]);
+
         BiotParameters bparam (1.0,1,final_time,c_0,alpha);
 
         //Solving the problem.
-        DarcyVTProblem<2> problem_2d(space_degree,bparam,1,mortar_degree, bc_con);
+        DarcyVTProblem<2> problem_2d(space_degree,bparam,1,mortar_degree, bc_con, nm_bc_con_funcs);
         problem_2d.run(num_refinement,mesh_m3d,tolerence,max_iteration,mortar_degree+1);
 
 
