@@ -49,6 +49,7 @@ int main (int argc, char *argv[])
         std::vector<double> nm_bc_con_funcs(4,0.0);
         std::vector<char>possible_bc = {'D','N'};
 
+        bool is_manufact_solution;
         std::string dummy_string; //for getting rid of string in the parameter.dat
 //        std::vector<double> nm_bc_catch(4, 0.0); //for catching the constant functions corresponding to neumann bc.
         {//Reading parameters from parameter.dat file
@@ -68,6 +69,7 @@ int main (int argc, char *argv[])
 
 				std::ifstream parameter_file ("parameter.txt");
 				assert(parameter_file.is_open());
+//				parameter_file.ignore(1,'\n');
 				parameter_file>>dummy_string>>c_0;
 				parameter_file>>dummy_string>>alpha;
 				parameter_file>>dummy_string>>space_degree;
@@ -80,6 +82,7 @@ int main (int argc, char *argv[])
 				parameter_file>>dummy_string>>bc_con[1]>>nm_bc_con_funcs[1];
 				parameter_file>>dummy_string>>bc_con[2]>>nm_bc_con_funcs[2];
 				parameter_file>>dummy_string>>bc_con[3]>>nm_bc_con_funcs[3];
+				parameter_file>>dummy_string>>is_manufact_solution;
 				for(unsigned int sub_id=0; sub_id<n_processes+1; sub_id++)
 					parameter_file>>dummy_string>>mesh_m3d[sub_id][0]>>mesh_m3d[sub_id][1]>>mesh_m3d[sub_id][2];
 
@@ -99,16 +102,12 @@ int main (int argc, char *argv[])
         			"Dirichlet or Neumann boundary condition is desired\n");
         }
 
-//        //Getttng rid of constant function input corresponding to dirichlet bc
-//        //(since this is a natural bc and hence  not required).
-//        for (int i=0; i<4; ++i)
-//        	if (bc_con[i] == 'N')
-//        			nm_bc_con_funcs.push_back(nm_bc_catch[i]);
 
         BiotParameters bparam (1.0,1,final_time,c_0,alpha);
+        //Instantiating the class
+        DarcyVTProblem<2> problem_2d(space_degree,bparam,1,mortar_degree, bc_con, nm_bc_con_funcs, is_manufact_solution);
 
-        //Solving the problem.
-        DarcyVTProblem<2> problem_2d(space_degree,bparam,1,mortar_degree, bc_con, nm_bc_con_funcs);
+        //Solving the problem
         problem_2d.run(num_refinement,mesh_m3d,tolerence,max_iteration,mortar_degree+1);
 
 

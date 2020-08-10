@@ -61,7 +61,8 @@ namespace vt_darcy
                                                  const unsigned int mortar_flag,
                                                  const unsigned int mortar_degree,
 												 std::vector<char> bc_condition_vect,
-												 std::vector<double>nm_bc_const_functs)
+												 std::vector<double>bc_const_functs,
+												 const bool is_manufact_soln)
             :
             mpi_communicator (MPI_COMM_WORLD),
             P_coarse2fine (false),
@@ -69,7 +70,8 @@ namespace vt_darcy
             n_domains(dim,0),
             prm (bprm),
 			bc_condition_vect (bc_condition_vect),
-			nm_bc_const_functs (nm_bc_const_functs),
+			bc_const_functs (bc_const_functs),
+			is_manufact_solution (is_manufact_soln),
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
@@ -183,58 +185,64 @@ namespace vt_darcy
         //Adding essential Neumann BC
         {
         	constraint_bc.clear();
-        	for (int i=0; i<bc_condition_vect.size(); ++i){
-        		if (bc_condition_vect[i] == 'D')
-        				dir_bc_ids.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
-				else if (bc_condition_vect[i] == 'N')
-					nm_bc_ids.push_back(100+i+1);   // Neumann bc: left: 101, bottom: 102, right: 103, top:104
-        	} //end of updating bc_ids
 
-            //adding normal flux(velocity.n as an essential bc)
-            typename FunctionMap<dim>::type velocity_bc;
-            std::map<types::global_dof_index,double> boundary_values_velocity;
+        	//The following lines are not needed if we are using a manufactured solution:
+        	if (!is_manufact_solution)
+        	{
+				for (int i=0; i<bc_condition_vect.size(); ++i){
+					if (bc_condition_vect[i] == 'D')
+							dir_bc_ids.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
+					else if (bc_condition_vect[i] == 'N')
+						nm_bc_ids.push_back(100+i+1);   // Neumann bc: left: 101, bottom: 102, right: 103, top:104
+				} //end of updating bc_ids
 
-            //vector of Vectors to determine (velocity,pressure) corresponding to given velocity.n on the four each face.
-            std::vector<double> zero_std_vect(3,0.);
-            Vector<double> zero_dealii_vect(zero_std_vect.begin(), zero_std_vect.end());
-            std::vector<Vector<double>> const_funct_base(4, zero_dealii_vect);
-            const_funct_base[0][0] = -1.0*nm_bc_const_functs[0];
-            const_funct_base[1][1] = -1.0*nm_bc_const_functs[1];
-            const_funct_base[2][0] = 1.0*nm_bc_const_functs[2];
-            const_funct_base[3][1] = 1.0*nm_bc_const_functs[3];
+				//adding normal flux(velocity.n as an essential bc)
+				typename FunctionMap<dim>::type velocity_bc;
+				std::map<types::global_dof_index,double> boundary_values_velocity;
 
-            ConstantFunction<dim> const_fun_left(const_funct_base[0]), const_fun_bottom(const_funct_base[1]);
-            ConstantFunction<dim> const_fun_right(const_funct_base[2]), const_fun_top(const_funct_base[3]);
-            std::vector<ConstantFunction<dim>> velocity_const_funcs(4, const_fun_left);
-            velocity_const_funcs[0] = const_fun_left;
-            velocity_const_funcs[1] = const_fun_bottom;
-            velocity_const_funcs[2] = const_fun_right;
-            velocity_const_funcs[3] = const_fun_top;
+				//vector of Vectors to determine (velocity,pressure) corresponding to given velocity.n on the four each face.
+				std::vector<double> zero_std_vect(3,0.);
+				Vector<double> zero_dealii_vect(zero_std_vect.begin(), zero_std_vect.end());
+				std::vector<Vector<double>> const_funct_base(4, zero_dealii_vect);
+				const_funct_base[0][0] = -1.0*bc_const_functs[0];
+				const_funct_base[1][1] = -1.0*bc_const_functs[1];
+				const_funct_base[2][0] = 1.0*bc_const_functs[2];
+				const_funct_base[3][1] = 1.0*bc_const_functs[3];
 
-            //Feeding the neumann boundary values into the constraint matrix
-            ZeroFunction<dim> velocity_bc_func(dim+1);
-            for (int i=0; i<nm_bc_ids.size(); ++i)
-            	velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
+				ConstantFunction<dim> const_fun_left(const_funct_base[0]), const_fun_bottom(const_funct_base[1]);
+				ConstantFunction<dim> const_fun_right(const_funct_base[2]), const_fun_top(const_funct_base[3]);
+				std::vector<ConstantFunction<dim>> velocity_const_funcs(4, const_fun_left);
+				velocity_const_funcs[0] = const_fun_left;
+				velocity_const_funcs[1] = const_fun_bottom;
+				velocity_const_funcs[2] = const_fun_right;
+				velocity_const_funcs[3] = const_fun_top;
 
-            VectorTools::project_boundary_values (dof_handler,
-                                                  velocity_bc,
-                                                  QGauss<dim-1>(degree+3),
-                                                  boundary_values_velocity);
+				//Feeding the neumann boundary values into the constraint matrix
+				ZeroFunction<dim> velocity_bc_func(dim+1);
+				for (int i=0; i<nm_bc_ids.size(); ++i)
+					velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
 
-            typename std::map<types::global_dof_index,double>::const_iterator boundary_value_vel =
-                    boundary_values_velocity.begin();
-            for ( ; boundary_value_vel !=boundary_values_velocity.end(); ++boundary_value_vel)
-            {
-                if (!constraint_bc.is_constrained(boundary_value_vel->first))
-                {
-                    constraint_bc.add_line (boundary_value_vel->first);
-                    constraint_bc.set_inhomogeneity (boundary_value_vel->first,
-                                                   boundary_value_vel->second);
-                }
-            }
+				VectorTools::project_boundary_values (dof_handler,
+													  velocity_bc,
+													  QGauss<dim-1>(degree+3),
+													  boundary_values_velocity);
 
-            //---------------------------------------------------end of velocity boundary values
-
+				typename std::map<types::global_dof_index,double>::const_iterator boundary_value_vel =
+						boundary_values_velocity.begin();
+				for ( ; boundary_value_vel !=boundary_values_velocity.end(); ++boundary_value_vel)
+				{
+					if (!constraint_bc.is_constrained(boundary_value_vel->first))
+					{
+						constraint_bc.add_line (boundary_value_vel->first);
+						constraint_bc.set_inhomogeneity (boundary_value_vel->first,
+													   boundary_value_vel->second);
+					}
+				}
+				//---------------------------------------------------end of velocity boundary values
+			} //end of check on is_manufact_soln
+        	else if (is_manufact_solution)
+        		for (int i=0; i<4; ++i)
+        			dir_bc_ids.push_back(101+i); //adding all outside boundary as dirichlet type
         }
         constraint_bc.close();
 
@@ -618,8 +626,25 @@ namespace vt_darcy
       Vector<double>       local_rhs (dofs_per_cell);
       std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
+      //Pressure value for Dirichlet(natural) bc in case of manufactured solution
       PressureBoundaryValues<dim>     pressure_boundary_values;
       pressure_boundary_values.set_time(prm.time);
+
+      //Dirichlet bc picked up from parameter files. For real applicatins.
+      std::vector<ConstantFunction<dim>> dirichlet_boundary_values_vect;
+      //adding dirichlet bc corresponding to each side
+      //left boundary
+      ConstantFunction<dim> dirichlet_boundary_values_left(bc_const_functs[0]);
+      dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_left);
+      //bottom boundary
+      ConstantFunction<dim> dirichlet_boundary_values_bottom(bc_const_functs[1]);
+      dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_bottom);
+      //right boundary
+      ConstantFunction<dim> dirichlet_boundary_values_right(bc_const_functs[2]);
+      dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_right);
+      //top boundary
+      ConstantFunction<dim> dirichlet_boundary_values_top(bc_const_functs[1]);
+      dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_top);
       std::vector<double>         boundary_values_flow (n_face_q_points);
 
       RightHandSidePressure<dim>      right_hand_side_pressure(prm.c_0,prm.alpha);
@@ -685,7 +710,10 @@ namespace vt_darcy
 				  {
 					  fe_face_values.reinit (cell, face_no);
 
-					  pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
+					  if (is_manufact_solution)
+						  pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
+					  else if (!is_manufact_solution)
+						  dirichlet_boundary_values_vect[cell->face(face_no)->boundary_id()-101].value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
 
 					  for (unsigned int q=0; q<n_face_q_points; ++q)
 						  for (unsigned int i=0; i<dofs_per_cell; ++i)
