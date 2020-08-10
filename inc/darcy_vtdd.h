@@ -92,8 +92,8 @@ namespace vt_darcy
     {
     public:
         DarcyVTProblem(const unsigned int degree, const BiotParameters& bprm, const unsigned int mortar_flag = 0,
-                           const unsigned int mortar_degree = 0, std::vector<char> nm_bc_condition_vect={'D','D','D','D'},
-						   std::vector<double>bc_const_functs={0.,0.,0.,0.});
+                           const unsigned int mortar_degree = 0, std::vector<char> bc_condition_vect={'D','D','D','D'},
+						   std::vector<double>bc_const_functs={0.,0.,0.,0.}, const bool is_manufact_soln = true);
 
         void run(const unsigned int refine,
         		 const std::vector <std::vector<int>> &reps_st, double tol,
@@ -155,7 +155,7 @@ namespace vt_darcy
         //Boundary condition vector: D means Dirichlet bc, N means Neumann bc starting from left, bottom, right, top respectively.
         std::vector<char> bc_condition_vect;  //= {D, D, D, N} = {left, bottom, right} has Dirichlet boundayr condition and
 											//bottom has neumann bc( essential)
-        std::vector<double> nm_bc_const_functs; //vector containing v.n for Neumann boundary condition,
+        std::vector<double> bc_const_functs; //vector containing v.n for Neumann boundary condition,
         									//in case its a constant fuction(this is assumed by default).
         std::vector<int> dir_bc_ids, nm_bc_ids;
 
@@ -183,6 +183,9 @@ namespace vt_darcy
         unsigned int qdegree;
         unsigned int refinement_index;
         unsigned int total_refinements;
+
+        //manufactured_sol
+        const bool is_manufact_solution;
 
 
         // Neighbors and interface information
