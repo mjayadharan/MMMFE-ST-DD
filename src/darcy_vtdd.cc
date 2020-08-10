@@ -1,11 +1,11 @@
-/* ---------------------------------------------------------------------*/
 /* ---------------------------------------------------------------------
- This is part of a program that  implements DD for time dependent Darcy flow with variable time stepping and MMMFE on non-matching grid.
- Also outputs the solution in a space-time domain. Refer to the paper/report on the same for further information.
- Template: BiotDD which was co-authored by Eldar K, University of Pittsburgh.
+ * This is part of a program that  implements DD for time dependent Darcy flow with variable time stepping and MMMFE on non-matching grid.
+ * Also outputs the solution in a space-time domain. Refer to the paper/report on the same for further information.
+ * Template: BiotDD which was co-authored by Eldar K, University of Pittsburgh.
  * ---------------------------------------------------------------------
  *
  * Author: Manu Jayadharan, University of Pittsburgh: 2020
+ *
  */
 
 // Internals,.
@@ -62,7 +62,8 @@ namespace vt_darcy
                                                  const unsigned int mortar_degree,
 												 std::vector<char> bc_condition_vect,
 												 std::vector<double>bc_const_functs,
-												 const bool is_manufact_soln)
+												 const bool is_manufact_soln,
+												 const bool need_each_time_step_plot)
             :
             mpi_communicator (MPI_COMM_WORLD),
             P_coarse2fine (false),
@@ -72,6 +73,7 @@ namespace vt_darcy
 			bc_condition_vect (bc_condition_vect),
 			bc_const_functs (bc_const_functs),
 			is_manufact_solution (is_manufact_soln),
+			need_each_time_step_plot (need_each_time_step_plot),
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
@@ -877,7 +879,8 @@ namespace vt_darcy
 				if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
 				{
 					solution =solution_bar;
-					compute_errors(refinement_index, time_level);
+					if (is_manufact_solution)
+						compute_errors(refinement_index, time_level);
 					output_results(refinement_index,total_refinements);
 				}
 				old_solution = solution_bar;
@@ -916,7 +919,8 @@ namespace vt_darcy
 				solution.sadd(1.0,solution_bar_collection[time_level]);
 				final_solution_transfer(solution_st, solution, time_level, prm.time_step);
 
-				compute_errors(refinement_index, time_level);
+				if (is_manufact_solution)
+					compute_errors(refinement_index, time_level);
 				output_results(refinement_index,total_refinements);
 				old_solution_for_jump = solution;
 
@@ -1839,42 +1843,41 @@ namespace vt_darcy
 			  }
 
 
-			  // The following lines are used to output the solution at each time steps: disabled now since we are only
-			  //interested in space-time solutions as of now.
+			  // The following lines are used to output the solution at each time steps
+			  if (need_each_time_step_plot)
+			  {
+				  // Components interpretation of the flow solution (vector - scalar)
+				  std::vector<DataComponentInterpretation::DataComponentInterpretation>
+				  data_component_interpretation (dim,
+								  DataComponentInterpretation::component_is_part_of_vector);
+				  data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
 
-//			  // Components interpretation of the flow solution (vector - scalar)
-//			  std::vector<DataComponentInterpretation::DataComponentInterpretation>
-//			  data_component_interpretation (dim,
-//							  DataComponentInterpretation::component_is_part_of_vector);
-//			  data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
-//
-//			  DataOut<dim> data_out;
-//			  data_out.attach_dof_handler (dof_handler);
-//			  data_out.add_data_vector (solution, solution_names,
-//										DataOut<dim>::type_dof_data,
-//										data_component_interpretation);
-//
-//			  data_out.build_patches ();
-//
-//
-//			  int tmp = prm.time/prm.time_step;
-//			  std::ofstream output ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
-//			  data_out.write_vtu (output);
-	//	      //following lines create a file which paraview can use to link the subdomain results
-	//	            if (this_mpi == 0)
-	//	              {
-	//	                std::vector<std::string> filenames;
-	//	                for (unsigned int i=0;
-	//	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
-	//	                     ++i)
-	//	                  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
-	//
-	//	                std::ofstream master_output (("solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
-	//	                                              ".pvtu").c_str());
-	//	                data_out.write_pvtu_record (master_output, filenames);
-	//	              }
+				  DataOut<dim> data_out;
+				  data_out.attach_dof_handler (dof_handler);
+				  data_out.add_data_vector (solution, solution_names,
+											DataOut<dim>::type_dof_data,
+											data_component_interpretation);
 
-			 /* end of commenting out for disabling vtu outputs*/
+				  data_out.build_patches ();
+
+
+				  int tmp = prm.time/prm.time_step;
+				  std::ofstream output ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
+				  data_out.write_vtu (output);
+				  //following lines create a file which paraview can use to link the subdomain results
+						if (this_mpi == 0)
+						  {
+							std::vector<std::string> filenames;
+							for (unsigned int i=0;
+								 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+								 ++i)
+							  filenames.push_back ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+
+							std::ofstream master_output (("time-step-plots/solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
+														  ".pvtu").c_str());
+							data_out.write_pvtu_record (master_output, filenames);
+						  }
+			  } //end of if need_each_time_step_plot
 
 
 			   if(std::fabs(prm.time-prm.final_time)<1.0e-12){ //outputting the 3d space-time solution:
@@ -1906,7 +1909,7 @@ namespace vt_darcy
 											data_component_interpretation_st);
 
 				  data_out_2.build_patches ();
-				  std::ofstream output_st ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(this_mpi,4) +".vtu");
+				  std::ofstream output_st ("space-time-plots/st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(this_mpi,4) +".vtu");
 				  data_out_2.write_vtu (output_st);
 						  //following lines create a file which paraview can use to link the subdomain results
 								if (this_mpi == 0)
@@ -1915,9 +1918,9 @@ namespace vt_darcy
 									for (unsigned int i=0;
 										 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
 										 ++i)
-									  filenames_st.push_back ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
+									  filenames_st.push_back ("space-time-plots/st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
 
-									std::ofstream master_output_st (("st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
+									std::ofstream master_output_st (("space-time-plots/st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
 									data_out_2.write_pvtu_record (master_output_st, filenames_st);
 								  }
 	//
@@ -1925,42 +1928,50 @@ namespace vt_darcy
 
 
 	        }//end of outputting plots at the final refinement.
-	      double total_time = prm.time_step * prm.num_time_steps;
-	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12){
-	        convergence_table.set_precision("Velocity,L2-L2", 3);
-	        convergence_table.set_precision("Pressure,DG", 3);
-	        convergence_table.set_precision("Pressure,L2-L2", 3);
-
-	        convergence_table.set_scientific("Velocity,L2-L2", true);
-	        convergence_table.set_scientific("Pressure,DG", true);
-	        convergence_table.set_scientific("Pressure,L2-L2", true);
-
-	        convergence_table.set_tex_caption("# GMRES", "\\# gmres");
-	        convergence_table.set_tex_caption("Velocity,L2-L2", "$ \\|z - z_h\\|_{L^{2}(L^2)} $");
-	        convergence_table.set_tex_caption("Pressure,DG", "$ \\|p - p_h\\|_{DG} $");
-	        convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^{2}(L^2)} $");
-
-	        convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
-	        convergence_table.evaluate_convergence_rates("Velocity,L2-L2", ConvergenceTable::reduction_rate_log2);
-	        convergence_table.evaluate_convergence_rates("Pressure,DG", ConvergenceTable::reduction_rate_log2);
-	        convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
 
 
-	        if (mortar_flag)
+	        //Calculating convergence table if the solution is manufactured
+	        if (is_manufact_solution)
 	        {
-	          convergence_table.set_precision("Lambda,Darcy_L2", 3);
-	          convergence_table.set_scientific("Lambda,Darcy_L2", true);
-	          convergence_table.set_tex_caption("Lambda,Darcy_L2", "$ \\|p - \\lambda_p_H\\|_{L^{2}(L^2)} $");
-	          convergence_table.evaluate_convergence_rates("Lambda,Darcy_L2", ConvergenceTable::reduction_rate_log2);
+	        	double total_time = prm.time_step * prm.num_time_steps;
 
-	        }
+			    if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12)
+			    {
+					convergence_table.set_precision("Velocity,L2-L2", 3);
+					convergence_table.set_precision("Pressure,DG", 3);
+					convergence_table.set_precision("Pressure,L2-L2", 3);
 
-	        std::ofstream error_table_file("error" + std::to_string(Utilities::MPI::n_mpi_processes(mpi_communicator)) + "domains.tex");
+					convergence_table.set_scientific("Velocity,L2-L2", true);
+					convergence_table.set_scientific("Pressure,DG", true);
+					convergence_table.set_scientific("Pressure,L2-L2", true);
 
-	        pcout << std::endl;
-	        convergence_table.write_text(std::cout);
-	        convergence_table.write_tex(error_table_file);
-	      }
+					convergence_table.set_tex_caption("# GMRES", "\\# gmres");
+					convergence_table.set_tex_caption("Velocity,L2-L2", "$ \\|z - z_h\\|_{L^{2}(L^2)} $");
+					convergence_table.set_tex_caption("Pressure,DG", "$ \\|p - p_h\\|_{DG} $");
+					convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^{2}(L^2)} $");
+
+					convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
+					convergence_table.evaluate_convergence_rates("Velocity,L2-L2", ConvergenceTable::reduction_rate_log2);
+					convergence_table.evaluate_convergence_rates("Pressure,DG", ConvergenceTable::reduction_rate_log2);
+					convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
+
+
+					if (mortar_flag)
+					{
+					  convergence_table.set_precision("Lambda,Darcy_L2", 3);
+					  convergence_table.set_scientific("Lambda,Darcy_L2", true);
+					  convergence_table.set_tex_caption("Lambda,Darcy_L2", "$ \\|p - \\lambda_p_H\\|_{L^{2}(L^2)} $");
+					  convergence_table.evaluate_convergence_rates("Lambda,Darcy_L2", ConvergenceTable::reduction_rate_log2);
+
+					}
+
+					std::ofstream error_table_file("error" + std::to_string(Utilities::MPI::n_mpi_processes(mpi_communicator)) + "domains.tex");
+
+					pcout << std::endl;
+					convergence_table.write_text(std::cout);
+					convergence_table.write_tex(error_table_file);
+			  }
+	        } // End of if manu_factured_solution: convergence table
 	    }
 
 
