@@ -24,6 +24,14 @@ email: [manu.jayadharan@gmail.com](mailto:manu.jayadharan@gmail.com), [manu.jaya
 Maintaining branch: *michel_Andra_testcase* .   
 [INRIA webpage](https://who.rocq.inria.fr/Michel.Kern/)
 
+### New updates: Aug 2020
+* Added mixed boundary condition functionality.  
+* More options to save the output at different time steps.  
+* Improved user interface using parameter file.  
+* Cleaned up src/darcy_main.cc file to hide more details. 
+
+
+
 
 ## deal.ii 9.2.0 requirement (latest at the time)
 ---------------------------------------
@@ -53,14 +61,31 @@ If you still have trouble configuring deal.ii with mpi, please seek help at this
 
 ## Quick start guide for the simulator.
 -------------------------------------
+* The main file is located in `src/darcy_main.cc`, which has only the least minimum info to run the code. Most of the details are hidden and are implemented in src/darcy_vtdd.cc and header files in `inc/`.    
+* Once could just compile the code in the main folder using the instructions above and then modify the parameter file to change the behaviour of the simulator without ever recompiling the program again.  
 * Most of the parameters including number of refinements, mortar_degree, max_number of gmres iterations, final_time, subdomain mesh size
-ratio etc are fed to the executable file DarcyVT using parameter.txt in the main folder. This file can simply be modified
-without recompiling the program.  
-* Currently parameter.txt is designed to work only for 4 subdomain DD, but could easily be modified to work with a different number of subdomains. Look at darcy_main.cc to see how the parameters are fed to the program and make necessary changes.  
-* Boundary and initial conditions along with source terms are taken from `inc/data.h` files. Function classes inside the data file can easily be modifed as required.
+ratio etc are fed to the executable file DarcyVT using parameter.txt in the main folder. Please see the section on how to modify parameter file to customize physical parameters and modify other features of the simulator.   
+* Currently the simulator works only for rectangle shaped domains, more complicated domain boundaries could be dealt by labelling the boundary ids accordingly in inc/utilities. Other changes might also be required depending on the complexity of the domain boundary, please contact the author if that is the case.  
+* Boundary and initial conditions along with source terms are taken from `inc/data.h` files. Function classes inside the data file can easily be modifed as required. See the section mixed boundary condition to see how to quickly assign constant Dirichlet or Neumann boundary conditions for each part of the boundary.
 * If `mortar degree == 2`, then the mortar refinement is done only in every other refinement cycle, this is to maintain _H = Csqrt{h}_ and _Delta_T = Csqrt(Delta_t)_ mesh size relation between the subdomain and MORTAR mesh.  
 * Mortar mesh configuration: 
   _mesh_pattern_sub_d0 3 2 5_ means the initial mesh for subdomain0 in refinement cycle 0 has 3 partitions in x ,2 partitions     in the y direction, and 5 partiions in the _time (_or _z)_ direction. Partition in the time direction is used to calculate the       Delta_t   required for backward euler time-stepping by using final_time = Delta_t*number of partitions in time irection.
+
+Reading from parameter file
+---------------------------
+* Several physical parameters and other program features are loaded from the parameter.txt file, once the program is successfuly compiled.
+* Try to keep the blank spaces and newlines in the file fixed, as changing it might cause to error in loading them. If you wish to change the structure of the parameter file or feed a different file, you could do so by modifying the `parameter_pull_in` subroutine inside the `inc/filecheck_utility.h` file.
+* Whenever an input is assigned to a boolean variable (this is mentioned in the parameter file), use 0 for false and 1 for true. For example use is_manufact_soln(bool): 1, if you would you are using a manufactures solution, otherwise use 0.  
+* By default, the simulator runs in the convergence test mode, where a manufactured solution is used to test the convergence rate of the algorithm. If you  would like to simulate a real life example, change is_manufact_soln to 0(false). Doing so will also disable the calculation and output of convergence rates.
+
+## Mixed boundary condition
+* There are options to use custom mixed bounday conditions.  
+* If the boundary conditions are simple enough (constant Dirichlet or constant Neumann on each part of the boundary), the code enables easy implementation with modification of the parameter file, without the need of recompiling.  
+* Use 'N' for Neumann part of the boundary and 'D' for the Dirichlet part followed by a space and the float type number, which will be used to create a constant boundary condition on the specified part. 
+
+## Solution plots
+* By default, space-time plots are saved in the _.vtu_ format (Paraview compatible) inside the `space-time-plots` folder. Load the _.pvtu_ to get the global domain view (all the sub-domains pasted together).  
+* If you wish to look at the solution at each time step separately (for example to make an animation of the evolution of the solution), modify parameter file to reflect need_plot_at_each_time_step: 1. By default, it is set to zero and hence this feature is disabled.
 
 Further improvements.
 ---------------------
