@@ -189,7 +189,8 @@ namespace vt_darcy
         	constraint_bc.clear();
 
         	//The following lines are not needed if we are using a manufactured solution:
-        	if (!is_manufact_solution)
+//        	if (!is_manufact_solution)
+        	if (true)
         	{
 				for (int i=0; i<bc_condition_vect.size(); ++i){
 					if (bc_condition_vect[i] == 'D')
@@ -224,6 +225,12 @@ namespace vt_darcy
 				for (int i=0; i<nm_bc_ids.size(); ++i)
 					velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
 
+//				// Extra for testing mixed bc convergence.
+//				ExactSolution<dim> exact_soln;
+//				exact_soln.set_time(0.0);
+//				for (int i=0; i<nm_bc_ids.size(); ++i)
+//									velocity_bc[nm_bc_ids[i]] = &exact_soln;
+//				// End of extra for testing mixed bc convergence.
 				VectorTools::project_boundary_values (dof_handler,
 													  velocity_bc,
 													  QGauss<dim-1>(degree+3),
@@ -242,7 +249,7 @@ namespace vt_darcy
 				}
 				//---------------------------------------------------end of velocity boundary values
 			} //end of check on is_manufact_soln
-        	else if (is_manufact_solution)
+        	else
         		for (int i=0; i<4; ++i)
         			dir_bc_ids.push_back(101+i); //adding all outside boundary as dirichlet type
         }
