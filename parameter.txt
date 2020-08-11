@@ -21,9 +21,9 @@ max_iteration: 500
 need_plot_at_each_time_step(bool): 0
 
 left_bc: D 0.0
-bottom_bc: D 0.0
+bottom_bc: N 0.0
 right_bc: D 0.0
-top_bc: D 1.0
+top_bc: N 1.0
 
 is_manufact_soln(bool): 1
 

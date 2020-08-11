@@ -3,7 +3,8 @@
  * the true solution.
  * ---------------------------------------------------------------------
  *
- * Author: Eldar Khattatov, University of Pittsburgh, 2018
+ * Authors: Manu Jayadharan, University of Pittsburgh, 2020,
+ * 		  : Eldar Khattatov, University of Pittsburgh, 2018.
  */
 
 #ifndef ELASTICITY_MFEDD_DATA_H
@@ -128,6 +129,9 @@ namespace vt_darcy
     {
       const double x = p[0];
       const double y = p[1];
+      double z;
+      if (dim==3)
+    	  z = p[2];
       double t = FunctionTime<double>::get_time();
 
       switch (dim)
@@ -135,6 +139,8 @@ namespace vt_darcy
         case 2:
 //          return exp(t*t_scale)*(cos(y*3.141592653589793)*sin(x*3.141592653589793)+1.0E1);
 //        	return exp(t*t_scale)*sin(p[0])*sin(2.0*p[1]);
+        	return sin(p[0])*sin(2.0*p[1]);
+        case 3:
         	return sin(p[0])*sin(2.0*p[1]);
         default:
         Assert(false, ExcMessage("The BC data for dim != 2 is not provided"));
