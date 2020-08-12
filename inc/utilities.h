@@ -6,8 +6,8 @@
  *
  * Author: Eldar Khattatov, University of Pittsburgh, 2016 - 2017
  */
-#ifndef ELASTICITY_MFEDD_UTILITIES_H
-#define ELASTICITY_MFEDD_UTILITIES_H
+#ifndef SPACE_TIME_UTILITIES_H
+#define SPACE_TIME_UTILITIES_H
 
 #include "projector.h"
 
@@ -332,7 +332,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[3] < 0 )
-                        cell->face(face_number)->set_boundary_id (0);
+                        cell->face(face_number)->set_boundary_id (101);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (4);
@@ -344,7 +344,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[0] < 0 )
-                        cell->face(face_number)->set_boundary_id (0);
+                        cell->face(face_number)->set_boundary_id (102);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (1);
@@ -356,7 +356,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[1] < 0 )
-                        cell->face(face_number)->set_boundary_id (0);
+                        cell->face(face_number)->set_boundary_id (103);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (2);
@@ -368,7 +368,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[2] < 0 )
-                        cell->face(face_number)->set_boundary_id (0);
+                        cell->face(face_number)->set_boundary_id (104);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (3);
@@ -379,7 +379,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[4] < 0 )
-                        cell->face(face_number)->set_boundary_id (0);
+                        cell->face(face_number)->set_boundary_id (105);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (5);
@@ -390,7 +390,7 @@ namespace vt_darcy
                 {
                     // If it is outside boundary (no neighbor) or interface
                     if (neighbors[5] < 0 )
-                        cell->face(face_number)->set_boundary_id (0);
+                        cell->face(face_number)->set_boundary_id (106);
                     else
                     {
                         cell->face(face_number)->set_boundary_id (6);
@@ -424,7 +424,7 @@ namespace vt_darcy
                     {
                         // If it is outside boundary (no neighbor) or interface
                         if (neighbors[3] < 0 )
-                            cell->face(face_number)->set_boundary_id (0);
+                            cell->face(face_number)->set_boundary_id (101);
                         else
                         {
                             cell->face(face_number)->set_boundary_id (4);
@@ -436,7 +436,7 @@ namespace vt_darcy
                     {
                         // If it is outside boundary (no neighbor) or interface
                         if (neighbors[0] < 0 )
-                            cell->face(face_number)->set_boundary_id (0);
+                            cell->face(face_number)->set_boundary_id (102);
                         else
                         {
                             cell->face(face_number)->set_boundary_id (1);
@@ -448,7 +448,7 @@ namespace vt_darcy
                     {
                         // If it is outside boundary (no neighbor) or interface
                         if (neighbors[1] < 0 )
-                            cell->face(face_number)->set_boundary_id (0);
+                            cell->face(face_number)->set_boundary_id (103);
                         else
                         {
                             cell->face(face_number)->set_boundary_id (2);
@@ -460,7 +460,7 @@ namespace vt_darcy
                     {
                         // If it is outside boundary (no neighbor) or interface
                         if (neighbors[2] < 0 )
-                            cell->face(face_number)->set_boundary_id (0);
+                            cell->face(face_number)->set_boundary_id (104);
                         else
                         {
                             cell->face(face_number)->set_boundary_id (3);
@@ -507,7 +507,17 @@ namespace vt_darcy
         constraints.distribute (out_vec);
     }
 
+    template<typename T>
+    	bool is_inside(std::vector<T> vect, T int_el ){
+    			/*
+    	    	 * Manu_j
+    	    	 * Simple function to check whether an element of type T is in a vector of type T.
+    	    	 * Will be useful in setting mixed bc.
+    	    	 */
+    		bool int_el_found = std::find(vect.begin(), vect.end(), int_el) != vect.end();
+    		return int_el_found;
+    	}
 
 }
 
-#endif //ELASTICITY_MFEDD_UTILITIES_H
+#endif //SPACE_TIME_UTILITIES_H

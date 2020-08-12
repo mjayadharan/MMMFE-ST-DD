@@ -1,11 +1,11 @@
-/* ---------------------------------------------------------------------*/
 /* ---------------------------------------------------------------------
- This is part of a program that  implements DD for time dependent Darcy flow with variable time stepping and MMMFE on non-matching grid.
- Also outputs the solution in a space-time domain. Refer to the paper/report on the same for further information.
- Template: BiotDD which was co-authored by Eldar K, University of Pittsburgh.
+ * This is part of a program that  implements DD for time dependent Darcy flow with variable time stepping and MMMFE on non-matching grid.
+ * Also outputs the solution in a space-time domain. Refer to the paper/report on the same for further information.
+ * Template: BiotDD which was co-authored by Eldar K, University of Pittsburgh.
  * ---------------------------------------------------------------------
  *
  * Author: Manu Jayadharan, University of Pittsburgh: 2020
+ *
  */
 
 // Internals,.
@@ -54,18 +54,26 @@ namespace vt_darcy
 {
     using namespace dealii;
 
-    // MixedElasticityDD class constructor
+    // DarcyVT class constructor
     template <int dim>
     DarcyVTProblem<dim>::DarcyVTProblem (const unsigned int degree,
                                                  const BiotParameters &bprm,
                                                  const unsigned int mortar_flag,
-                                                 const unsigned int mortar_degree)
+                                                 const unsigned int mortar_degree,
+												 std::vector<char> bc_condition_vect,
+												 std::vector<double>bc_const_functs,
+												 const bool is_manufact_soln,
+												 const bool need_each_time_step_plot)
             :
             mpi_communicator (MPI_COMM_WORLD),
             P_coarse2fine (false),
             P_fine2coarse (false),
             n_domains(dim,0),
-            prm(bprm),
+            prm (bprm),
+			bc_condition_vect (bc_condition_vect),
+			bc_const_functs (bc_const_functs),
+			is_manufact_solution (is_manufact_soln),
+			need_each_time_step_plot (need_each_time_step_plot),
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
@@ -176,6 +184,77 @@ namespace vt_darcy
         n_flux = n_z;
         n_pressure = n_p;
 
+        //Adding essential Neumann BC
+        {
+        	constraint_bc.clear();
+
+        	//The following lines are not needed if we are using a manufactured solution:
+//        	if (!is_manufact_solution)
+        	if (true)
+        	{
+				for (int i=0; i<bc_condition_vect.size(); ++i){
+					if (bc_condition_vect[i] == 'D')
+							dir_bc_ids.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
+					else if (bc_condition_vect[i] == 'N')
+						nm_bc_ids.push_back(100+i+1);   // Neumann bc: left: 101, bottom: 102, right: 103, top:104
+				} //end of updating bc_ids
+
+				//adding normal flux(velocity.n as an essential bc)
+				typename FunctionMap<dim>::type velocity_bc;
+				std::map<types::global_dof_index,double> boundary_values_velocity;
+
+				//vector of Vectors to determine (velocity,pressure) corresponding to given velocity.n on the four each face.
+				std::vector<double> zero_std_vect(3,0.);
+				Vector<double> zero_dealii_vect(zero_std_vect.begin(), zero_std_vect.end());
+				std::vector<Vector<double>> const_funct_base(4, zero_dealii_vect);
+				const_funct_base[0][0] = -1.0*bc_const_functs[0];
+				const_funct_base[1][1] = -1.0*bc_const_functs[1];
+				const_funct_base[2][0] = 1.0*bc_const_functs[2];
+				const_funct_base[3][1] = 1.0*bc_const_functs[3];
+
+				ConstantFunction<dim> const_fun_left(const_funct_base[0]), const_fun_bottom(const_funct_base[1]);
+				ConstantFunction<dim> const_fun_right(const_funct_base[2]), const_fun_top(const_funct_base[3]);
+				std::vector<ConstantFunction<dim>> velocity_const_funcs(4, const_fun_left);
+				velocity_const_funcs[0] = const_fun_left;
+				velocity_const_funcs[1] = const_fun_bottom;
+				velocity_const_funcs[2] = const_fun_right;
+				velocity_const_funcs[3] = const_fun_top;
+
+				//Feeding the neumann boundary values into the constraint matrix
+				ZeroFunction<dim> velocity_bc_func(dim+1);
+				for (int i=0; i<nm_bc_ids.size(); ++i)
+					velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
+
+//				// Extra for testing mixed bc convergence.
+//				ExactSolution<dim> exact_soln;
+//				exact_soln.set_time(0.0);
+//				for (int i=0; i<nm_bc_ids.size(); ++i)
+//									velocity_bc[nm_bc_ids[i]] = &exact_soln;
+//				// End of extra for testing mixed bc convergence.
+				VectorTools::project_boundary_values (dof_handler,
+													  velocity_bc,
+													  QGauss<dim-1>(degree+3),
+													  boundary_values_velocity);
+
+				typename std::map<types::global_dof_index,double>::const_iterator boundary_value_vel =
+						boundary_values_velocity.begin();
+				for ( ; boundary_value_vel !=boundary_values_velocity.end(); ++boundary_value_vel)
+				{
+					if (!constraint_bc.is_constrained(boundary_value_vel->first))
+					{
+						constraint_bc.add_line (boundary_value_vel->first);
+						constraint_bc.set_inhomogeneity (boundary_value_vel->first,
+													   boundary_value_vel->second);
+					}
+				}
+				//---------------------------------------------------end of velocity boundary values
+			} //end of check on is_manufact_soln
+        	else
+        		for (int i=0; i<4; ++i)
+        			dir_bc_ids.push_back(101+i); //adding all outside boundary as dirichlet type
+        }
+        constraint_bc.close();
+
         BlockDynamicSparsityPattern dsp(2, 2);
         dsp.block(0, 0).reinit (n_z, n_z);
         dsp.block(1, 0).reinit (n_p, n_z);
@@ -183,7 +262,7 @@ namespace vt_darcy
         dsp.block(1, 1).reinit (n_p, n_p);
 
 			dsp.collect_sizes ();
-			DoFTools::make_sparsity_pattern (dof_handler, dsp);
+			DoFTools::make_sparsity_pattern (dof_handler, dsp, constraint_bc, false);
 
 			// Initialize system matrix
 			sparsity_pattern.copy_from(dsp);
@@ -195,6 +274,7 @@ namespace vt_darcy
 			solution_bar.block(1).reinit (n_p);
 			solution_bar.collect_sizes ();
 			solution_bar = 0;
+
 
 			// Reinit solution and RHS vectors
 			solution_star.reinit (2);
@@ -208,6 +288,13 @@ namespace vt_darcy
 			system_rhs_bar.block(1).reinit (n_p);
 			system_rhs_bar.collect_sizes ();
 			system_rhs_bar = 0;
+
+			// Required for essential(Neumann bc), used in assemble_system
+			system_rhs_bar_bc.reinit (2);;
+			system_rhs_bar_bc.block(0).reinit (n_z);
+			system_rhs_bar_bc.block(1).reinit (n_p);
+			system_rhs_bar_bc.collect_sizes ();
+			system_rhs_bar_bc = 0;
 
 			system_rhs_star.reinit (2);
 			system_rhs_star.block(0).reinit (n_z);
@@ -298,6 +385,7 @@ namespace vt_darcy
     {
         TimerOutput::Scope t(computing_timer, "Assemble system");
         system_matrix = 0;
+        system_rhs_bar_bc = 0;
 
         QGauss<dim>   quadrature_formula(degree+2);
 
@@ -363,11 +451,14 @@ namespace vt_darcy
             }
 
             cell->get_dof_indices (local_dof_indices);
-            for (unsigned int i=0; i<dofs_per_cell; ++i)
-                for (unsigned int j=0; j<dofs_per_cell; ++j)
-                    system_matrix.add (local_dof_indices[i],
-                                       local_dof_indices[j],
-                                       local_matrix(i,j));
+//            for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                for (unsigned int j=0; j<dofs_per_cell; ++j)
+//                    system_matrix.add (local_dof_indices[i],
+//                                       local_dof_indices[j],
+//                                       local_matrix(i,j));
+            Vector<double> local_rhs(dofs_per_cell);
+            local_rhs = 0;
+            constraint_bc.distribute_local_to_global (local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_bar_bc);
         }
 
         pcout << "  ...factorized..." << "\n";
@@ -401,7 +492,7 @@ namespace vt_darcy
                 for (unsigned int face_n=0;
                      face_n<GeometryInfo<dim>::faces_per_cell;
                      ++face_n)
-                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                     {
                         cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
 
@@ -421,7 +512,7 @@ namespace vt_darcy
                 for (unsigned int face_n=0;
                      face_n<GeometryInfo<dim>::faces_per_cell;
                      ++face_n)
-                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                    if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                     {
                         cell->face(face_n)->get_dof_indices (local_face_dof_indices, 0);
                         for (auto el : local_face_dof_indices)
@@ -464,7 +555,7 @@ namespace vt_darcy
 				//end of getting face dofs
 
 					//start of getting interface dofs.
-					if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+					if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
 					{
 
 						for (auto el : local_face_dof_indices)
@@ -504,7 +595,7 @@ namespace vt_darcy
                     //end of getting face dofs
 
             	//start of getting interface dofs
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     for (auto el : local_face_dof_indices){
                             interface_dofs_st[cell->face(face_n)->boundary_id()-1].push_back(el);
@@ -544,8 +635,25 @@ namespace vt_darcy
       Vector<double>       local_rhs (dofs_per_cell);
       std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
+      //Pressure value for Dirichlet(natural) bc in case of manufactured solution
       PressureBoundaryValues<dim>     pressure_boundary_values;
       pressure_boundary_values.set_time(prm.time);
+
+      //Dirichlet bc picked up from parameter files. For real applicatins.
+      std::vector<ConstantFunction<dim>> dirichlet_boundary_values_vect;
+      //adding dirichlet bc corresponding to each side
+      //left boundary
+      ConstantFunction<dim> dirichlet_boundary_values_left(bc_const_functs[0]);
+      dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_left);
+      //bottom boundary
+      ConstantFunction<dim> dirichlet_boundary_values_bottom(bc_const_functs[1]);
+      dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_bottom);
+      //right boundary
+      ConstantFunction<dim> dirichlet_boundary_values_right(bc_const_functs[2]);
+      dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_right);
+      //top boundary
+      ConstantFunction<dim> dirichlet_boundary_values_top(bc_const_functs[1]);
+      dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_top);
       std::vector<double>         boundary_values_flow (n_face_q_points);
 
       RightHandSidePressure<dim>      right_hand_side_pressure(prm.c_0,prm.alpha);
@@ -602,27 +710,40 @@ namespace vt_darcy
           for (unsigned int face_no=0;
                face_no<GeometryInfo<dim>::faces_per_cell;
                ++face_no)
-              if (cell->at_boundary(face_no) && cell->face(face_no)->boundary_id() == 0) // pressure part of the boundary
+          {
+              if (cell->at_boundary(face_no))
               {
-                  fe_face_values.reinit (cell, face_no);
+            	  bool at_dir_boundary; //to check whether the given boundary is part of Dirichlet bc.
+            	  at_dir_boundary = is_inside<int>(dir_bc_ids, cell->face(face_no)->boundary_id());
+            	  if (at_dir_boundary)// Dirichlet(pressure) part of the boundary.
+				  {
+					  fe_face_values.reinit (cell, face_no);
 
-                  pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
+					  if (is_manufact_solution)
+						  pressure_boundary_values.value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
+					  else if (!is_manufact_solution)
+						  dirichlet_boundary_values_vect[cell->face(face_no)->boundary_id()-101].value_list(fe_face_values.get_quadrature_points(), boundary_values_flow);
 
-                  for (unsigned int q=0; q<n_face_q_points; ++q)
-                      for (unsigned int i=0; i<dofs_per_cell; ++i)
-                      {
-                          local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
-                                                     fe_face_values.normal_vector(q) *
-                                                     boundary_values_flow[q] *
-                                                     fe_face_values.JxW(q));
+					  for (unsigned int q=0; q<n_face_q_points; ++q)
+						  for (unsigned int i=0; i<dofs_per_cell; ++i)
+						  {
+							  local_rhs(i) += -(fe_face_values[velocity].value (i, q) *
+														 fe_face_values.normal_vector(q) *
+														 boundary_values_flow[q] *
+														 fe_face_values.JxW(q));
 
-                      }
+						  }
+				  }
               }
+          }
 
 
           cell->get_dof_indices (local_dof_indices);
-          for (unsigned int i=0; i<dofs_per_cell; ++i)
-              system_rhs_bar(local_dof_indices[i]) += local_rhs(i);
+//          for (unsigned int i=0; i<dofs_per_cell; ++i)
+//              system_rhs_bar(local_dof_indices[i]) += local_rhs(i);
+          FullMatrix<double> local_matrix(dofs_per_cell);
+          local_matrix = 0;
+          constraint_bc.distribute_local_to_global(local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_bar);
       }
   }
 
@@ -690,7 +811,7 @@ namespace vt_darcy
             for (unsigned int face_n=0;
                  face_n<GeometryInfo<dim>::faces_per_cell;
                  ++face_n)
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     fe_face_values.reinit (cell, face_n);
                     fe_face_values[velocity].get_function_values (interface_fe_function_subdom, interface_values_flux);
@@ -707,9 +828,11 @@ namespace vt_darcy
                 }
 
             cell->get_dof_indices (local_dof_indices);
-            for (unsigned int i=0; i<dofs_per_cell; ++i)
-                system_rhs_star(local_dof_indices[i]) += local_rhs(i);
-            //
+//            for (unsigned int i=0; i<dofs_per_cell; ++i)
+//                system_rhs_star(local_dof_indices[i]) += local_rhs(i);
+            FullMatrix<double> local_matrix(dofs_per_cell);
+            local_matrix = 0;
+            constraint_bc.distribute_local_to_global(local_matrix, local_rhs, local_dof_indices, system_matrix, system_rhs_star);
         }
     }
 
@@ -719,9 +842,10 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::solve_bar ()
     {
-
+    	system_rhs_bar.sadd(1.0, system_rhs_bar_bc);
         A_direct.vmult (solution_bar, system_rhs_bar);
 
+        constraint_bc.distribute(solution_bar);
 
     }
 
@@ -762,7 +886,8 @@ namespace vt_darcy
 				if (Utilities::MPI::n_mpi_processes(mpi_communicator) == 1)
 				{
 					solution =solution_bar;
-					// compute_errors(refinement_index, time_level);
+					if (is_manufact_solution)
+						compute_errors(refinement_index, time_level);
 					output_results(refinement_index,total_refinements);
 				}
 				old_solution = solution_bar;
@@ -801,7 +926,8 @@ namespace vt_darcy
 				solution.sadd(1.0,solution_bar_collection[time_level]);
 				final_solution_transfer(solution_st, solution, time_level, prm.time_step);
 
-				// compute_errors(refinement_index, time_level);
+				if (is_manufact_solution)
+					compute_errors(refinement_index, time_level);
 				output_results(refinement_index,total_refinements);
 				old_solution_for_jump = solution;
 
@@ -1447,7 +1573,7 @@ namespace vt_darcy
             for (unsigned int face_n=0;
                  face_n<GeometryInfo<dim>::faces_per_cell;
                  ++face_n)
-                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() != 0)
+                if (cell->at_boundary(face_n) && cell->face(face_n)->boundary_id() < 100)
                 {
                     fe_face_values.reinit (cell, face_n);
                     fe_face_values[velocity].get_function_values (interface_fe_function_mortar, interface_values_flux);
@@ -1724,42 +1850,41 @@ namespace vt_darcy
 			  }
 
 
-			  // The following lines are used to output the solution at each time steps: disabled now since we are only
-			  //interested in space-time solutions as of now.
+			  // The following lines are used to output the solution at each time steps
+			  if (need_each_time_step_plot)
+			  {
+				  // Components interpretation of the flow solution (vector - scalar)
+				  std::vector<DataComponentInterpretation::DataComponentInterpretation>
+				  data_component_interpretation (dim,
+								  DataComponentInterpretation::component_is_part_of_vector);
+				  data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
 
-//			  // Components interpretation of the flow solution (vector - scalar)
-//			  std::vector<DataComponentInterpretation::DataComponentInterpretation>
-//			  data_component_interpretation (dim,
-//							  DataComponentInterpretation::component_is_part_of_vector);
-//			  data_component_interpretation.push_back(DataComponentInterpretation::component_is_scalar);
-//
-//			  DataOut<dim> data_out;
-//			  data_out.attach_dof_handler (dof_handler);
-//			  data_out.add_data_vector (solution, solution_names,
-//										DataOut<dim>::type_dof_data,
-//										data_component_interpretation);
-//
-//			  data_out.build_patches ();
-//
-//
-//			  int tmp = prm.time/prm.time_step;
-//			  std::ofstream output ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
-//			  data_out.write_vtu (output);
-	//	      //following lines create a file which paraview can use to link the subdomain results
-	//	            if (this_mpi == 0)
-	//	              {
-	//	                std::vector<std::string> filenames;
-	//	                for (unsigned int i=0;
-	//	                     i<Utilities::MPI::n_mpi_processes(mpi_communicator);
-	//	                     ++i)
-	//	                  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
-	//
-	//	                std::ofstream master_output (("solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
-	//	                                              ".pvtu").c_str());
-	//	                data_out.write_pvtu_record (master_output, filenames);
-	//	              }
+				  DataOut<dim> data_out;
+				  data_out.attach_dof_handler (dof_handler);
+				  data_out.add_data_vector (solution, solution_names,
+											DataOut<dim>::type_dof_data,
+											data_component_interpretation);
 
-			 /* end of commenting out for disabling vtu outputs*/
+				  data_out.build_patches ();
+
+
+				  int tmp = prm.time/prm.time_step;
+				  std::ofstream output ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
+				  data_out.write_vtu (output);
+				  //following lines create a file which paraview can use to link the subdomain results
+						if (this_mpi == 0)
+						  {
+							std::vector<std::string> filenames;
+							for (unsigned int i=0;
+								 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+								 ++i)
+							  filenames.push_back ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+
+							std::ofstream master_output (("time-step-plots/solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
+														  ".pvtu").c_str());
+							data_out.write_pvtu_record (master_output, filenames);
+						  }
+			  } //end of if need_each_time_step_plot
 
 
 			   if(std::fabs(prm.time-prm.final_time)<1.0e-12){ //outputting the 3d space-time solution:
@@ -1791,7 +1916,7 @@ namespace vt_darcy
 											data_component_interpretation_st);
 
 				  data_out_2.build_patches ();
-				  std::ofstream output_st ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(this_mpi,4) +".vtu");
+				  std::ofstream output_st ("space-time-plots/st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(this_mpi,4) +".vtu");
 				  data_out_2.write_vtu (output_st);
 						  //following lines create a file which paraview can use to link the subdomain results
 								if (this_mpi == 0)
@@ -1800,9 +1925,9 @@ namespace vt_darcy
 									for (unsigned int i=0;
 										 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
 										 ++i)
-									  filenames_st.push_back ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
+									  filenames_st.push_back ("space-time-plots/st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
 
-									std::ofstream master_output_st (("st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
+									std::ofstream master_output_st (("space-time-plots/st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
 									data_out_2.write_pvtu_record (master_output_st, filenames_st);
 								  }
 	//
@@ -1810,44 +1935,50 @@ namespace vt_darcy
 
 
 	        }//end of outputting plots at the final refinement.
-	      double total_time = prm.time_step * prm.num_time_steps;
-/*
-	      if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12){
-	        convergence_table.set_precision("Velocity,L2-L2", 3);
-	        convergence_table.set_precision("Pressure,DG", 3);
-	        convergence_table.set_precision("Pressure,L2-L2", 3);
-
-	        convergence_table.set_scientific("Velocity,L2-L2", true);
-	        convergence_table.set_scientific("Pressure,DG", true);
-	        convergence_table.set_scientific("Pressure,L2-L2", true);
-
-	        convergence_table.set_tex_caption("# GMRES", "\\# gmres");
-	        convergence_table.set_tex_caption("Velocity,L2-L2", "$ \\|z - z_h\\|_{L^{2}(L^2)} $");
-	        convergence_table.set_tex_caption("Pressure,DG", "$ \\|p - p_h\\|_{DG} $");
-	        convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^{2}(L^2)} $");
-
-	        convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
-	        convergence_table.evaluate_convergence_rates("Velocity,L2-L2", ConvergenceTable::reduction_rate_log2);
-	        convergence_table.evaluate_convergence_rates("Pressure,DG", ConvergenceTable::reduction_rate_log2);
-	        convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
 
 
-	        if (mortar_flag)
+	        //Calculating convergence table if the solution is manufactured
+	        if (is_manufact_solution)
 	        {
-	          convergence_table.set_precision("Lambda,Darcy_L2", 3);
-	          convergence_table.set_scientific("Lambda,Darcy_L2", true);
-	          convergence_table.set_tex_caption("Lambda,Darcy_L2", "$ \\|p - \\lambda_p_H\\|_{L^{2}(L^2)} $");
-	          convergence_table.evaluate_convergence_rates("Lambda,Darcy_L2", ConvergenceTable::reduction_rate_log2);
+	        	double total_time = prm.time_step * prm.num_time_steps;
 
-	        }
+			    if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0 && refinement_index == refine-1 && std::fabs(prm.time-total_time)<1.0e-12)
+			    {
+					convergence_table.set_precision("Velocity,L2-L2", 3);
+					convergence_table.set_precision("Pressure,DG", 3);
+					convergence_table.set_precision("Pressure,L2-L2", 3);
 
-	        std::ofstream error_table_file("error" + std::to_string(Utilities::MPI::n_mpi_processes(mpi_communicator)) + "domains.tex");
+					convergence_table.set_scientific("Velocity,L2-L2", true);
+					convergence_table.set_scientific("Pressure,DG", true);
+					convergence_table.set_scientific("Pressure,L2-L2", true);
 
-	        pcout << std::endl;
-	        convergence_table.write_text(std::cout);
-	        convergence_table.write_tex(error_table_file);
-	      }
-*/
+					convergence_table.set_tex_caption("# GMRES", "\\# gmres");
+					convergence_table.set_tex_caption("Velocity,L2-L2", "$ \\|z - z_h\\|_{L^{2}(L^2)} $");
+					convergence_table.set_tex_caption("Pressure,DG", "$ \\|p - p_h\\|_{DG} $");
+					convergence_table.set_tex_caption("Pressure,L2-L2", "$ \\|p - p_h\\|_{L^{2}(L^2)} $");
+
+					convergence_table.evaluate_convergence_rates("# GMRES", ConvergenceTable::reduction_rate_log2);
+					convergence_table.evaluate_convergence_rates("Velocity,L2-L2", ConvergenceTable::reduction_rate_log2);
+					convergence_table.evaluate_convergence_rates("Pressure,DG", ConvergenceTable::reduction_rate_log2);
+					convergence_table.evaluate_convergence_rates("Pressure,L2-L2", ConvergenceTable::reduction_rate_log2);
+
+
+					if (mortar_flag)
+					{
+					  convergence_table.set_precision("Lambda,Darcy_L2", 3);
+					  convergence_table.set_scientific("Lambda,Darcy_L2", true);
+					  convergence_table.set_tex_caption("Lambda,Darcy_L2", "$ \\|p - \\lambda_p_H\\|_{L^{2}(L^2)} $");
+					  convergence_table.evaluate_convergence_rates("Lambda,Darcy_L2", ConvergenceTable::reduction_rate_log2);
+
+					}
+
+					std::ofstream error_table_file("error" + std::to_string(Utilities::MPI::n_mpi_processes(mpi_communicator)) + "domains.tex");
+
+					pcout << std::endl;
+					convergence_table.write_text(std::cout);
+					convergence_table.write_tex(error_table_file);
+			  }
+	        } // End of if manu_factured_solution: convergence table
 	    }
 
 
