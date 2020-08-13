@@ -1,0 +1,39 @@
+Parameter file for simulations: Please refer to the readme file for instructions.
+----------------------------------------------------------------------------------
+Please keep the white space as it is.
+-------------------------------------
+c0: 1.0
+
+alpha: 1.0
+
+space_degree: 0
+
+mortar_degree: 1
+
+num_refinement: 1
+
+final_time: 100
+
+tolerence: 1.e-6
+
+max_iteration: 500
+
+need_plot_at_each_time_step(bool): 1
+
+left_bc: N 0.0
+bottom_bc: D 0.0
+right_bc: N 0.0
+top_bc: D 0.0
+
+is_manufact_soln(bool): 0
+
+mesh_pattern_sub_d0: 6 10 200
+mesh_pattern_sub_d1: 80 3 200
+mesh_pattern_sub_d2: 6 10 200
+mesh_pattern_sub_d3: 6 3 200
+mesh_pattern_sub_d4: 40 3 200
+mesh_pattern_sub_d5: 6 3 200
+mesh_pattern_sub_d6: 6 10 200
+mesh_pattern_sub_d7: 80 3 200
+mesh_pattern_sub_d8: 6 10 200
+mesh_pattern_mortar: 1 1 1
