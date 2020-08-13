@@ -1633,7 +1633,6 @@ namespace vt_darcy
            return error_calculated;
        }
 
-    /*
     // MixedBiotProblemDD::compute_errors
     template <int dim>
     void DarcyVTProblem<dim>::compute_errors (const unsigned int refinement_index, unsigned int time_level)
@@ -1813,7 +1812,6 @@ namespace vt_darcy
       }
     }
 
-    */
 
     // MixedBiotProblemDD::output_results
     template <int dim>

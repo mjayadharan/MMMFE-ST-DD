@@ -208,7 +208,35 @@ namespace vt_darcy
       }
     }
 
+    // Exact solution
+    template <int dim>
+    class ExactSolution : public Function<dim>
+    {
+    public:
+        ExactSolution() : Function<dim>(static_cast<unsigned int>(dim + 1)) {}
 
+        virtual void vector_value (const Point<dim> &p,
+                                   Vector<double>   &values) const;
+        virtual void vector_gradient (const Point<dim> &p,
+                                      std::vector<Tensor<1,dim,double> > &grads) const;
+    };
+    
+    template <int dim>
+    void
+    ExactSolution<dim>::vector_value (const Point<dim> &p,
+                                      Vector<double>   &values) const
+    {
+	Assert(false, ExcNotImplemented());
+    }
+    
+    template <int dim>
+    void
+    ExactSolution<dim>::vector_gradient (const Point<dim> &p,
+                                         std::vector<Tensor<1,dim,double> > &grads) const
+    {
+	Assert(false, ExcNotImplemented());
+    }
+    
   template <int dim>
   class InitialCondition : public Function<dim>
   {
