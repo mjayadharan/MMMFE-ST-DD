@@ -189,8 +189,8 @@ namespace vt_darcy
         	constraint_bc.clear();
 
         	//The following lines are not needed if we are using a manufactured solution:
-//        	if (!is_manufact_solution)
-        	if (true)
+        	if (!is_manufact_solution)
+//        	if (true)
         	{
 				for (int i=0; i<bc_condition_vect.size(); ++i){
 					if (bc_condition_vect[i] == 'D')
@@ -225,7 +225,8 @@ namespace vt_darcy
 				for (int i=0; i<nm_bc_ids.size(); ++i)
 					velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
 
-//				// Extra for testing mixed bc convergence.
+//				// Extra for testing mixed bc convergence. For Andra, case its possible to feed neumann
+				// boundary condition here instead of ExactSolution.
 //				ExactSolution<dim> exact_soln;
 //				exact_soln.set_time(0.0);
 //				for (int i=0; i<nm_bc_ids.size(); ++i)
