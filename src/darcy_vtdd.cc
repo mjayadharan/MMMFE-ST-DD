@@ -1278,7 +1278,7 @@ namespace vt_darcy
           while (k_counter < maxiter)
             {
         	  //resizing cs,sn, Beta,H and Q if needed
-        	  if(temp_array_size<k_counter-2){
+        	  if(temp_array_size<k_counter+2){
         		  temp_array_size*=2;
         		  cs.resize(temp_array_size);
         		  sn.resize(temp_array_size);
