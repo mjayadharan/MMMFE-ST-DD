@@ -1879,7 +1879,7 @@ namespace vt_darcy
 							for (unsigned int i=0;
 								 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
 								 ++i)
-							  filenames.push_back ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+							  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
 
 							std::ofstream master_output (("time-step-plots/solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
 														  ".pvtu").c_str());
@@ -1926,7 +1926,7 @@ namespace vt_darcy
 									for (unsigned int i=0;
 										 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
 										 ++i)
-									  filenames_st.push_back ("space-time-plots/st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
+									  filenames_st.push_back ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
 
 									std::ofstream master_output_st (("space-time-plots/st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
 									data_out_2.write_pvtu_record (master_output_st, filenames_st);
