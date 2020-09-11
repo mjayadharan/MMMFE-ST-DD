@@ -1116,6 +1116,7 @@ namespace vt_darcy
       }
 
     //local GMRES function.
+    // adapted from model (Matlab) implementation in https://en.wikipedia.org/wiki/Generalized_minimal_residual_method
       template <int dim>
         void
 		DarcyVTProblem<dim>::local_gmres(const unsigned int maxiter)
@@ -1270,8 +1271,8 @@ namespace vt_darcy
 
 
           //end----------- of caluclating first element of Q[side]-----------------
-          e_all_iter[0]=r_norm;
-          pcout<<"\n\n r_norm is \n\n"<<r_norm<<"\n\n";
+          e_all_iter[0] = 1; // r_norm; scaled residual
+          pcout<<"\n\n r_norm is "<<r_norm<< " target is " << r_norm * tolerance <<  "\n\n";
           Beta[0]=r_norm;
 
           unsigned int k_counter = 0; //same as the count of the iteration
@@ -1458,19 +1459,19 @@ namespace vt_darcy
               Beta[k_counter]*=cs[k_counter];
 
               //Combining error at kth iteration
-              combined_error_iter=fabs(Beta[k_counter+1])/r_norm;
+              combined_error_iter=fabs(Beta[k_counter+1]) / r_norm; // scaled residual
 
 
               //saving the combined error at each iteration
               e_all_iter[k_counter+1]=(combined_error_iter);
 
               pcout << "\r  ..." << cg_iteration
-                    << " iterations completed, (residual = " << combined_error_iter
+                    << " iterations completed, (relative residual = " << combined_error_iter
                     << ")..." << std::flush;
               // Exit criterion
-              if (combined_error_iter/e_all_iter[0] < tolerance)
+              if (combined_error_iter  < tolerance)
                 {
-                  pcout << "\n  GMRES converges in " << cg_iteration << " iterations!\n and residual is"<<combined_error_iter/e_all_iter[0]<<"\n";
+                  pcout << "\n  GMRES converges in " << cg_iteration << " iterations!\n and residual is "<< e_all_iter[k_counter+1] * r_norm <<"\n";
                   break;
                 }
               else if(k_counter>maxiter-2)
