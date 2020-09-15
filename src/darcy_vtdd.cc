@@ -1116,6 +1116,7 @@ namespace vt_darcy
       }
 
     //local GMRES function.
+    // adapted from model (Matlab) implementation in https://en.wikipedia.org/wiki/Generalized_minimal_residual_method
       template <int dim>
         void
 		DarcyVTProblem<dim>::local_gmres(const unsigned int maxiter)
@@ -1268,15 +1269,15 @@ namespace vt_darcy
 
 
           //end----------- of caluclating first element of Q[side]-----------------
-          e_all_iter[0]=r_norm;
-          pcout<<"\n\n r_norm is \n\n"<<r_norm<<"\n\n";
+          e_all_iter[0] = 1; // r_norm; scaled residual
+          pcout<<"\n\n r_norm is "<<r_norm<< " target is " << r_norm * tolerance <<  "\n\n";
           Beta[0]=r_norm;
 
           unsigned int k_counter = 0; //same as the count of the iteration
           while (k_counter < maxiter)
             {
         	  //resizing cs,sn, Beta,H and Q if needed
-        	  if(temp_array_size<k_counter-2){
+        	  if(temp_array_size<k_counter+2){
         		  temp_array_size*=2;
         		  cs.resize(temp_array_size);
         		  sn.resize(temp_array_size);
@@ -1456,19 +1457,19 @@ namespace vt_darcy
               Beta[k_counter]*=cs[k_counter];
 
               //Combining error at kth iteration
-              combined_error_iter=fabs(Beta[k_counter+1])/r_norm;
+              combined_error_iter=fabs(Beta[k_counter+1]) / r_norm; // scaled residual
 
 
               //saving the combined error at each iteration
               e_all_iter[k_counter+1]=(combined_error_iter);
 
               pcout << "\r  ..." << cg_iteration
-                    << " iterations completed, (residual = " << combined_error_iter
+                    << " iterations completed, (relative residual = " << combined_error_iter
                     << ")..." << std::flush;
               // Exit criterion
-              if (combined_error_iter/e_all_iter[0] < tolerance)
+              if (combined_error_iter  < tolerance)
                 {
-                  pcout << "\n  GMRES converges in " << cg_iteration << " iterations!\n and residual is"<<combined_error_iter/e_all_iter[0]<<"\n";
+                  pcout << "\n  GMRES converges in " << cg_iteration << " iterations!\n and residual is "<< e_all_iter[k_counter+1] * r_norm <<"\n";
                   break;
                 }
               else if(k_counter>maxiter-2)
@@ -1877,7 +1878,7 @@ namespace vt_darcy
 							for (unsigned int i=0;
 								 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
 								 ++i)
-							  filenames.push_back ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+							  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
 
 							std::ofstream master_output (("time-step-plots/solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
 														  ".pvtu").c_str());
@@ -1924,7 +1925,7 @@ namespace vt_darcy
 									for (unsigned int i=0;
 										 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
 										 ++i)
-									  filenames_st.push_back ("space-time-plots/st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
+									  filenames_st.push_back ("st_solution_d" + Utilities::to_string(dim+1) + "_p"+Utilities::to_string(i,4)+".vtu");
 
 									std::ofstream master_output_st (("space-time-plots/st_solution_d" + Utilities::to_string(dim+1)  + ".pvtu").c_str());
 									data_out_2.write_pvtu_record (master_output_st, filenames_st);
