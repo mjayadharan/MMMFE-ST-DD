@@ -404,6 +404,9 @@ namespace vt_darcy
         const KInverse<dim> k_inverse;
         std::vector<Tensor<2,dim>>  k_inverse_values(n_q_points);
 
+	const Porosity<dim> poros;
+	std::vector<double> poro_values(n_q_points);
+
         // Velocity and Pressure DoFs
         const FEValuesExtractors::Vector velocity (0);
         const FEValuesExtractors::Scalar pressure (dim);
@@ -418,6 +421,7 @@ namespace vt_darcy
             local_matrix = 0;
 
             k_inverse.value_list (fe_values.get_quadrature_points(), k_inverse_values);
+	    poros.value_list(fe_values.get_quadrature_points(), poro_values);
 
             // Velocity and pressure
             std::vector<Tensor<1,dim>>                phi_u(dofs_per_cell);
@@ -445,7 +449,7 @@ namespace vt_darcy
 
 
                         local_matrix(i, j) += ( phi_u[i] * k_inverse_values[q] * phi_u[j] - phi_p[j] * div_phi_u[i]                                     // Darcy law
-                                               + prm.time_step*div_phi_u[j] * phi_p[i] + prm.c_0*phi_p[i]*phi_p[j] )
+                                               + prm.time_step*div_phi_u[j] * phi_p[i] + poro_values[q]*phi_p[i]*phi_p[j] )
                                               * fe_values.JxW(q);
                     }
                 }
@@ -661,6 +665,9 @@ namespace vt_darcy
       right_hand_side_pressure.set_time(prm.time);
       std::vector<double>         rhs_values_flow (n_q_points);
 
+      const Porosity<dim> poros;
+      std::vector<double> poro_values(n_q_points);
+
 
       typename DoFHandler<dim>::active_cell_iterator
               cell = dof_handler.begin_active(),
@@ -671,6 +678,7 @@ namespace vt_darcy
           fe_values.reinit (cell);
 
           right_hand_side_pressure.value_list(fe_values.get_quadrature_points(), rhs_values_flow);
+	  poros.value_list(fe_values.get_quadrature_points(), poro_values);
 
           // Velocity and Pressure DoFs
           const FEValuesExtractors::Vector velocity (0);
@@ -699,7 +707,7 @@ namespace vt_darcy
               for (unsigned int i=0; i<dofs_per_cell; ++i)
               {
                   local_rhs(i) += ( prm.time_step*phi_p[i] * rhs_values_flow[q]
-                                            + prm.c_0*old_pressure_values[q] * phi_p[i] )
+                                            + poro_values[q]*old_pressure_values[q] * phi_p[i] )
                                            * fe_values.JxW(q);
 
               }
@@ -789,9 +797,13 @@ namespace vt_darcy
             std::vector <double> phi_p(dofs_per_cell);
             std::vector<double> old_pressure_values(n_q_points);
 
+	    const Porosity<dim> poros;
+	    std::vector<double> poro_values(n_q_points);
+
             if(std::fabs(prm.time-prm.time_step)>1.0e-10)
             {
             	fe_values[pressure].get_function_values (old_solution, old_pressure_values);
+		poros.value_list(fe_values.get_quadrature_points(), poro_values);
 
 				for (unsigned int q=0; q<n_q_points; ++q)
 				   {
@@ -804,7 +816,7 @@ namespace vt_darcy
 					   }
 
 					   for (unsigned int i=0; i<dofs_per_cell; ++i)
-						   local_rhs(i) += ( prm.c_0*old_pressure_values[q] * phi_p[i] )* fe_values.JxW(q);
+						   local_rhs(i) += ( poro_values[q]*old_pressure_values[q] * phi_p[i] )* fe_values.JxW(q);
 				   }
             }
 

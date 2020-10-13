@@ -124,16 +124,46 @@ namespace vt_darcy
         switch (dim)
         {
 	case 2:
-	    values[p][0][0] = isInRepo(points[p]) ? 1. / (Krepo  * (st /(sx*sx)) / pororepo) : 1. / (Khost * (st/(sx*sx)) / porohost) ;
+	    values[p][0][0] = isInRepo(points[p]) ? 1. / (Krepo  * (st/(sx*sx)) ) : 1. / (Khost * (st/(sx*sx)) ) ;
             values[p][0][1] = 0.0;
             values[p][1][0] = 0.0;
-            values[p][1][1] = isInRepo(points[p]) ? 1. / (Krepo * (st /(sy*sy)) / pororepo) : 1. / (Khost * (st/(sy*sy)) / porohost) ;
+            values[p][1][1] = isInRepo(points[p]) ? 1. / (Krepo * (st/(sy*sy)) ) : 1. / (Khost * (st/(sy*sy)) ) ;
             break;
           default:
           Assert(false, ExcMessage("The inverse of permeability tensor for dim != 2 is not provided"));
         }
       }
     }
+
+    // porosity
+    template <int dim>
+	class Porosity: public Function<dim>
+    {
+    public:
+    Porosity(): Function<dim>() {}
+
+	virtual double value (const Point<dim>   &p,
+			      const unsigned int component = 0 ) const;
+    };
+
+    template <int dim>
+	double Porosity<dim>::value (const Point<dim>   &p,
+				     const unsigned int /*component*/) const
+
+    {
+      const double x = p[0];
+      const double y = p[1];
+
+      switch (dim)
+      {
+      case 2:
+	  return isInRepo(p) ? pororepo  : porohost;
+      default:
+	  Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
+      }
+
+    }
+
 
     // Right hand side for momentum equation
     template <int dim>
@@ -169,7 +199,7 @@ namespace vt_darcy
       switch (dim)
       {
         case 2:
-	    return (isInRepo(p) && t < tsource / st) ? fsource *st / pororepo : 0; 
+	    return (isInRepo(p) && t < tsource / st) ? fsource * st  : 0;
          default:
 	     Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
       }
