@@ -25,7 +25,7 @@ namespace vt_darcy
     const double Lx = 3950, Ly = 140; // real dimension of domain
     const double Lxr = 2950, Lyr = 10; // dimensions of repository
     const double sx = 14, sy = 1; // scaling factor in each direction
-    const double st = 1. ; // 1e4 * 3.1536e7; // scaling in time (# seconds in one year)
+    const double st = 1.e4 ; // 1e4 * 3.1536e7; // scaling in time (# seconds in one year)
     const double year = 86400 * 365.25; // numner of secondsin a year ! 
     const double Krepo = 2e-9 * year, Khost = 5e-12 * year; // permeability values
     const double pororepo = 0.2, porohost = 0.05; // porosity;

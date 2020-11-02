@@ -12,7 +12,7 @@ mortar_degree: 1
 
 num_refinement: 1
 
-final_time: 100
+final_time: 20
 
 tolerence: 1.e-6
 
@@ -27,13 +27,13 @@ top_bc: D 0.0
 
 is_manufact_soln(bool): 0
 
-mesh_pattern_sub_d0: 10 10 20
-mesh_pattern_sub_d1: 10 10 20
-mesh_pattern_sub_d2: 10 10 20
-mesh_pattern_sub_d3: 10 10 20
-mesh_pattern_sub_d4: 10 10 20
-mesh_pattern_sub_d5: 10 10 20
-mesh_pattern_sub_d6: 10 10 20
-mesh_pattern_sub_d7: 10 10 20
-mesh_pattern_sub_d8: 10 10 20
-mesh_pattern_mortar: 1 1 1
+mesh_pattern_sub_d0:   6 10 50
+mesh_pattern_sub_d1: 40 10 50
+mesh_pattern_sub_d2:   6 10 50
+mesh_pattern_sub_d3:   6 6 50
+mesh_pattern_sub_d4: 40 6 100
+mesh_pattern_sub_d5:   6 6 50
+mesh_pattern_sub_d6:   6 10 50
+mesh_pattern_sub_d7: 40 10 50
+mesh_pattern_sub_d8:  6  10 50
+mesh_pattern_mortar: 10 5 20
