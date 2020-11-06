@@ -873,7 +873,8 @@ namespace vt_darcy
 			  prm.time=0.0;
 
 			  pcout << "\nStarting GMRES iterations.........\n";
-			  local_gmres(maxiter);
+			  if (Utilities::MPI::n_mpi_processes(mpi_communicator) != 1)
+				  local_gmres(maxiter);
     }
 
     template<int dim>
