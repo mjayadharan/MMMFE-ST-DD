@@ -12,7 +12,11 @@
 #ifndef INC_FILECHECK_UTILITY_H_
 #define INC_FILECHECK_UTILITY_H_
 
+#include <deal.II/base/exceptions.h>
+
 #include <string>
+
+using namespace dealii;
 
 //To check parameter entry compatibilities.
 template<typename T>
@@ -84,9 +88,9 @@ void parameter_pull_in (double &c_0, double &alpha, int &space_degree, int &mort
 	//Making sure that the data is compatible
     std::vector<char>possible_bc = {'D','N'};
     for (auto bc_type:bc_con){
-    	assert(is_inside<char>(possible_bc, bc_type) && "\n\nincompatible boundary condition read "
+	AssertThrow(is_inside<char>(possible_bc, bc_type), ExcMessage( "\n\nincompatible boundary condition read "
     			"from parameter file. Please provide either D or N dependeing on whether "
-    			"Dirichlet or Neumann boundary condition is desired\n");
+			"Dirichlet or Neumann boundary condition is desired\n"));
     }
 }
 

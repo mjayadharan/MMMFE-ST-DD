@@ -1022,7 +1022,8 @@ namespace vt_darcy
 													   unsigned int &time_level, double scale_factor)
     {
     	//transferring pressure solution.
-    	assert(n_pressure_st== prm.num_time_steps*n_pressure);
+       Assert(n_pressure_st == prm.num_time_steps*n_pressure,
+	       ExcDimensionMismatch(n_pressure_st, prm.num_time_steps*n_pressure ));
     	for(unsigned int i=0; i<n_pressure; i++)
     	{
     		solution_st.block(1)[(time_level*n_pressure) + i]= solution_subdom.block(1)[i];
@@ -1075,17 +1076,17 @@ namespace vt_darcy
       void
 	  DarcyVTProblem<dim>::apply_givens_rotation(std::vector<double> &h, std::vector<double> &cs, std::vector<double> &sn,
       							unsigned int k_iteration){
-    	  int k=k_iteration;
-      	assert(h.size()>k+1); //size should be k+2
+       unsigned int k=k_iteration;
+       AssertThrow(h.size()>k+1, ExcDimensionMismatch(h.size(), k+2)); //size should be k+2
       	double temp;
-      	for( int i=0; i<=k-1; ++i){
+       for( unsigned int i=0; i < k; ++i){
 
       		temp= cs[i]* h[i]+ sn[i]*h[i+1];
     //  		pcout<<"\n temp value is: "<<temp<<"\n";
       		h[i+1] = -sn[i]*h[i] + cs[i]*h[i+1];
       		h[i] = temp;
       	}
-      	assert(h.size()==k+2);
+       AssertThrow(h.size()==k+2, ExcDimensionMismatch(h.size(), k+2));
       	//update the next sin cos values for rotation
       	double cs_k=0, sn_k=0;
       	 givens_rotation(h[k],h[k+1],cs_k,sn_k);
@@ -1103,8 +1104,8 @@ namespace vt_darcy
       template <int dim>
       void
 	  DarcyVTProblem<dim>::back_solve(std::vector<std::vector<double>> H, std::vector<double> beta, std::vector<double> &y, unsigned int k_iteration){
-      	 int k = k_iteration;
-      	 assert(y.size()==k_iteration+1);
+        int k = k_iteration;
+        AssertThrow(y.size()==k_iteration+1, ExcDimensionMismatch(y.size(), k_iteration+1));
       	 for(unsigned int i=0; i<k_iteration;i++)
       		 y[i]=0;
       	for( int i =k-1; i>=0;i-- ){
@@ -1395,7 +1396,8 @@ namespace vt_darcy
                       }
 
                     q[side].resize(Ap[side].size(),0);
-                    assert(Ap[side].size()==Q_side[side][k_counter].size());
+                    AssertThrow(Ap[side].size()==Q_side[side][k_counter].size(),
+				ExcDimensionMismatch(Ap[side].size(), Q_side[side][k_counter].size()));
                     q[side] = Ap[side];
                     for(unsigned int i=0; i<=k_counter; ++i){
                              	for(unsigned int j=0; j<q[side].size();++j){
@@ -1847,7 +1849,7 @@ namespace vt_darcy
 				  break;
 
 				default:
-				Assert(false, ExcNotImplemented());
+				AssertThrow(false, ExcNotImplemented());
 			  }
 
 
@@ -1900,7 +1902,7 @@ namespace vt_darcy
 					  break;
 
 					default:
-					Assert(false, ExcNotImplemented());
+					AssertThrow(false, ExcNotImplemented());
 				  }
 
 
@@ -2027,7 +2029,7 @@ namespace vt_darcy
         const unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
         pcout<<"\n\n Total number of processes is "<<n_processes<<"\n\n";
 
-        Assert(reps_st[0].size() == dim+1, ExcDimensionMismatch(reps_st[0].size(), dim));
+        AssertThrow(reps_st[0].size() == dim+1, ExcDimensionMismatch(reps_st[0].size(), dim));
 
 
 
@@ -2048,8 +2050,8 @@ namespace vt_darcy
         if (mortar_flag)
         {
         	pcout<<"number of processors is "<<n_processes<<std::endl;
-            Assert(n_processes > 1, ExcMessage("Mortar MFEM is impossible with 1 subdomain"));
-            Assert(reps_st.size() >= n_processes + 1, ExcMessage("Some of the mesh parameters were not provided"));
+            AssertThrow(n_processes > 1, ExcMessage("Mortar MFEM is impossible with 1 subdomain"));
+            AssertThrow(reps_st.size() >= n_processes + 1, ExcMessage("Some of the mesh parameters were not provided"));
         }
 
         for (refinement_index=0; refinement_index<total_refinements; ++refinement_index)
