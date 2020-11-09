@@ -77,8 +77,9 @@ namespace vt_darcy
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
+	    gmres_iteration(0),
+	    grid_diameter(0),
             cg_iteration(0),
-			gmres_iteration(0),
             max_cg_iteration(0),
             qdegree(11),
 //            fe (FE_BDM<dim>(degree), 1,
@@ -100,8 +101,7 @@ namespace vt_darcy
             computing_timer (mpi_communicator,
                              pcout,
                              TimerOutput::summary,
-                             TimerOutput::wall_times),
-			grid_diameter(0)
+                             TimerOutput::wall_times)
     {}
 
 
@@ -192,7 +192,7 @@ namespace vt_darcy
         	if (!is_manufact_solution)
 //        	if (true)
         	{
-				for (int i=0; i<bc_condition_vect.size(); ++i){
+				for (unsigned int i=0; i<bc_condition_vect.size(); ++i){
 					if (bc_condition_vect[i] == 'D')
 							dir_bc_ids.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
 					else if (bc_condition_vect[i] == 'N')
@@ -222,7 +222,7 @@ namespace vt_darcy
 
 				//Feeding the neumann boundary values into the constraint matrix
 				ZeroFunction<dim> velocity_bc_func(dim+1);
-				for (int i=0; i<nm_bc_ids.size(); ++i)
+				for (unsigned int i=0; i<nm_bc_ids.size(); ++i)
 					velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
 
 //				// Extra for testing mixed bc convergence. For Andra, case its possible to feed neumann
@@ -1105,7 +1105,7 @@ namespace vt_darcy
 	  DarcyVTProblem<dim>::back_solve(std::vector<std::vector<double>> H, std::vector<double> beta, std::vector<double> &y, unsigned int k_iteration){
       	 int k = k_iteration;
       	 assert(y.size()==k_iteration+1);
-      	 for(int i=0; i<k_iteration;i++)
+      	 for(unsigned int i=0; i<k_iteration;i++)
       		 y[i]=0;
       	for( int i =k-1; i>=0;i-- ){
       		y[i]= beta[i]/H[i][i];
@@ -1157,7 +1157,7 @@ namespace vt_darcy
           ConstraintMatrix  constraints;
           constraints.clear();
           constraints.close();
-          int temp_array_size = maxiter/4;
+          unsigned int temp_array_size = maxiter/4;
           //GMRES structures and parameters
           std::vector<double>	sn(temp_array_size);
           std::vector<double>	cs(temp_array_size);
@@ -1191,9 +1191,7 @@ namespace vt_darcy
 
           }
 
-
-
-          double l0 = 0.0;
+	  
           // GMRES with rhs being 0 and initial guess lambda = 0
           for (unsigned side = 0; side < n_faces_per_cell; ++side)
 
@@ -1481,7 +1479,7 @@ namespace vt_darcy
               //maxing interface_data_receive and send zero so it can be used is solving for Ap(or A*Q([k_counter]).
               for (unsigned int side = 0; side < n_faces_per_cell; ++side)
                 {
-            	  for(int i=0; i<interface_data_send[side].size(); i++){
+            	  for(unsigned int i=0; i<interface_data_send[side].size(); i++){
             		  interface_data_receive[side][i]=0;
             		  interface_data_send[side][i]=0;
             	  }
@@ -2034,7 +2032,7 @@ namespace vt_darcy
 
 
         std::vector<std::vector<unsigned int>> reps_local(reps_st.size()), reps_st_local(reps_st.size()); //local copy of mesh partition information.
-        for(int i=0; i<reps_st_local.size(); i++)
+        for(unsigned int i=0; i<reps_st_local.size(); i++)
         {
         	reps_local[i].resize(2);
         	reps_st_local[i].resize(3);

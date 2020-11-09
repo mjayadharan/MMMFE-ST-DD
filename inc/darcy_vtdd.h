@@ -34,17 +34,17 @@ namespace vt_darcy
                      const double c = 1.0, const double a = 1.0)
               :
               time(0.0),
-              time_step(dt),
-			  final_time(f_time),
-              num_time_steps(nt),
-              c_0(c),
-              alpha(a)
-      {}
+	      time_step(dt),
+	      final_time(f_time),
+	      num_time_steps(nt),
+	      c_0(c),
+	      alpha(a)
+	{}
 
       mutable double time;
       double time_step;
-      unsigned int num_time_steps;
       const double final_time;
+      unsigned int num_time_steps;
       const double c_0;
       const double alpha;
     };
@@ -153,42 +153,39 @@ namespace vt_darcy
         void final_solution_transfer (BlockVector<double> &solution_st,
                						  BlockVector<double> &solution_subdom, unsigned int &time_level, double scale_factor);
 
+    
+        // Number of subdomains in the computational domain
+        std::vector<unsigned int> n_domains;
+
+        // Physical parameters
+        BiotParameters prm;
+        BiotErrors err;
+
         //Boundary condition vector: D means Dirichlet bc, N means Neumann bc starting from left, bottom, right, top respectively.
         std::vector<char> bc_condition_vect;  //= {D, D, D, N} = {left, bottom, right} has Dirichlet boundayr condition and
 											//bottom has neumann bc( essential)
         std::vector<double> bc_const_functs; //vector containing v.n for Neumann boundary condition,
         									//in case its a constant fuction(this is assumed by default).
+        //manufactured_sol
+        const bool is_manufact_solution;
+        //flag to check whether the computer solution needs plotting at each time step.
+        const bool need_each_time_step_plot;
+
         std::vector<int> dir_bc_ids, nm_bc_ids;
-
-        unsigned int       gmres_iteration;
-        // Number of subdomains in the computational domain
-
-
-
-        // Physical parameters
-         BiotParameters prm;
-        BiotErrors err;
-
-        double grid_diameter;
-
-        // Number of subdomains in the computational domain
-        std::vector<unsigned int> n_domains;
 
         // FE degree and DD parameters
         const unsigned int degree;
         const unsigned int mortar_degree;
         const unsigned int mortar_flag;
+
+        unsigned int gmres_iteration;
+        double grid_diameter;
         unsigned int cg_iteration;
         unsigned int max_cg_iteration;
         double tolerance;
         unsigned int qdegree;
         unsigned int refinement_index;
         unsigned int total_refinements;
-
-        //manufactured_sol
-        const bool is_manufact_solution;
-        //flag to check whether the computer solution needs plotting at each time step.
-        const bool need_each_time_step_plot;
 
 
         // Neighbors and interface information

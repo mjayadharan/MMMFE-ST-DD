@@ -30,7 +30,7 @@ template<typename T>
 void parameter_pull_in (double &c_0, double &alpha, int &space_degree, int &mortar_degree, int &num_refinement,
         			double &final_time, double &tolerence, int &max_iteration, bool &need_each_time_step_plot,
 					std::vector<char> &bc_con, std::vector<double> &nm_bc_con_funcs, bool &is_manufact_solution,
-					std::vector<std::vector<int>> &mesh_m3d, int n_processes, std::string file_name="parameter.txt")
+					std::vector<std::vector<int>> &mesh_m3d, unsigned int n_processes, std::string file_name="parameter.txt")
 {
 	std::string dummy_string; //for getting rid of extra strings in the parameter file
 	std::ifstream parameter_file (file_name);
