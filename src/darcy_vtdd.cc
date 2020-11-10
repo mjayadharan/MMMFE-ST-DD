@@ -1127,8 +1127,6 @@ namespace vt_darcy
 
           const unsigned int this_mpi =
             Utilities::MPI::this_mpi_process(mpi_communicator);
-          const unsigned int n_processes =
-            Utilities::MPI::n_mpi_processes(mpi_communicator);
           const unsigned int n_faces_per_cell = GeometryInfo<dim>::faces_per_cell;
 
           std::vector<std::vector<double>> interface_data_receive(n_faces_per_cell);
@@ -1879,7 +1877,7 @@ namespace vt_darcy
 						  {
 							std::vector<std::string> filenames;
 							for (unsigned int i=0;
-								 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+							         i < n_processes;
 								 ++i)
 							  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
 

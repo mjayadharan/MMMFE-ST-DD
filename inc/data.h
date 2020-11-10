@@ -47,9 +47,6 @@ namespace vt_darcy
       {
         values[p].clear ();
 
-        const double x = points[p][0];
-        const double y = points[p][1];
-
         switch (dim)
         {
           case 2:
@@ -196,9 +193,6 @@ namespace vt_darcy
         if (dim == 3)
         z = p[2];
 
-        Vector<double> vec(2);
-        const double lambda = vec[0];
-        const double mu = vec[1];
         double t = FunctionTime<double>::get_time();
 
         int total_dim = dim*dim + dim + static_cast<int>(0.5*dim*(dim-1));
