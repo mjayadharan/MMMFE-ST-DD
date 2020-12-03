@@ -890,7 +890,7 @@ namespace vt_darcy
 					solution =solution_bar;
 					if (is_manufact_solution)
 						compute_errors(refinement_index, time_level);
-					output_results(refinement_index,total_refinements);
+					output_results(refinement_index,total_refinements, time_level+1); // +1 because it's the end of the time step
 				}
 				old_solution = solution_bar;
 				system_rhs_bar=0;
@@ -930,7 +930,7 @@ namespace vt_darcy
 
 				if (is_manufact_solution)
 					compute_errors(refinement_index, time_level);
-				output_results(refinement_index,total_refinements);
+				output_results(refinement_index,total_refinements, time_level+1); // +1 because it's the end of the time step
 				old_solution_for_jump = solution;
 
 				break; //break for case 2
@@ -1818,7 +1818,7 @@ namespace vt_darcy
 
     // MixedBiotProblemDD::output_results
     template <int dim>
-    void DarcyVTProblem<dim>::output_results (const unsigned int cycle, const unsigned int refine)
+    void DarcyVTProblem<dim>::output_results (const unsigned int cycle, const unsigned int refine, const unsigned int time_level)
 	{
 //	        TimerOutput::Scope t(computing_timer, "Output results");
 	        unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
@@ -1868,9 +1868,7 @@ namespace vt_darcy
 
 				  data_out.build_patches ();
 
-
-				  int tmp = prm.time/prm.time_step;
-				  std::ofstream output ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
+				  std::ofstream output ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(time_level)+".vtu");
 				  data_out.write_vtu (output);
 				  //following lines create a file which paraview can use to link the subdomain results
 						if (this_mpi == 0)
@@ -1879,9 +1877,9 @@ namespace vt_darcy
 							for (unsigned int i=0;
 							         i < n_processes;
 								 ++i)
-							  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+							  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(time_level)+".vtu");
 
-							std::ofstream master_output (("time-step-plots/solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
+							std::ofstream master_output (("time-step-plots/solution_d" + Utilities::to_string(dim) + "-" + std::to_string(time_level) +
 														  ".pvtu").c_str());
 							data_out.write_pvtu_record (master_output, filenames);
 						  }
@@ -2161,7 +2159,8 @@ namespace vt_darcy
                                     initialc_solution);
 
               solution = initialc_solution;
-              output_results(refinement_index,refine);
+              unsigned int time_level = 0;
+              output_results(refinement_index,refine, time_level);
             }
 
             pcout << "Assembling system..." << "\n";

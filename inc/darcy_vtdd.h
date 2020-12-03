@@ -126,7 +126,7 @@ namespace vt_darcy
         double compute_interface_error_l2();
         double compute_jump_error(); //return L2 error of jump of pressure across time levels.
         void compute_errors(const unsigned int refinement_index, unsigned int time_level);
-        void output_results(const unsigned int cycle, const unsigned int refine);
+        void output_results(const unsigned int cycle, const unsigned int refine, const unsigned int time_level);
 
         void set_current_errors_to_zero();
         void reset_mortars();
