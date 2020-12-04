@@ -77,8 +77,9 @@ namespace vt_darcy
             degree (degree),
             mortar_degree(mortar_degree),
             mortar_flag (mortar_flag),
+	    gmres_iteration(0),
+	    grid_diameter(0),
             cg_iteration(0),
-			gmres_iteration(0),
             max_cg_iteration(0),
             qdegree(11),
 //            fe (FE_BDM<dim>(degree), 1,
@@ -100,8 +101,7 @@ namespace vt_darcy
             computing_timer (mpi_communicator,
                              pcout,
                              TimerOutput::summary,
-                             TimerOutput::wall_times),
-			grid_diameter(0)
+                             TimerOutput::wall_times)
     {}
 
 
@@ -192,7 +192,7 @@ namespace vt_darcy
         	if (!is_manufact_solution)
 //        	if (true)
         	{
-				for (int i=0; i<bc_condition_vect.size(); ++i){
+				for (unsigned int i=0; i<bc_condition_vect.size(); ++i){
 					if (bc_condition_vect[i] == 'D')
 							dir_bc_ids.push_back(100+i+1); // Dirichlet bc: left: 101, bottom: 102, right: 103, top:104
 					else if (bc_condition_vect[i] == 'N')
@@ -222,7 +222,7 @@ namespace vt_darcy
 
 				//Feeding the neumann boundary values into the constraint matrix
 				ZeroFunction<dim> velocity_bc_func(dim+1);
-				for (int i=0; i<nm_bc_ids.size(); ++i)
+				for (unsigned int i=0; i<nm_bc_ids.size(); ++i)
 					velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
 
 //				// Extra for testing mixed bc convergence. For Andra, case its possible to feed neumann
@@ -885,7 +885,8 @@ namespace vt_darcy
 			  prm.time=0.0;
 
 			  pcout << "\nStarting GMRES iterations.........\n";
-			  local_gmres(maxiter);
+			  if (Utilities::MPI::n_mpi_processes(mpi_communicator) != 1)
+				  local_gmres(maxiter);
     }
 
     template<int dim>
@@ -901,7 +902,7 @@ namespace vt_darcy
 					solution =solution_bar;
 					if (is_manufact_solution)
 						compute_errors(refinement_index, time_level);
-					output_results(refinement_index,total_refinements);
+					output_results(refinement_index,total_refinements, time_level+1); // +1 because it's the end of the time step
 				}
 				old_solution = solution_bar;
 				system_rhs_bar=0;
@@ -941,7 +942,7 @@ namespace vt_darcy
 
 				if (is_manufact_solution)
 					compute_errors(refinement_index, time_level);
-				output_results(refinement_index,total_refinements);
+				output_results(refinement_index,total_refinements, time_level+1); // +1 because it's the end of the time step
 				old_solution_for_jump = solution;
 
 				break; //break for case 2
@@ -1033,7 +1034,8 @@ namespace vt_darcy
 													   unsigned int &time_level, double scale_factor)
     {
     	//transferring pressure solution.
-    	assert(n_pressure_st== prm.num_time_steps*n_pressure);
+       Assert(n_pressure_st == prm.num_time_steps*n_pressure,
+	       ExcDimensionMismatch(n_pressure_st, prm.num_time_steps*n_pressure ));
     	for(unsigned int i=0; i<n_pressure; i++)
     	{
     		solution_st.block(1)[(time_level*n_pressure) + i]= solution_subdom.block(1)[i];
@@ -1086,17 +1088,17 @@ namespace vt_darcy
       void
 	  DarcyVTProblem<dim>::apply_givens_rotation(std::vector<double> &h, std::vector<double> &cs, std::vector<double> &sn,
       							unsigned int k_iteration){
-    	  int k=k_iteration;
-      	assert(h.size()>k+1); //size should be k+2
+       unsigned int k=k_iteration;
+       AssertThrow(h.size()>k+1, ExcDimensionMismatch(h.size(), k+2)); //size should be k+2
       	double temp;
-      	for( int i=0; i<=k-1; ++i){
+       for( unsigned int i=0; i < k; ++i){
 
       		temp= cs[i]* h[i]+ sn[i]*h[i+1];
     //  		pcout<<"\n temp value is: "<<temp<<"\n";
       		h[i+1] = -sn[i]*h[i] + cs[i]*h[i+1];
       		h[i] = temp;
       	}
-      	assert(h.size()==k+2);
+       AssertThrow(h.size()==k+2, ExcDimensionMismatch(h.size(), k+2));
       	//update the next sin cos values for rotation
       	double cs_k=0, sn_k=0;
       	 givens_rotation(h[k],h[k+1],cs_k,sn_k);
@@ -1114,9 +1116,9 @@ namespace vt_darcy
       template <int dim>
       void
 	  DarcyVTProblem<dim>::back_solve(std::vector<std::vector<double>> H, std::vector<double> beta, std::vector<double> &y, unsigned int k_iteration){
-      	 int k = k_iteration;
-      	 assert(y.size()==k_iteration+1);
-      	 for(int i=0; i<k_iteration;i++)
+        int k = k_iteration;
+        AssertThrow(y.size()==k_iteration+1, ExcDimensionMismatch(y.size(), k_iteration+1));
+      	 for(unsigned int i=0; i<k_iteration;i++)
       		 y[i]=0;
       	for( int i =k-1; i>=0;i-- ){
       		y[i]= beta[i]/H[i][i];
@@ -1137,8 +1139,6 @@ namespace vt_darcy
 
           const unsigned int this_mpi =
             Utilities::MPI::this_mpi_process(mpi_communicator);
-          const unsigned int n_processes =
-            Utilities::MPI::n_mpi_processes(mpi_communicator);
           const unsigned int n_faces_per_cell = GeometryInfo<dim>::faces_per_cell;
 
           std::vector<std::vector<double>> interface_data_receive(n_faces_per_cell);
@@ -1168,7 +1168,7 @@ namespace vt_darcy
           ConstraintMatrix  constraints;
           constraints.clear();
           constraints.close();
-          int temp_array_size = maxiter/4;
+          unsigned int temp_array_size = maxiter/4;
           //GMRES structures and parameters
           std::vector<double>	sn(temp_array_size);
           std::vector<double>	cs(temp_array_size);
@@ -1202,9 +1202,7 @@ namespace vt_darcy
 
           }
 
-
-
-          double l0 = 0.0;
+	  
           // GMRES with rhs being 0 and initial guess lambda = 0
           for (unsigned side = 0; side < n_faces_per_cell; ++side)
 
@@ -1406,7 +1404,8 @@ namespace vt_darcy
                       }
 
                     q[side].resize(Ap[side].size(),0);
-                    assert(Ap[side].size()==Q_side[side][k_counter].size());
+                    AssertThrow(Ap[side].size()==Q_side[side][k_counter].size(),
+				ExcDimensionMismatch(Ap[side].size(), Q_side[side][k_counter].size()));
                     q[side] = Ap[side];
                     for(unsigned int i=0; i<=k_counter; ++i){
                              	for(unsigned int j=0; j<q[side].size();++j){
@@ -1490,7 +1489,7 @@ namespace vt_darcy
               //maxing interface_data_receive and send zero so it can be used is solving for Ap(or A*Q([k_counter]).
               for (unsigned int side = 0; side < n_faces_per_cell; ++side)
                 {
-            	  for(int i=0; i<interface_data_send[side].size(); i++){
+            	  for(unsigned int i=0; i<interface_data_send[side].size(); i++){
             		  interface_data_receive[side][i]=0;
             		  interface_data_send[side][i]=0;
             	  }
@@ -1829,7 +1828,7 @@ namespace vt_darcy
 
     // MixedBiotProblemDD::output_results
     template <int dim>
-    void DarcyVTProblem<dim>::output_results (const unsigned int cycle, const unsigned int refine)
+    void DarcyVTProblem<dim>::output_results (const unsigned int cycle, const unsigned int refine, const unsigned int time_level)
 	{
 //	        TimerOutput::Scope t(computing_timer, "Output results");
 	        unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
@@ -1858,7 +1857,7 @@ namespace vt_darcy
 				  break;
 
 				default:
-				Assert(false, ExcNotImplemented());
+				AssertThrow(false, ExcNotImplemented());
 			  }
 
 
@@ -1879,20 +1878,18 @@ namespace vt_darcy
 
 				  data_out.build_patches ();
 
-
-				  int tmp = prm.time/prm.time_step;
-				  std::ofstream output ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(tmp)+".vtu");
+				  std::ofstream output ("time-step-plots/solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(this_mpi,4)+"-" + std::to_string(time_level)+".vtu");
 				  data_out.write_vtu (output);
 				  //following lines create a file which paraview can use to link the subdomain results
 						if (this_mpi == 0)
 						  {
 							std::vector<std::string> filenames;
 							for (unsigned int i=0;
-								 i<Utilities::MPI::n_mpi_processes(mpi_communicator);
+							         i < n_processes;
 								 ++i)
-							  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(tmp)+".vtu");
+							  filenames.push_back ("solution_d" + Utilities::to_string(dim) + "_p"+Utilities::to_string(i,4)+"-" + std::to_string(time_level)+".vtu");
 
-							std::ofstream master_output (("time-step-plots/solution_d" + Utilities::to_string(dim) + "-" + std::to_string(tmp) +
+							std::ofstream master_output (("time-step-plots/solution_d" + Utilities::to_string(dim) + "-" + std::to_string(time_level) +
 														  ".pvtu").c_str());
 							data_out.write_pvtu_record (master_output, filenames);
 						  }
@@ -1911,7 +1908,7 @@ namespace vt_darcy
 					  break;
 
 					default:
-					Assert(false, ExcNotImplemented());
+					AssertThrow(false, ExcNotImplemented());
 				  }
 
 
@@ -2038,12 +2035,12 @@ namespace vt_darcy
         const unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
         pcout<<"\n\n Total number of processes is "<<n_processes<<"\n\n";
 
-        Assert(reps_st[0].size() == dim+1, ExcDimensionMismatch(reps_st[0].size(), dim));
+        AssertThrow(reps_st[0].size() == dim+1, ExcDimensionMismatch(reps_st[0].size(), dim));
 
 
 
         std::vector<std::vector<unsigned int>> reps_local(reps_st.size()), reps_st_local(reps_st.size()); //local copy of mesh partition information.
-        for(int i=0; i<reps_st_local.size(); i++)
+        for(unsigned int i=0; i<reps_st_local.size(); i++)
         {
         	reps_local[i].resize(2);
         	reps_st_local[i].resize(3);
@@ -2059,8 +2056,8 @@ namespace vt_darcy
         if (mortar_flag)
         {
         	pcout<<"number of processors is "<<n_processes<<std::endl;
-            Assert(n_processes > 1, ExcMessage("Mortar MFEM is impossible with 1 subdomain"));
-            Assert(reps_st.size() >= n_processes + 1, ExcMessage("Some of the mesh parameters were not provided"));
+            AssertThrow(n_processes > 1, ExcMessage("Mortar MFEM is impossible with 1 subdomain"));
+            AssertThrow(reps_st.size() >= n_processes + 1, ExcMessage("Some of the mesh parameters were not provided"));
         }
 
         for (refinement_index=0; refinement_index<total_refinements; ++refinement_index)
@@ -2179,7 +2176,8 @@ namespace vt_darcy
                                     initialc_solution);
 
               solution = initialc_solution;
-              output_results(refinement_index,refine);
+              unsigned int time_level = 0;
+              output_results(refinement_index,refine, time_level);
             }
 
             pcout << "Assembling system..." << "\n";
