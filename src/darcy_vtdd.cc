@@ -172,14 +172,12 @@ namespace vt_darcy
 
         }
 
-        std::vector<types::global_dof_index> dofs_per_component ( dim + 1);
-        DoFTools::count_dofs_per_component (dof_handler, dofs_per_component);
+        std::vector<types::global_dof_index> dofs_per_component = 
+	    DoFTools::count_dofs_per_fe_component (dof_handler);
 //        unsigned int n_s=0, n_u=0, n_g=0;
-        unsigned int n_z = 0, n_p = 0;
 
-
-        n_z = dofs_per_component[0];
-        n_p = dofs_per_component[dim];
+        unsigned int n_z = dofs_per_component[0];
+        unsigned int n_p = dofs_per_component[dim];
 
         n_flux = n_z;
         n_pressure = n_p;
@@ -200,7 +198,7 @@ namespace vt_darcy
 				} //end of updating bc_ids
 
 				//adding normal flux(velocity.n as an essential bc)
-				typename FunctionMap<dim>::type velocity_bc;
+				std::map<types::boundary_id, const Function<dim> *> velocity_bc;
 				std::map<types::global_dof_index,double> boundary_values_velocity;
 
 				//vector of Vectors to determine (velocity,pressure) corresponding to given velocity.n on the four each face.
@@ -212,16 +210,16 @@ namespace vt_darcy
 				const_funct_base[2][0] = 1.0*bc_const_functs[2];
 				const_funct_base[3][1] = 1.0*bc_const_functs[3];
 
-				ConstantFunction<dim> const_fun_left(const_funct_base[0]), const_fun_bottom(const_funct_base[1]);
-				ConstantFunction<dim> const_fun_right(const_funct_base[2]), const_fun_top(const_funct_base[3]);
-				std::vector<ConstantFunction<dim>> velocity_const_funcs(4, const_fun_left);
+				Functions::ConstantFunction<dim> const_fun_left(const_funct_base[0]), const_fun_bottom(const_funct_base[1]);
+				Functions::ConstantFunction<dim> const_fun_right(const_funct_base[2]), const_fun_top(const_funct_base[3]);
+				std::vector<Functions::ConstantFunction<dim>> velocity_const_funcs(4, const_fun_left);
 				velocity_const_funcs[0] = const_fun_left;
 				velocity_const_funcs[1] = const_fun_bottom;
 				velocity_const_funcs[2] = const_fun_right;
 				velocity_const_funcs[3] = const_fun_top;
 
 				//Feeding the neumann boundary values into the constraint matrix
-				ZeroFunction<dim> velocity_bc_func(dim+1);
+				Functions::ZeroFunction<dim> velocity_bc_func(dim+1);
 				for (unsigned int i=0; i<nm_bc_ids.size(); ++i)
 					velocity_bc[nm_bc_ids[i]] = &velocity_const_funcs[nm_bc_ids[i]-101];
 
@@ -307,12 +305,11 @@ namespace vt_darcy
 			if (mortar_flag)
 			        {
 				//Mortar part.
-			            std::vector<types::global_dof_index> dofs_per_component_mortar (dim+1 + 1);
-			            DoFTools::count_dofs_per_component (dof_handler_mortar, dofs_per_component_mortar);
-			            unsigned int  n_z_mortar=0, n_p_mortar=0;
+			            std::vector<types::global_dof_index> dofs_per_component_mortar = 
+					DoFTools::count_dofs_per_fe_component (dof_handler_mortar);
 
-			            n_z_mortar = dofs_per_component_mortar[0]; //For RT mortar space
-			            n_p_mortar = dofs_per_component_mortar[dim+1];
+			            unsigned int n_z_mortar = dofs_per_component_mortar[0]; //For RT mortar space
+			            unsigned int n_p_mortar = dofs_per_component_mortar[dim+1];
 
 
 			            solution_bar_mortar.reinit(2);
@@ -328,8 +325,8 @@ namespace vt_darcy
 			            solution_star_mortar=0;
 
 						//Space-time part.
-			            std::vector<types::global_dof_index> dofs_per_component_st (dim+1 + 1);
-			            DoFTools::count_dofs_per_component (dof_handler_st, dofs_per_component_st);
+			            std::vector<types::global_dof_index> dofs_per_component_st = 
+					DoFTools::count_dofs_per_fe_component (dof_handler_st);
 
 			            n_flux_st = dofs_per_component_st[0]; //For RT mortar space
 			            n_pressure_st= dofs_per_component_st[dim+1];
@@ -641,19 +638,19 @@ namespace vt_darcy
       pressure_boundary_values.set_time(prm.time);
 
       //Dirichlet bc picked up from parameter files. For real applicatins.
-      std::vector<ConstantFunction<dim>> dirichlet_boundary_values_vect;
+      std::vector<Functions::ConstantFunction<dim>> dirichlet_boundary_values_vect;
       //adding dirichlet bc corresponding to each side
       //left boundary
-      ConstantFunction<dim> dirichlet_boundary_values_left(bc_const_functs[0]);
+      Functions::ConstantFunction<dim> dirichlet_boundary_values_left(bc_const_functs[0]);
       dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_left);
       //bottom boundary
-      ConstantFunction<dim> dirichlet_boundary_values_bottom(bc_const_functs[1]);
+      Functions::ConstantFunction<dim> dirichlet_boundary_values_bottom(bc_const_functs[1]);
       dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_bottom);
       //right boundary
-      ConstantFunction<dim> dirichlet_boundary_values_right(bc_const_functs[2]);
+      Functions::ConstantFunction<dim> dirichlet_boundary_values_right(bc_const_functs[2]);
       dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_right);
       //top boundary
-      ConstantFunction<dim> dirichlet_boundary_values_top(bc_const_functs[1]);
+      Functions::ConstantFunction<dim> dirichlet_boundary_values_top(bc_const_functs[1]);
       dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_top);
       std::vector<double>         boundary_values_flow (n_face_q_points);
 
@@ -1153,7 +1150,7 @@ namespace vt_darcy
           Quadrature<dim > quad_project;
           quad_project = QGauss<dim >(qdegree);
 
-          ConstraintMatrix  constraints;
+          AffineConstraints<double>  constraints;
           constraints.clear();
           constraints.close();
           unsigned int temp_array_size = maxiter/4;
@@ -1673,7 +1670,7 @@ namespace vt_darcy
       // Since we want to compute the relative norm
       BlockVector<double> zerozeros(1, solution.size());
       zerozeros=0;
-      ZeroFunction<dim> zero_function(dim+1);
+      Functions::ZeroFunction<dim> zero_function(dim+1);
 
       // Computing pressure error and norm.
       VectorTools::integrate_difference (dof_handler, solution, exact_solution,
@@ -2149,7 +2146,7 @@ namespace vt_darcy
             {
               InitialCondition<dim> ic;
 
-              ConstraintMatrix constraints;
+              AffineConstraints<double> constraints;
               constraints.clear();
               constraints.close();
               VectorTools::project (dof_handler,
