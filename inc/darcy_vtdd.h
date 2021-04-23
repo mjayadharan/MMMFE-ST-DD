@@ -255,7 +255,7 @@ namespace vt_darcy
         BlockVector<double> interface_fe_function_subdom;
 
         //Constrain matrix for essential (Neumann) bc
-        ConstraintMatrix constraint_bc;
+        AffineConstraints<double> constraint_bc;
 
         // Mortar data structures
         BlockVector<double> interface_fe_function_mortar;
