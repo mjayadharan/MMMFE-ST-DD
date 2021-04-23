@@ -54,6 +54,27 @@ namespace vt_darcy
 {
     using namespace dealii;
 
+/*
+// This doesn't work with 9.1, count_dofs_per_component needs to know the size
+// of the return arg ??
+
+    // small helper function to work with change in API between 9.1 and 9.2
+    template<int dim>
+    std::vector<types::global_dof_index>
+    count_dofs(DoFHandler <dim> & dof_handler)
+    {
+
+	std::vector<types::global_dof_index> dofs_per_component;
+#if DEAL_II_VERSION_GTE(9,2,0)
+	dofs_per_component = DoFTools::count_dofs_per_fe_component (dof_handler);
+#else
+	DoFTools::count_dofs_per_component (dof_handler, dofs_per_component);
+#endif
+
+	return dofs_per_component;
+    }
+*/
+
     // DarcyVT class constructor
     template <int dim>
     DarcyVTProblem<dim>::DarcyVTProblem (const unsigned int degree,
@@ -172,8 +193,8 @@ namespace vt_darcy
 
         }
 
-        std::vector<types::global_dof_index> dofs_per_component = 
-	    DoFTools::count_dofs_per_fe_component (dof_handler);
+	std::vector<types::global_dof_index> dofs_per_component ( dim + 1);
+        DoFTools::count_dofs_per_component (dof_handler, dofs_per_component);
 //        unsigned int n_s=0, n_u=0, n_g=0;
 
         unsigned int n_z = dofs_per_component[0];
@@ -305,8 +326,8 @@ namespace vt_darcy
 			if (mortar_flag)
 			        {
 				//Mortar part.
-			            std::vector<types::global_dof_index> dofs_per_component_mortar = 
-					DoFTools::count_dofs_per_fe_component (dof_handler_mortar);
+			            std::vector<types::global_dof_index> dofs_per_component_mortar (dim+1 + 1);
+			            DoFTools::count_dofs_per_component (dof_handler_mortar, dofs_per_component_mortar);
 
 			            unsigned int n_z_mortar = dofs_per_component_mortar[0]; //For RT mortar space
 			            unsigned int n_p_mortar = dofs_per_component_mortar[dim+1];
@@ -325,8 +346,8 @@ namespace vt_darcy
 			            solution_star_mortar=0;
 
 						//Space-time part.
-			            std::vector<types::global_dof_index> dofs_per_component_st = 
-					DoFTools::count_dofs_per_fe_component (dof_handler_st);
+			            std::vector<types::global_dof_index> dofs_per_component_st (dim+1 + 1);
+			            DoFTools::count_dofs_per_component (dof_handler_st, dofs_per_component_st);
 
 			            n_flux_st = dofs_per_component_st[0]; //For RT mortar space
 			            n_pressure_st= dofs_per_component_st[dim+1];
