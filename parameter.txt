@@ -4,15 +4,17 @@ Please keep the white space as it is.
 -------------------------------------
 c0: 1.0
 
-alpha: 1.0
+alpha: 2.0
+
+coe_a: 0.5
 
 space_degree: 0
 
 mortar_degree: 1
 
-num_refinement: 2
+num_refinement: 1
 
-final_time: 0.5
+final_time: 1.0
 
 tolerence: 1.e-6
 
@@ -27,8 +29,14 @@ top_bc: N 1.0
 
 is_manufact_soln(bool): 1
 
-mesh_pattern_sub_d0: 3 3 3
-mesh_pattern_sub_d1: 2 2 2
-mesh_pattern_sub_d2: 4 4 4
-mesh_pattern_sub_d3: 3 3 3
-mesh_pattern_mortar: 1 1 1
+mesh_pattern_sub_d0: 8 8 16
+mesh_pattern_sub_d1: 12 12 24
+mesh_pattern_sub_d2: 12 12 24
+mesh_pattern_sub_d3: 8 8 16
+mesh_pattern_mortar: 2 2 2
+
+mesh_pattern_sub_d0: 8 8 16
+mesh_pattern_sub_d1: 8 8 16
+mesh_pattern_sub_d2: 8 8 16
+mesh_pattern_sub_d3: 8 8 16
+mesh_pattern_mortar: 8 8 16

@@ -31,10 +31,11 @@ template<typename T>
 		return int_el_found;
 }
 
-void parameter_pull_in (double &c_0, double &alpha, int &space_degree, int &mortar_degree, int &num_refinement,
+void parameter_pull_in (double &c_0, double &alpha, double &coe_a, int &space_degree, int &mortar_degree, int &num_refinement,
         			double &final_time, double &tolerence, int &max_iteration, bool &need_each_time_step_plot,
 					std::vector<char> &bc_con, std::vector<double> &nm_bc_con_funcs, bool &is_manufact_solution,
-					std::vector<std::vector<int>> &mesh_m3d, unsigned int n_processes, std::string file_name="parameter.txt")
+					std::vector<std::vector<int>> &mesh_m3d, std::vector<std::vector<int>> &mesh_m3d_mortar,
+					unsigned int n_processes, std::string file_name="parameter.txt")
 {
 	std::string dummy_string; //for getting rid of extra strings in the parameter file
 	std::ifstream parameter_file (file_name);
@@ -48,6 +49,9 @@ void parameter_pull_in (double &c_0, double &alpha, int &space_degree, int &mort
 	std::getline(parameter_file, dummy_string);
 
 	parameter_file>>dummy_string>>alpha;
+	std::getline(parameter_file, dummy_string);
+
+	parameter_file>>dummy_string>>coe_a;
 	std::getline(parameter_file, dummy_string);
 
 	parameter_file>>dummy_string>>space_degree;
@@ -82,6 +86,10 @@ void parameter_pull_in (double &c_0, double &alpha, int &space_degree, int &mort
 
 	for(unsigned int sub_id=0; sub_id<n_processes+1; sub_id++)
 		parameter_file>>dummy_string>>mesh_m3d[sub_id][0]>>mesh_m3d[sub_id][1]>>mesh_m3d[sub_id][2];
+	std::getline(parameter_file, dummy_string);
+
+	for(unsigned int sub_id=0; sub_id<n_processes+1; sub_id++)
+		parameter_file>>dummy_string>>mesh_m3d_mortar[sub_id][0]>>mesh_m3d_mortar[sub_id][1]>>mesh_m3d_mortar[sub_id][2];
 
 	parameter_file.close();
 

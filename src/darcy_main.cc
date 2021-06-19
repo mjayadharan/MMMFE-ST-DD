@@ -30,12 +30,12 @@ int main (int argc, char *argv[])
         MultithreadInfo::set_thread_limit(4);
         Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
         //declaring parameter variables .
-        double c_0, alpha, final_time, tolerence;
+        double c_0, alpha, coe_a, final_time, tolerence;
         int space_degree, mortar_degree, num_refinement, max_iteration;
 
         //declaring mesh refinement structure for space-time mortar
         std::vector<int> zeros_vector(3,0);
-        std::vector<std::vector<int>> mesh_m3d;
+        std::vector<std::vector<int>> mesh_m3d, mesh_m3d_mortar;
 
         //boundary condition vector. 'D':Dirichlet, 'N': Neumann
         std::vector<char> bc_con(4,'D');
@@ -55,6 +55,7 @@ int main (int argc, char *argv[])
         	const unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator_1);
 
         	mesh_m3d.resize(n_processes+1, zeros_vector);
+        	mesh_m3d_mortar.resize(n_processes+1, zeros_vector);
 
 
         	if(this_mpi!=0)
@@ -63,9 +64,9 @@ int main (int argc, char *argv[])
 
         	}
         	// Pulling in the parameter and other requirements from input("parameter.txt") file
-        	parameter_pull_in (c_0, alpha, space_degree, mortar_degree, num_refinement,
+        	parameter_pull_in (c_0, alpha, coe_a, space_degree, mortar_degree, num_refinement,
         			final_time, tolerence, max_iteration, need_each_time_step_plot,
-					bc_con, nm_bc_con_funcs, is_manufact_solution, mesh_m3d, n_processes, "parameter.txt");
+					bc_con, nm_bc_con_funcs, is_manufact_solution, mesh_m3d, mesh_m3d_mortar, n_processes, "parameter.txt");
 
         	if(this_mpi!=n_processes-1)
         	        	{
@@ -78,13 +79,13 @@ int main (int argc, char *argv[])
 
 
 
-        BiotParameters bparam (1.0,1,final_time,c_0,alpha);
+        BiotParameters bparam (1.0, 1, final_time, c_0, alpha, coe_a);
         //Instantiating the class
         DarcyVTProblem<2> problem_2d(space_degree, bparam, 1, mortar_degree, bc_con,
         		nm_bc_con_funcs, is_manufact_solution, need_each_time_step_plot);
 
         //Solving the problem
-        problem_2d.run(num_refinement, mesh_m3d,
+        problem_2d.run(num_refinement, mesh_m3d, mesh_m3d_mortar,
         		tolerence, max_iteration, mortar_degree+1);
 
 

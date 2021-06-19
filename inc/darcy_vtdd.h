@@ -31,14 +31,15 @@ namespace vt_darcy
     struct BiotParameters
     {
       BiotParameters(const double dt, const unsigned int nt, const double f_time,
-                     const double c = 1.0, const double a = 1.0)
+                     const double c = 1.0, const double a = 1.0, const double coe_a_in=1.0)
               :
               time(0.0),
 	      time_step(dt),
 	      final_time(f_time),
 	      num_time_steps(nt),
 	      c_0(c),
-	      alpha(a)
+	      alpha(a),
+		  coe_a(coe_a_in)
 	{}
 
       mutable double time;
@@ -47,6 +48,7 @@ namespace vt_darcy
       unsigned int num_time_steps;
       const double c_0;
       const double alpha;
+      const double coe_a; //coefficient for controlling variation in time
     };
 
     struct BiotErrors
@@ -97,7 +99,8 @@ namespace vt_darcy
 						   const bool need_each_time_step_plot=false);
 
         void run(const unsigned int refine,
-        		 const std::vector <std::vector<int>> &reps_st, double tol,
+        		 const std::vector <std::vector<int>> &reps_st,
+				 const std::vector <std::vector<int>> &reps_st_mortar, double tol,
                  unsigned int maxiter, unsigned int quad_degree=3);
 
     private:
@@ -256,6 +259,7 @@ namespace vt_darcy
 
         //Constrain matrix for essential (Neumann) bc
         AffineConstraints<double> constraint_bc;
+//        ConstraintMatrix constraint_bc;
 
         // Mortar data structures
         BlockVector<double> interface_fe_function_mortar;

@@ -655,7 +655,7 @@ namespace vt_darcy
       std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
 
       //Pressure value for Dirichlet(natural) bc in case of manufactured solution
-      PressureBoundaryValues<dim>     pressure_boundary_values;
+      PressureBoundaryValues<dim>     pressure_boundary_values(prm.coe_a);
       pressure_boundary_values.set_time(prm.time);
 
       //Dirichlet bc picked up from parameter files. For real applicatins.
@@ -675,7 +675,7 @@ namespace vt_darcy
       dirichlet_boundary_values_vect.push_back(dirichlet_boundary_values_top);
       std::vector<double>         boundary_values_flow (n_face_q_points);
 
-      RightHandSidePressure<dim>      right_hand_side_pressure(prm.c_0,prm.alpha);
+      RightHandSidePressure<dim>      right_hand_side_pressure(prm.c_0, prm.alpha, prm.coe_a);
       right_hand_side_pressure.set_time(prm.time);
       std::vector<double>         rhs_values_flow (n_q_points);
 
@@ -1579,7 +1579,7 @@ namespace vt_darcy
         const unsigned int n_face_q_points = fe_face_values.get_quadrature().size();
         const unsigned int dofs_per_cell_mortar = fe_mortar.dofs_per_cell;
         const FEValuesExtractors::Vector velocity (0);
-        PressureBoundaryValues<dim+1>     pressure_boundary_values;
+        PressureBoundaryValues<dim+1>     pressure_boundary_values(prm.coe_a);
         pressure_boundary_values.set_time(prm.time);
         std::vector<Tensor<1, dim+1>> interface_values_flux(n_face_q_points);
         std::vector<Tensor<1, dim+1>> solution_values_flow(n_face_q_points);
@@ -1664,10 +1664,10 @@ namespace vt_darcy
       const ComponentSelectFunction<dim> velocity_mask(std::make_pair(0, dim), total_dim);
       const ComponentSelectFunction<dim> pressure_mask(static_cast<unsigned int>(dim), total_dim);
 
-      ExactSolution<dim> exact_solution;
+      ExactSolution<dim> exact_solution(prm.coe_a);
       exact_solution.set_time(prm.time);
 
-      PressureBoundaryValues<dim> pressure_function; //to calculate the projectin of exact projection on to piecewise constants.
+      PressureBoundaryValues<dim> pressure_function(prm.coe_a); //to calculate the projectin of exact projection on to piecewise constants.
       pressure_function.set_time(prm.time + (prm.time_step*0.5));
       std::vector<Point<dim>> pressure_support_points(n_pressure);
       std::vector<double> projected_pressure_values(n_pressure);
@@ -2030,6 +2030,7 @@ namespace vt_darcy
     template <int dim>
     void DarcyVTProblem<dim>::run (const unsigned int refine,
 											 const std::vector<std::vector<int>> &reps_st,
+											 const std::vector<std::vector<int>> &reps_st_mortar,
                                              double tol,
                                              unsigned int maxiter,
                                              unsigned int quad_degree)
@@ -2038,7 +2039,7 @@ namespace vt_darcy
         qdegree = quad_degree;
         total_refinements = refine;
 
-
+        pcout<<"\n\n coe_a is: "<<prm.coe_a<<"\n\n";
         const unsigned int this_mpi = Utilities::MPI::this_mpi_process(mpi_communicator);
         const unsigned int n_processes = Utilities::MPI::n_mpi_processes(mpi_communicator);
         pcout<<"\n\n Total number of processes is "<<n_processes<<"\n\n";
@@ -2047,15 +2048,20 @@ namespace vt_darcy
 
 
 
-        std::vector<std::vector<unsigned int>> reps_local(reps_st.size()), reps_st_local(reps_st.size()); //local copy of mesh partition information.
+        std::vector<std::vector<unsigned int>> reps_local(reps_st.size()), reps_st_local(reps_st.size()), reps_st_local_mortar(reps_st.size()); //local copy of mesh partition information.
         for(unsigned int i=0; i<reps_st_local.size(); i++)
         {
         	reps_local[i].resize(2);
         	reps_st_local[i].resize(3);
+        	reps_st_local_mortar[i].resize(3);
 
         	reps_st_local[i][0] = reps_st[i][0] ;
         	reps_st_local[i][1] = reps_st[i][1] ;
         	reps_st_local[i][2] = reps_st[i][2] ;
+
+        	reps_st_local_mortar[i][0] = reps_st_mortar[i][0] ;
+        	reps_st_local_mortar[i][1] = reps_st_mortar[i][1] ;
+        	reps_st_local_mortar[i][2] = reps_st_mortar[i][2] ;
 
         	reps_local[i][0] = reps_st_local[i][0] ;
         	reps_local[i][1] = reps_st_local[i][1] ;
@@ -2101,7 +2107,9 @@ namespace vt_darcy
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
                     GridGenerator::subdivided_hyper_rectangle(triangulation_st, reps_st_local[this_mpi], p1_st, p2_st);
 
-                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local[n_processes], p1_st, p2_st);
+//                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local[n_processes], p1_st, p2_st);
+//                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local[n_processes], p1_st, p2_st);
+                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local_mortar[this_mpi], p1_st, p2_st);
                     pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
                 }
                 else
@@ -2122,10 +2130,24 @@ namespace vt_darcy
                 	triangulation.clear();
                 	triangulation_st.clear();
                 	triangulation_mortar.clear();
-                    for(unsigned int dum_i=0; dum_i<reps_st_local.size()-1;dum_i++){ //refining space-time meshes.
+                    for(unsigned int dum_i=0; dum_i<reps_st_local.size()-1;dum_i++)
+                    { //refining space-time meshes.
                         	reps_st_local[dum_i][0]*=2;
                         	reps_st_local[dum_i][1]*=2;
                         	reps_st_local[dum_i][2]*=2;
+                    if (mortar_degree == 1)
+                    {
+                    	reps_st_local_mortar[dum_i][0]*=2;
+						reps_st_local_mortar[dum_i][1]*=2;
+						reps_st_local_mortar[dum_i][2]*=2;
+                    }
+                    else if(refinement_index!=0 && refinement_index%2==0)
+                    {
+                    	reps_st_local_mortar[dum_i][0]*=2;
+						reps_st_local_mortar[dum_i][1]*=2;
+						reps_st_local_mortar[dum_i][2]*=2;
+                    }
+
                     }
                     //refining mortar mesh
                     if(mortar_degree==1)
@@ -2154,7 +2176,8 @@ namespace vt_darcy
 
                     GridGenerator::subdivided_hyper_rectangle(triangulation, reps_local[this_mpi], p1, p2);
                     GridGenerator::subdivided_hyper_rectangle(triangulation_st, reps_st_local[this_mpi], p1_st, p2_st);
-                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local[n_processes], p1_st, p2_st);
+//                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local[n_processes], p1_st, p2_st);
+                    GridGenerator::subdivided_hyper_rectangle(triangulation_mortar, reps_st_local_mortar[this_mpi], p1_st, p2_st);
                     pcout << "Mortar mesh has " << triangulation_mortar.n_active_cells() << " cells" << std::endl;
 
                 }
@@ -2165,9 +2188,10 @@ namespace vt_darcy
 
             pcout << "Projecting the initial conditions...\n";
             {
-              InitialCondition<dim> ic;
+              InitialCondition<dim> ic(prm.coe_a);
 
               AffineConstraints<double> constraints;
+//              ConstraintMatrix constraints;
               constraints.clear();
               constraints.close();
               VectorTools::project (dof_handler,

@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------
  * Functions representing RHS, physical parameters, boundary conditions and
  * the true solution for the space-time DD for time-dependent parabolic equations.
- * All conditions and RHS are derived using p(x,y,t)= 1000xyt*exp( -10(x^2 + y^2 + (at)^2) )
+ * All conditions and RHS are derived using p(x,y,t)= sin(8t)sin(11x)cos(11y-pi/4)
  * and permeability tensor K = I_2x2.
  * ---------------------------------------------------------------------
  *
@@ -69,7 +69,7 @@ namespace vt_darcy
     class RightHandSidePressure : public Function<dim>
     {
     public:
-      RightHandSidePressure (const double c0=1.0, const double alpha=1.0, double coe_a_in=1.0);
+      RightHandSidePressure (const double c0=1.0, const double alpha=1.0); //{}
 
       virtual double value (const Point<dim>   &p,
                             const unsigned int component = 0 ) const;
@@ -77,15 +77,13 @@ namespace vt_darcy
     private:
       double c0; //=1.0;
       double alpha ;//=1.0;
-      double coe_a; // coefficient for controlling variation in t.
     };
 
     template <int dim>
-      RightHandSidePressure<dim>::RightHandSidePressure (const double c0, const double alpha, double coe_a_in) :
+      RightHandSidePressure<dim>::RightHandSidePressure (const double c0, const double alpha) :
 	  Function<dim>(1),
 	  c0(c0),
-    alpha(alpha),
-	coe_a(coe_a_in)
+    alpha(alpha)
 	  {}
 
     template <int dim>
@@ -100,9 +98,7 @@ namespace vt_darcy
       switch (dim)
       {
         case 2:
-        	return 1000.0*(x*y*exp(-10*(x*x + y*y))) * (exp(-10*coe_a*coe_a*t*t)*(1-20*coe_a*coe_a*t*t))
-        			-1000.0*(x*y*t*exp(-10*(x*x + y*y + coe_a*coe_a*t*t )))
-					*(-120.0 + 400*(x*x + y*y));
+        	return 8*cos(8*t)*sin(11*x)*cos(11*y-(3.1415/4))+sin(8*t)*242*sin(11*x)*cos(11*y-(3.1415/4));
         default:
         Assert(false, ExcMessage("The RHS data for dim != 2 is not provided"));
       }
@@ -114,23 +110,11 @@ namespace vt_darcy
     class PressureBoundaryValues : public Function<dim>
     {
     public:
-      PressureBoundaryValues () :
-    	  Function<dim>(1),
-		  coe_a(1.0)
-		  {}
-      PressureBoundaryValues(double coe_a);
+      PressureBoundaryValues () : Function<dim>(1) {}
 
-      double coe_a; //coefficient for controlling variation in t.
       virtual double value (const Point<dim>   &p,
                             const unsigned int component = 0) const;
     };
-
-    template<int dim>
-    PressureBoundaryValues<dim>::PressureBoundaryValues(double coe_a_in):
-		Function<dim>(1),
-		coe_a(coe_a_in)
-	{}
-
 
     template <int dim>
     double PressureBoundaryValues<dim>::value (const Point<dim>  &p,
@@ -147,9 +131,9 @@ namespace vt_darcy
       {
         case 2:
 
-        	return 1000 * (t*exp(-10*coe_a*coe_a*t*t)) * (x*y*exp( -10*(x*x + y*y) )); //1000*t*exp(-10t^2)*exp(-10(x^2+y^2))
+        	return sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));
         case 3:
-        	return 1000 * (z*exp(-10*coe_a*coe_a*z*z)) * (x*y*exp( -10*(x*x + y*y) ));
+        	return sin(8*z)*sin(11*x)*cos(11*y-(3.1415/4));
         default:
         Assert(false, ExcMessage("The BC data for dim != 2 is not provided"));
       }
@@ -160,15 +144,8 @@ namespace vt_darcy
     class ExactSolution : public Function<dim>
     {
     public:
-        ExactSolution(double coe_a_in) :
-        	Function<dim>(static_cast<unsigned int>(dim + 1)),
-			coe_a(coe_a_in)
-			{}
-        ExactSolution() :
-                	Function<dim>(static_cast<unsigned int>(dim + 1)),
-        			coe_a(1.0)
-        			{}
-        double coe_a; //coefficient for controlling variation in t.
+        ExactSolution() : Function<dim>(static_cast<unsigned int>(dim + 1)) {}
+
         virtual void vector_value (const Point<dim> &p,
                                    Vector<double>   &values) const;
         virtual void vector_gradient (const Point<dim> &p,
@@ -192,10 +169,9 @@ namespace vt_darcy
         switch (dim)
         {
             case 2:
-            	  values(0) = -1000 * (t*exp(-10*coe_a*coe_a*t*t)) * (y*exp( -10*(x*x + y*y) ) * (1 - 20*x*x));
-            	  values(1) =  -1000 * (t*exp(-10*coe_a*coe_a*t*t)) * (x*exp( -10*(x*x + y*y) ) * (1 - 20*y*y));
-            	  values(2) = 1000 * (t*exp(-10*coe_a*coe_a*t*t)) * (x*y*exp( -10*(x*x + y*y) )); //1000*t*exp(-10t^2)*exp(-10(x^2+y^2))
-
+            	  values(0) = -sin(8*t)*11*cos(11*x)*cos(11*y-(3.1415/4)) ;
+            	  values(1) =  sin(8*t)*11*sin(11*x)*sin(11*y-(3.1415/4)) ;
+            	  values(2) = sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));
                 break;
             case 3:
 
@@ -250,12 +226,7 @@ namespace vt_darcy
   {
   public:
     InitialCondition() : Function<dim>(static_cast<unsigned int>(dim + 1)) {}
-    InitialCondition(double coe_a_in) :
-    	Function<dim>(static_cast<unsigned int>(dim + 1)),
-		coe_a(coe_a_in)
-		{}
 
-    double coe_a;
     virtual void vector_value (const Point<dim> &p,
                                Vector<double>   &values) const;
   };
@@ -281,7 +252,7 @@ namespace vt_darcy
               values(0) = 0;
               values(1) = 0;
 
-              values(2) = 1000 * (t*exp(-10*coe_a*coe_a*t*t)) * (x*y*exp( -10*(x*x + y*y) )); //1000*t*exp(-10t^2)*exp(-10(x^2+y^2))
+              values(2) = sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));;
           break;
           case 3:
 
