@@ -665,7 +665,7 @@ namespace Projector
                 (const DoFHandler<dim,spacedim>                                       &dof,
                  const std::map<types::boundary_id, const Function<spacedim,number>*> &boundary_functions,
                  const Quadrature<dim-1>                                              &q,
-                 ConstraintMatrix                                                     &constraints,
+                 AffineConstraints<double>                                            &constraints,
                  std::vector<unsigned int>                                             component_mapping = std::vector<unsigned int>());
 
         void reset()
@@ -822,7 +822,7 @@ namespace Projector
             (const DoFHandler<dim,spacedim>                                       &dof,
              const std::map<types::boundary_id, const Function<spacedim,number>*> &boundary_functions,
              const Quadrature<dim-1>                                              &q,
-             ConstraintMatrix                                                     &constraints,
+             AffineConstraints<double>                                            &constraints,
              std::vector<unsigned int>                                             component_mapping)
     {
         std::map<types::global_dof_index,number> boundary_values;

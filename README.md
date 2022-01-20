@@ -62,7 +62,7 @@ If you still have trouble configuring deal.ii with mpi, please seek help at this
 ## Quick start guide for the simulator.
 -------------------------------------
 * The main file is located in `src/darcy_main.cc`, which has only the least minimum info to run the code. Most of the details are hidden and are implemented in src/darcy_vtdd.cc and header files in `inc/`.    
-* Once could just compile the code in the main folder using the instructions above and then modify the parameter file to change the behaviour of the simulator without ever recompiling the program again.  
+* Compilation needs to be done once using the instructions given above and the parameter file  can be changed subsequentyly to change the behaviour of the simulator without recompiling.  
 * Most of the parameters including number of refinements, mortar_degree, max_number of gmres iterations, final_time, subdomain mesh size
 ratio etc are fed to the executable file DarcyVT using parameter.txt in the main folder. Please see the section on how to modify parameter file to customize physical parameters and modify other features of the simulator.   
 * Currently the simulator works only for rectangle shaped domains, more complicated domain boundaries could be dealt by labelling the boundary ids accordingly in inc/utilities. Other changes might also be required depending on the complexity of the domain boundary, please contact the author if that is the case.  

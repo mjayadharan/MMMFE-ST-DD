@@ -476,7 +476,7 @@ namespace vt_darcy
                     const DoFHandler<dim+1>     &dof1,
                     BlockVector<double>       &in_vec,
                     const Quadrature<dim>   &quad,
-                    ConstraintMatrix          &constraints,
+                    AffineConstraints<double> &constraints,
                     const std::vector<int>    &neighbors,
                     const DoFHandler<dim+1>     &dof2,
                     BlockVector<double>       &out_vec)
@@ -486,8 +486,7 @@ namespace vt_darcy
         Functions::FEFieldFunction<dim+1, DoFHandler<dim+1>, BlockVector<double>> fe_interface_data (dof1, in_vec);
         std::map<types::global_dof_index,double> boundary_values_velocity;
 
-        typename FunctionMap<dim+1>::type boundary_functions_velocity;
-
+	std::map<types::boundary_id, const Function<dim+1> *> boundary_functions_velocity;
         constraints.clear ();
 
         for (unsigned int side=0; side<GeometryInfo<dim>::faces_per_cell; ++side)
