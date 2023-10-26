@@ -481,7 +481,7 @@ namespace vt_darcy
     {
         out_vec = 0;
 
-        Functions::FEFieldFunction<dim+1, DoFHandler<dim+1>, BlockVector<double>> fe_interface_data (dof1, in_vec);
+        Functions::FEFieldFunction<dim+1, BlockVector<double>> fe_interface_data (dof1, in_vec);
         std::map<types::global_dof_index,double> boundary_values_velocity;
 
 	std::map<types::boundary_id, const Function<dim+1> *> boundary_functions_velocity;

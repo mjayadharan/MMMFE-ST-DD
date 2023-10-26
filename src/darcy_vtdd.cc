@@ -193,9 +193,8 @@ namespace vt_darcy
 
         }
 
-	std::vector<types::global_dof_index> dofs_per_component ( dim + 1);
-        DoFTools::count_dofs_per_component (dof_handler, dofs_per_component);
-//        unsigned int n_s=0, n_u=0, n_g=0;
+	std::vector<types::global_dof_index> dofs_per_component = 
+	    DoFTools::count_dofs_per_fe_component (dof_handler);
 
         unsigned int n_z = dofs_per_component[0];
         unsigned int n_p = dofs_per_component[dim];
@@ -326,8 +325,8 @@ namespace vt_darcy
 			if (mortar_flag)
 			        {
 				//Mortar part.
-			            std::vector<types::global_dof_index> dofs_per_component_mortar (dim+1 + 1);
-			            DoFTools::count_dofs_per_component (dof_handler_mortar, dofs_per_component_mortar);
+				    std::vector<types::global_dof_index> dofs_per_component_mortar = 
+					DoFTools::count_dofs_per_fe_component (dof_handler_mortar);
 
 			            unsigned int n_z_mortar = dofs_per_component_mortar[0]; //For RT mortar space
 			            unsigned int n_p_mortar = dofs_per_component_mortar[dim+1];
@@ -346,9 +345,9 @@ namespace vt_darcy
 			            solution_star_mortar=0;
 
 						//Space-time part.
-			            std::vector<types::global_dof_index> dofs_per_component_st (dim+1 + 1);
-			            DoFTools::count_dofs_per_component (dof_handler_st, dofs_per_component_st);
-
+				    std::vector<types::global_dof_index> dofs_per_component_st = 
+					DoFTools::count_dofs_per_fe_component (dof_handler_st);
+				    
 			            n_flux_st = dofs_per_component_st[0]; //For RT mortar space
 			            n_pressure_st= dofs_per_component_st[dim+1];
 
@@ -1622,7 +1621,7 @@ namespace vt_darcy
        {
            double error_calculated =0;
 
-           QTrapez<1>      q_trapez;
+           QTrapezoid<1>      q_trapez;
            QIterated<dim>  quad(q_trapez,degree+2);
            FEValues<dim> fe_values (fe, quad,
                                              update_values  | update_quadrature_points  |
@@ -1681,7 +1680,7 @@ namespace vt_darcy
       Vector<double> cellwise_div_norms (triangulation.n_active_cells());
 
       // Define quadrature points to compute errors at
-      QTrapez<1>      q_trapez;
+      QTrapezoid<1>      q_trapez;
       QIterated<dim>  quadrature(q_trapez,degree+2);
       QGauss<dim>  quadrature_div(5);
 
