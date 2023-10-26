@@ -1621,7 +1621,7 @@ namespace vt_darcy
        {
            double error_calculated =0;
 
-           QTrapez<1>      q_trapez;
+           QTrapezoid<1>      q_trapez;
            QIterated<dim>  quad(q_trapez,degree+2);
            FEValues<dim> fe_values (fe, quad,
                                              update_values  | update_quadrature_points  |
@@ -1680,7 +1680,7 @@ namespace vt_darcy
       Vector<double> cellwise_div_norms (triangulation.n_active_cells());
 
       // Define quadrature points to compute errors at
-      QTrapez<1>      q_trapez;
+      QTrapezoid<1>      q_trapez;
       QIterated<dim>  quadrature(q_trapez,degree+2);
       QGauss<dim>  quadrature_div(5);
 
