@@ -32,7 +32,7 @@ namespace vt_darcy
       KInverse () : TensorFunction<2,dim>() {}
 
       virtual void value_list (const std::vector<Point<dim> > &points,
-                               std::vector<Tensor<2,dim> >    &values) const;
+                               std::vector<Tensor<2,dim> >    &values) const override;
     };
 
     template <int dim>
@@ -72,7 +72,7 @@ namespace vt_darcy
       RightHandSidePressure (const double c0=1.0, const double alpha=1.0); //{}
 
       virtual double value (const Point<dim>   &p,
-                            const unsigned int component = 0 ) const;
+                            const unsigned int component = 0 ) const override;
 
     private:
       double c0; //=1.0;
@@ -113,7 +113,7 @@ namespace vt_darcy
       PressureBoundaryValues () : Function<dim>(1) {}
 
       virtual double value (const Point<dim>   &p,
-                            const unsigned int component = 0) const;
+                            const unsigned int component = 0) const override;
     };
 
     template <int dim>
@@ -125,15 +125,15 @@ namespace vt_darcy
       double z;
       if (dim == 3)
           z = p[2];
+
       double t = FunctionTime<double>::get_time();
 
       switch (dim)
       {
         case 2:
-
         	return sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));
         case 3:
-        	return sin(8*z)*sin(11*x)*cos(11*y-(3.1415/4));
+          return sin(8*z)*sin(11*x)*cos(11*y-(3.1415/4));
         default:
         Assert(false, ExcMessage("The BC data for dim != 2 is not provided"));
       }
@@ -147,9 +147,9 @@ namespace vt_darcy
         ExactSolution() : Function<dim>(static_cast<unsigned int>(dim + 1)) {}
 
         virtual void vector_value (const Point<dim> &p,
-                                   Vector<double>   &values) const;
+                                   Vector<double>   &values) const override;
         virtual void vector_gradient (const Point<dim> &p,
-                                      std::vector<Tensor<1,dim,double> > &grads) const;
+                                      std::vector<Tensor<1,dim,double> > &grads) const override;
     };
 
     template <int dim>
@@ -159,11 +159,6 @@ namespace vt_darcy
     {
         double x = p[0];
         double y = p[1];
-        double z;
-
-        if (dim == 3)
-            z = p[2];
-
         double t = FunctionTime<double>::get_time();
 
         switch (dim)
@@ -172,9 +167,6 @@ namespace vt_darcy
             	  values(0) = -sin(8*t)*11*cos(11*x)*cos(11*y-(3.1415/4)) ;
             	  values(1) =  sin(8*t)*11*sin(11*x)*sin(11*y-(3.1415/4)) ;
             	  values(2) = sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));
-                break;
-            case 3:
-
                 break;
             default:
                 Assert(false, ExcNotImplemented());
@@ -188,33 +180,18 @@ namespace vt_darcy
     {
         double x = p[0];
         double y = p[1];
-        double z;
-
-        if (dim == 3)
-        z = p[2];
-
         double t = FunctionTime<double>::get_time();
 
-        int total_dim = dim*dim + dim + static_cast<int>(0.5*dim*(dim-1));
-        Tensor<1,dim> tmp;
         switch (dim)
         {
         case 2:
 
-
-
         	 grads[0][0] = sin(8*t)*36*sin(11*x)*cos(11*y);
-           	 grads[0][1] = -sin(8*t)*36.0*cos(6*x)*cos(6*y);
+           grads[0][1] = -sin(8*t)*36.0*cos(6*x)*cos(6*y);
 
-           	 grads[1][0] = -sin(8*t)*36.0*cos(6*x)*cos(6*y);
-           	 grads[1][1] = sin(8*t)*36*sin(11*x)*cos(11*y);
-
-            break;
-        case 3:
-            for (int k=0;k<total_dim;++k)
-                grads[k] = tmp;
-
-            break;
+           grads[1][0] = -sin(8*t)*36.0*cos(6*x)*cos(6*y);
+           grads[1][1] = sin(8*t)*36*sin(11*x)*cos(11*y);
+          break;
         default:
             Assert(false, ExcNotImplemented());
         }
@@ -228,7 +205,7 @@ namespace vt_darcy
     InitialCondition() : Function<dim>(static_cast<unsigned int>(dim + 1)) {}
 
     virtual void vector_value (const Point<dim> &p,
-                               Vector<double>   &values) const;
+                               Vector<double>   &values) const override;
   };
 
 
@@ -239,11 +216,6 @@ namespace vt_darcy
   {
       double x = p[0];
       double y = p[1];
-      double z;
-
-      if (dim == 3)
-          z = p[2];
-
       double t = 0;
 
       switch (dim)
@@ -251,17 +223,12 @@ namespace vt_darcy
           case 2:
               values(0) = 0;
               values(1) = 0;
-
               values(2) = sin(8*t)*sin(11*x)*cos(11*y-(3.1415/4));;
           break;
-          case 3:
-
-              break;
           default:
             Assert(false, ExcNotImplemented());
       }
   }
-
 
 }
 
