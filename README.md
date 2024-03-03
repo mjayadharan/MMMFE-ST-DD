@@ -37,7 +37,7 @@ Maintaining branch: *michel_Andra_testcase* .
 ---------------------------------------
 Need deal.ii configured with mpi  to compile and run the simulations. Latest version of dealii can be found at : [https://www.dealii.org/download.html](https://www.dealii.org/download.html)
 
-**deal.ii installation instruction:** Follow [readme](https://www.dealii.org/9.2.0/readme.html) file to install latest version of deal.ii with `-DDEAL_II_WITH_MPI=ON` flag to cmake.   
+**deal.ii installation instruction:** Follow [readme](https://www.dealii.org/9.2.0/readme.html) file to install latest version of deal.ii with `-DDEAL_II_WITH_MPI=ON` .. -DCMAKE_PREFIX_PATH=path_to_mpi_lib flags to cmake.   
 Note that if you have trouble finding the mpi library while building, do the following, manually pass the location of the compiler files to cmake as follows:     
 ```
 cmake -DCMAKE_C_COMPILER="</location to/mpicc"\
