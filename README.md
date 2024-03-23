@@ -39,7 +39,7 @@ Maintaining branch: *michel_Andra_testcase* .
 
 
 
-## deal.ii 9.2.0 requirement (latest at the time)
+## deal.ii 9.5.2 requirement (latest at the time)
 ---------------------------------------
 Need deal.ii configured with mpi  to compile and run the simulations. Latest version of dealii can be found at : [https://www.dealii.org/download.html](https://www.dealii.org/download.html)
 
