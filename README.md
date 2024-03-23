@@ -1,6 +1,10 @@
 # Multiscale Mortar Mixed Finite Element method using novel   Space-Time Domain Decomposition (MMMFE-ST-DD)
 Fluid flow simulator using multiscale space-time domains. 
 
+__Note__: If you use the code for research purposes, please cite the following original publications: [Domain decomposition and partitioning methods for mixed finite element discretizations of the Biot system of poroelasticity M Jayadharan, E Khattatov, I Yotov Computational Geosciences 25, 1919-1938](https://epubs.siam.org/doi/abs/10.1137/21M1447945)
+and
+[Multiscale mortar mixed finite element methods for the Biot system of poroelasticity M Jayadharan, I Yotov arXiv preprint arXiv:2211.02949](https://arxiv.org/abs/2211.02949)
+
 Code developed to simulate time-dependent diffusion problem using Multiscale Mortar Mixed Finite Elements(MMMFE). Model can be easily adapted to simulate other fluid flow models based on linear PDEs. The novelty of the simulator lies in using multiple subdomains with variable time steps and mesh size for each subdomain. This give rise to a space-time DD technique allowing non-matching grids for sub-domains in both space and time dimensions. Sub-domain solves are done in parallel across different processors using MPI. Computed solutions are outputted and visualized on a global space-time grid in the .vtk and .vtu formats. Details of the spaces used and rough algorithm can be found in report.pdf and algorithm.pdf respectively. Theoretical results guaranteeing convergence and stability of the problem along with a priori error estimates have been proved and will appear in SINUM journal and can also be found [here](https://arxiv.org/abs/2110.02132). 
 ![github_space_time_dd](https://user-images.githubusercontent.com/35903705/86996707-51287c00-c17a-11ea-8d9c-584aa2cfc47b.png)
 
